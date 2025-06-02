@@ -56,7 +56,7 @@ function Navbar() {
 
       {/* Desktop Navigation */}
       <div className="hidden md:flex space-x-6">
-        <Link className="text-gray-800 hover:text-green-600">Home</Link>
+        <Link className="text-gray-800 hover:text-green-600" to={"/"}>Home</Link>
         <Link className="text-gray-800 hover:text-green-600" to={"/services"}>Services</Link>
         <Link to={userDetails.id ? "/user_view_psychologist" : "/therapists"} className="text-gray-800 hover:text-green-600">Therapists</Link>
         <Link className="text-gray-800 hover:text-green-600" to={"/aboutus"}>About Us</Link>
@@ -128,7 +128,7 @@ function Navbar() {
       {isMenuOpen && (
         <div className="absolute top-16 left-0 right-0 bg-white shadow-md z-40 md:hidden">
           <div className="flex flex-col p-4 space-y-3">
-            <Link className="text-gray-800 hover:text-green-600 py-2">
+            <Link className="text-gray-800 hover:text-green-600 py-2" to={"/"}>
               Home
             </Link>
             <Link

@@ -1,37 +1,79 @@
 import React, { useEffect, useState } from "react";
-import { Camera, Save, Edit3, Phone, Calendar } from "lucide-react";
+import { Camera, Save, Edit3, Phone, Calendar,Briefcase } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import DoctorVerification from "./DoctorVerification";
 import DoctorPendingPage from "./DoctorPendingPage";
 import { toast } from "react-toastify";
+import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
 
 const DoctorProfile = () => {
   const [activeSection, setActiveSection] = useState("user_profile");
-  const [userStatus, setUserStatus] = useState(false);
   const [formData, setFormData] = useState({});
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingProfession, setIsEditingProfession] = useState(false);
   const userId = useSelector((state) => state.userDetails.id);
   const [isAvailable, setIsAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    fetchdoctor();
+    fetchDoctor();
   }, []);
 
-  const fetchdoctor = async () => {
+  const updateDoctorProfileImage = async () => {
     try {
-      
+      setIsOpen(true);
+    } catch (error) {}
+  };
+
+  const fetchDoctor = async () => {
+    try {
       const response = await axiosInstance.get(
         `/users/get_psycholgist_details/${userId}`
       );
-      console.log('ddddddddddddddddd',response.data);
 
-      setUserStatus(response.data);
+      setIsAvailable(response.data.is_available);
+      console.log(response.data);
+
       setFormData(response.data);
     } catch (error) {
-      setFormData({}); 
+      setFormData({});
+    }
+  };
+
+  const handleUpload = async (file) => {
+    if (!file) return;
+
+    // setIsUploading(true);
+    const profileFormData = new FormData();
+    profileFormData.append("profile_image", file);
+
+    // upload process
+    try {
+      await axiosInstance.patch(
+        `users/update_psychologist_profile_image/${userId}`,
+        profileFormData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // Update profile image
+      // setCurrentProfileImage(previewUrl);
+      toast.success("Profile image updated successfully!", {
+        position: "bottom-center",
+      });
+    } catch (error) {
+      toast.error("Upload failed. Please try again.", {
+        position: "bottom-center",
+      });
+    } finally {
+      // setIsUploading(false);
+      fetchDoctor();
     }
   };
 
@@ -41,10 +83,14 @@ const DoctorProfile = () => {
 
     try {
       // Make API request
-      const response = await axiosInstance.patch(`/users/update_availability/${userId}`)
+      const response = await axiosInstance.patch(
+        `/users/update_availability/${userId}`
+      );
       setIsAvailable(response.data.status);
     } catch (error) {
-      toast.error(`Error updating availability:`,{position:"bottom-center"});
+      toast.error(`Error updating availability:`, {
+        position: "bottom-center",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +118,6 @@ const DoctorProfile = () => {
   };
 
   const handleSave = async () => {
-    console.log('ddddddddddddddddddddddddddddddddddddddddddddddd',formData);
-    
     try {
       const response = await axiosInstance.put(
         `/users/update_psychologist_details/${userId}`,
@@ -83,15 +127,27 @@ const DoctorProfile = () => {
       setIsEditing(false);
     } catch (error) {}
   };
-if (!formData.date_of_birth) {
-  // No doctor data returned
-  return <DoctorVerification doctorDetails={formData} />;
-}
 
-if (formData.is_verified === false) {
-  return <DoctorPendingPage />;
-}
-  
+  if (!formData.date_of_birth) {
+    return <DoctorVerification doctorDetails={formData} />;
+  }
+
+  if (formData.is_verified === false) {
+    return <DoctorPendingPage />;
+  }
+
+  if (isOpen) {
+    return (
+      <>
+        <button onClick={() => setIsOpen(true)}>Change Profile Picture</button>
+        <ProfileImageUploadModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          onUpload={handleUpload}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -111,7 +167,10 @@ if (formData.is_verified === false) {
                         alt="Image"
                       />
                     </div>
-                    <button className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50">
+                    <button
+                      className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50"
+                      onClick={updateDoctorProfileImage}
+                    >
                       <Camera className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
@@ -152,13 +211,7 @@ if (formData.is_verified === false) {
                             : "Not Available"}
                         </span>
                       </div>
-                      <button
-                        onClick={() => setIsEditing(!isEditing)}
-                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
-                      </button>
+                      
                     </div>
                   </div>
                 </div>
@@ -170,9 +223,20 @@ if (formData.is_verified === false) {
             {/* Profile Details */}
             {formData.user ? (
               <div className="bg-white rounded-xl shadow-sm p-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                <div className="flex justify-between">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">
                   Personal Information
-                </h2>
+                </h2> 
+
+                  <button
+                        onClick={() => setIsEditing(!isEditing)}
+                        className="flex items-center space-x-2 px-2 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
+                      </button>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -272,6 +336,89 @@ if (formData.is_verified === false) {
             ) : (
               ""
             )}
+
+
+{/* Professional Details */}
+            <div className="bg-white rounded-xl shadow-sm p-8">
+             <div className="flex justify-between">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                  Professional Details
+                </h2> 
+                  <button
+                        onClick={() => setIsEditingProfession(!isEditingProfession)}
+                        className="flex items-center space-x-2 px-2 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>{isEditingProfession ? "Cancel" : "Edit Details"}</span>
+                      </button>
+                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Title
+                  </label>
+                  {isEditingProfession ? (
+                    <input
+                      type="text"
+                      name="jobTitle"
+                      value={formData.jobTitle}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  ) : (
+                    <div className="flex items-center space-x-2 text-gray-900">
+                      <Briefcase className="w-4 h-4 text-gray-400" />
+                      <span>{formData.jobTitle}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="company"
+                      value={formData.company}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  ) : (
+                    <div className="flex items-center space-x-2 text-gray-900">
+                      <span>{formData.company}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website
+                  </label>
+                  {isEditingProfession ? (
+                    <input
+                      type="url"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  ) : (
+                    <div className="text-gray-900">
+                      <a
+                        href={formData.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {formData.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

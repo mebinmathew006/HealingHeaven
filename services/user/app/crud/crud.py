@@ -61,6 +61,14 @@ async def toggle_user_status_by_id(session: AsyncSession,user_id:int):
     await session.execute( update(User).where(User.id == user_id).values(is_active=~User.is_active))
     await session.commit()
     
+async def update_user_profile_image(session: AsyncSession,user_id:int,profile_url:str):
+    await session.execute( update(UserProfile).where(UserProfile.user_id == user_id).values(profile_image=profile_url))
+    await session.commit()
+    
+async def update_user_psychologist_image(session: AsyncSession,user_id:int,profile_url:str):
+    await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(profile_image=profile_url))
+    await session.commit()
+    
 async def toggle_psychologist_status_by_id(session: AsyncSession,user_id:int):
     await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=~PsychologistProfile.is_verified))
     await session.commit()
