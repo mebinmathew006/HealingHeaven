@@ -17,7 +17,6 @@ from fastapi.logger import logger
 from datetime import date 
 from dependencies.get_current_user import get_current_user
 
-
 router = APIRouter(tags=["users"])
 
 
@@ -133,8 +132,6 @@ async def forgetpassword(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong. Please try again later."
         )
-
-
     
 @router.post('/forget_password_otp_verify')
 async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: AsyncSession = Depends(get_session)):
@@ -150,12 +147,16 @@ async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: 
 @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
 async def view_psychologist(session: AsyncSession = Depends(get_session)):
     try:
+        logger.info('i am hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
         data = await crud.get_all_psychologist_with_profile(session)
         return [users.PsychologistProfileOut.model_validate(p) for p in data]
     except HTTPException as http_exc:
+        logger.error('dddfdddd',http_exc)
         raise http_exc
     
     except Exception as e:
+        logger.error('dddfdddd',e)
+        
         raise HTTPException(status_code=500, detail="Internal server error while fetching psychologists.")
 
 @router.patch('/update_availability/{user_id}')
@@ -226,7 +227,6 @@ async def doctor_verification(
             id_url = await run_in_threadpool(upload_to_cloudinary, id, "doctor_verification/id")
             edu_url = await run_in_threadpool(upload_to_cloudinary, educationalCertificate, "doctor_verification/education")
             exp_url = await run_in_threadpool(upload_to_cloudinary, experienceCertificate, "doctor_verification/experience")
-            print(id_url,edu_url,exp_url)
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,

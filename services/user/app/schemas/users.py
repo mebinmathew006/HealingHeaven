@@ -11,7 +11,6 @@ class UserCreate(BaseModel):
     mobile_number: str
     password: str
     role: str
-    
     @validator("mobile_number")
     def validate_mobile_number(cls, v):
         if not v.isdigit():

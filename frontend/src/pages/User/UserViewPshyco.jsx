@@ -1,20 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
-  User,
-  Settings,
-  Bell,
-  Shield,
-  CreditCard,
-  HelpCircle,
-  LogOut,
   Camera,
   Save,
   Edit3,
-  Mail,
   Phone,
-  MapPin,
   Calendar,
-  Briefcase,
 } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
 import { useSelector } from "react-redux";
@@ -65,17 +55,13 @@ const [activeSection, setActiveSection] = useState("profile");
   }
 };
 
-
   const handleSave = async () => {
     try {
     const response = await axiosInstance.put(`/users/update_user_details/${userId}`,formData)
     console.log("Saving profile data:", formData);
     setIsEditing(false);
-      
     } catch (error) {
-      
     }
-    
   };
 
 
