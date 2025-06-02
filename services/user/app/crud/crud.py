@@ -88,7 +88,7 @@ async def update_user_password(session: AsyncSession,email:str,password :str):
     
 async def get_all_psychologist_with_profile(session:AsyncSession):
     result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
-                                   .where(PsychologistProfile.is_verified == True) )
+                                   .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.is_available.desc()) )
     return result.scalars().all()
 
 async def update_user_and_profile(session: AsyncSession, user_id: int, update_data: UserWithOptionalProfileOut):
@@ -140,6 +140,11 @@ async def update_psychologist_and_profile(session: AsyncSession, user_id: int, u
         # Update existing profile
         profile.date_of_birth = update_data.date_of_birth
         profile.gender = update_data.gender
+        profile.about_me = update_data.about_me
+        profile.qualification = update_data.qualification
+        profile.experience = update_data.experience
+        profile.specialization = update_data.specialization
+        profile.fees = update_data.fees
     
     await session.commit()
     return user

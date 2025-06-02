@@ -24,6 +24,7 @@ import ServicesPage from "../pages/Public/ServicesPage";
 import AboutUsPage from "../pages/Public/AboutUsPage";
 import ContactUsPage from "../pages/Public/ContactUsPage";
 import PsychologistsDirectory from "../pages/Public/PsychologistsDirectory";
+import UserViewDoctorDetails from "../pages/User/UserViewDoctorDetails";
 
 const AppRoutes = () => {
   return (
@@ -47,6 +48,7 @@ const AppRoutes = () => {
         <Route path="/user_home_page" element={<UserProtectedRoute><UserHomePage /></UserProtectedRoute>} />
         <Route path="/user_profile" element={<UserProtectedRoute><UserProfile /></UserProtectedRoute>} />
         <Route path="/user_view_psychologist" element={<UserProtectedRoute><ViewPsychologists /></UserProtectedRoute>} />
+        <Route path="/user_view_psychologist_details" element={<UserProtectedRoute><UserViewDoctorDetails /></UserProtectedRoute>} />
 
       </Route>
 

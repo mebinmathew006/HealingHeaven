@@ -2,23 +2,51 @@ import { useEffect, useState } from "react";
 import React from "react";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
-import {SquareUser } from 'lucide-react'
-
-const PsychologistCard = ({ name, specialty, imageSrc }) => {
+import { Clock, CheckCircle, XCircle, Calendar,SquareUser } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+const PsychologistCard = ({ name, specialty,availability, imageSrc }) => {
+  const navigate = useNavigate()
   return (
     <div className="bg-white rounded-lg shadow-2xl p-4 flex flex-col items-center">
+        <div className="mb-3">
+
+      {availability ? (
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Available Now</span>
+          </div>
+          <div className="flex items-center space-x-1 text-green-600">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs">Ready for consultation</span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200">
+            <XCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Unavailable Now</span>
+          </div>
+          <div className="flex items-center space-x-1 text-red-600">
+            <Calendar className="w-3 h-3" />
+            <span className="text-xs">Please check back later</span>
+          </div>
+        </div>
+      )}
+    </div>
+
 
       <div className="w-full h-fit mb-4 overflow-hidden">
         <img
           src={imageSrc || '/powerpoint-template-icons-b.jpg'  }
-          className = "h-fit"
+          className = "h-fit rounded-4xl"
           alt={<SquareUser/>}
         />
       </div>
       <div className="text-center">
         <h3 className="font-semibold text-gray-800">{name}</h3>
         <p className="text-sm text-gray-600 mb-3">{specialty}</p>
-        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm">
+        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>navigate('/user_view_psychologist_details')}>
           More
         </button>
       </div>
@@ -38,6 +66,8 @@ export default function PsychologistsDirectory() {
       const response = await axiosInstance.get("users/view_psychologist");
       
       setpsychologists(response.data);
+      console.log(response.data);
+
     } catch (error) {
       console.log(error);
     }
@@ -73,6 +103,7 @@ export default function PsychologistsDirectory() {
         key={psych.id}
         name={psych.user.name}
         specialty={psych.specialization}
+        availability={psych.is_available}
         imageSrc={psych.profile_image}
       />
     ))
