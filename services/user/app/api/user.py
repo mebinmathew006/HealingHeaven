@@ -287,6 +287,26 @@ async def toggle_user_status(user_id:int,session: AsyncSession = Depends(get_ses
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
+    
+@router.patch('/update_user_profile_image/{user_id}')
+async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),session: AsyncSession = Depends(get_session)):
+    try :
+        profile_url = await run_in_threadpool(upload_to_cloudinary, profile_image, "profile_images/id")
+        data= await crud.update_user_profile_image(session,user_id,profile_url)
+        return JSONResponse(content={"status": data}, status_code=200)
+    except:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
+    
+@router.patch('/update_psychologist_profile_image/{user_id}')
+async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),session: AsyncSession = Depends(get_session)):
+    try :
+        profile_url = await run_in_threadpool(upload_to_cloudinary, profile_image, "profile_images/id")
+        data= await crud.update_user_psychologist_image(session,user_id,profile_url)
+        return JSONResponse(content={"status": data}, status_code=200)
+    except:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
+    
+    
 @router.patch('/change_psychologist_verification/{user_id}')
 async def change_psychologist_verification(user_id:int,session: AsyncSession = Depends(get_session)):
     try :
