@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
+import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
 
-const DoctorDetailsPage = () => {
+const DoctorDetailsPage = (props) => {
+  const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [doctor, setDoctor] = useState({});
@@ -25,7 +27,7 @@ const DoctorDetailsPage = () => {
   });
   const location = useLocation();
   const { id } = location.state;
-
+  const { modal } = props;
   useEffect(() => {
     fetchDoctor();
   }, []);
@@ -57,6 +59,15 @@ const DoctorDetailsPage = () => {
     }
   };
 
+  const handleStartCall = () => {
+    console.log("Starting call...");
+    setShowModal(false);
+  };
+
+  const handleVideoCall = () => {
+    setShowModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -68,7 +79,9 @@ const DoctorDetailsPage = () => {
                 {/* Doctor Image */}
                 <div className="flex-shrink-0">
                   <img
-                    src={doctor.profile_image || '/powerpoint-template-icons-b.jpg'}
+                    src={
+                      doctor.profile_image || "/powerpoint-template-icons-b.jpg"
+                    }
                     alt={doctor?.user?.name}
                     className="w-48 h-48 rounded-2xl object-cover shadow-lg"
                   />
@@ -123,8 +136,6 @@ const DoctorDetailsPage = () => {
                         </div>
                       </div>
                     </div>
-
-                   
                   </div>
                 </div>
               </div>
@@ -139,7 +150,8 @@ const DoctorDetailsPage = () => {
                 {/* About */}
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h3 className="text-xl font-semibold mb-4">
-                   About Dr. {doctor.user?.name ? doctor.user.name.split(" ")[1] : ""}
+                    About Dr.{" "}
+                    {doctor.user?.name ? doctor.user.name.split(" ")[1] : ""}
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
                     {doctor.about_me}
@@ -191,19 +203,33 @@ const DoctorDetailsPage = () => {
               {/* Right Column */}
               <div className="space-y-6">
                 {/* Quick Book */}
-                {doctor.is_available &&
-                <div className="bg-white rounded-xl p-6 shadow-sm">
-                  <h3 className="text-xl font-semibold mb-4">Consultation</h3>
-                  <div className="space-y-4">
-                    <button
-                      onClick={() => setShowBookingModal(true)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
-                    >
-                      Consult Now
-                    </button>
+                {doctor.is_available && (
+                  <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <h3 className="text-xl font-semibold mb-4">Consultation</h3>
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleVideoCall}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+                      >
+                        Consult Now
+                      </button>
+                    </div>
                   </div>
-                </div>}
-
+                )}
+                {/* Conditionally render modal here */}
+                {showModal && (
+                  <VideoCallPermissionModal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    onStartCall={handleStartCall}
+                    doctor={{
+                      name: doctor.user?.name ,
+                      fees: doctor?.fees,
+                      image:doctor?.profile_image,
+                    }}
+                    walletBalance={1200}
+                  />
+                )}
                 {/* Languages */}
                 {/* <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h3 className="text-xl font-semibold mb-4">
@@ -221,8 +247,6 @@ const DoctorDetailsPage = () => {
               </div>
             </div>
           </div>
-
-         
         </>
       )}
     </div>
