@@ -3,7 +3,7 @@ import DoctorDetailsPage from '../Public/DoctorDetailsPage'
 
 function UserViewDoctorDetails() {
   return (
-    <DoctorDetailsPage/>
+    <DoctorDetailsPage />
   )
 }
 
