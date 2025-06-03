@@ -103,7 +103,7 @@ class DoctorVerificationOut(BaseModel):
     user:UserOut
     qualification: str
     specialization: str
-    profile_image: str
+    profile_image: Optional[str]
     about_me: str = Field(...)
     identification_doc: str = Field(...)
     education_certificate: str = Field(...)
