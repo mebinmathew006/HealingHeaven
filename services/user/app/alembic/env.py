@@ -7,7 +7,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from alembic import context
-
+from models.users import Base  # Adjust the import path as needed
+from dependencies.database import DATABASE_URL
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -25,8 +26,7 @@ if config.config_file_name is not None:
 # Add the parent directory to path if needed to find the models
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from models.users import Base  # Adjust the import path as needed
-from dependencies.database import DATABASE_URL
+
 
 
 target_metadata = Base.metadata

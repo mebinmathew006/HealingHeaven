@@ -10,7 +10,7 @@ services:
       - redis
     volumes:
       - ./services/user/app:/app
-    environment:
+    env_file:
       - ./services/user/app/.env
 
   redis:
@@ -22,17 +22,12 @@ services:
   user-db:
     image: postgres:17
     restart: always 
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: healing_user
     ports:
       - "5433:5432"
-    env_file:
+    environment:
       - ./services/user/app/.env  
     volumes:
       - user_pgdata:/var/lib/postgresql/data
-
 
   gateway:
     image: nginx:alpine
@@ -43,8 +38,43 @@ services:
       - "80:80"
     depends_on:
       - user-service
+ 
+  payment-service:
+    build: ./services/payment
+    ports:
+      - "8002:8002"
+    depends_on:
+      - payment-db
+    env_file:
+      - ./services/payment/app/.env 
 
-  # Consultation Service
+  payment-db:
+    image: postgres:17
+    restart: always
+    ports:
+      - "5435:5432"
+    volumes:
+      - payment_pgdata:/var/lib/postgresql/data
+    env_file:
+      - ./services/payment/app/.env
+  
+  frontend:
+    build:
+      context: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  
+    ports:
+      - "5173:5173"
+    command: yarn dev 
+
+volumes:
+  user_pgdata:
+  consultation_pgdata:
+  payment_pgdata:
+
+
+ # Consultation Service
   # consultation-service:
   #   build: ./services/consultation
   #   ports:
@@ -65,48 +95,3 @@ services:
   #     - "5434:5432"
   #   volumes:
   #     - consultation_pgdata:/var/lib/postgresql/data
-
-  # # Payment Service
-  # payment-service:
-  #   build: ./services/payment
-  #   ports:
-  #     - "8002:8002"
-  #   depends_on:
-  #     - payment-db
-  #   environment:
-  #     - DATABASE_URL=postgresql://postgres:root@payment-db:5432/healing_payment
-
-  # payment-db:
-  #   image: postgres:17
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: root
-  #     POSTGRES_DB: healing_payment
-  #   ports:
-  #     - "5435:5432"
-  #   volumes:
-  #     - payment_pgdata:/var/lib/postgresql/data
-
-  # Frontend
-  # frontend:
-  #   build: ./frontend
-  #   ports:
-  #     - "5173:5173"
-  #   stdin_open: true
-  #   tty: true
-
-  frontend:
-    build:
-      context: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  
-    ports:
-      - "5173:5173"
-    command: yarn dev 
-
-volumes:
-  user_pgdata:
-  consultation_pgdata:
-  payment_pgdata:
