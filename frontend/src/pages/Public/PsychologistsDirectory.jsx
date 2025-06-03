@@ -4,7 +4,8 @@ import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import { Clock, CheckCircle, XCircle, Calendar,SquareUser } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-const PsychologistCard = ({ name, specialty,availability, imageSrc }) => {
+const PsychologistCard = ({ id,name, specialty,availability, imageSrc }) => {
+  const userId = useSelector((state)=>state.userDetails.id)
   const navigate = useNavigate()
   return (
     <div className="bg-white rounded-lg shadow-2xl p-4 flex flex-col items-center">
@@ -39,14 +40,14 @@ const PsychologistCard = ({ name, specialty,availability, imageSrc }) => {
       <div className="w-full h-fit mb-4 overflow-hidden">
         <img
           src={imageSrc || '/powerpoint-template-icons-b.jpg'  }
-          className = "h-fit rounded-4xl"
+          className = "h-fit w-full rounded-4xl"
           alt={<SquareUser/>}
         />
       </div>
       <div className="text-center">
         <h3 className="font-semibold text-gray-800">{name}</h3>
         <p className="text-sm text-gray-600 mb-3">{specialty}</p>
-        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>navigate('/user_view_psychologist_details')}>
+        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>userId ? navigate('/user_view_psychologist_details',{ state: { id } }) : navigate('/public_view_psychologist_details',{ state: { id } })}>
           More
         </button>
       </div>
@@ -101,6 +102,7 @@ export default function PsychologistsDirectory() {
     psychologists.map((psych) => (
       <PsychologistCard
         key={psych.id}
+        id={psych.user.id}
         name={psych.user.name}
         specialty={psych.specialization}
         availability={psych.is_available}

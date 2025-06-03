@@ -147,7 +147,6 @@ async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: 
 @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
 async def view_psychologist(session: AsyncSession = Depends(get_session)):
     try:
-        logger.info('i am hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
         data = await crud.get_all_psychologist_with_profile(session)
         return [users.PsychologistProfileOut.model_validate(p) for p in data]
     except HTTPException as http_exc:
