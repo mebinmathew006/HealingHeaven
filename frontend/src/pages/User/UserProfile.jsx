@@ -122,13 +122,15 @@ const UserProfile = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar activeSection={activeSection} />
+      <div>
+        <Sidebar activeSection={activeSection} />
+      </div>
       <div className="flex-1 bg-gray-50 overflow-auto">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className=" mx-auto p-6">
           <div className="space-y-8">
             {/* Profile Header */}
             {formData ? (
-              <div className="bg-white rounded-xl shadow-sm p-8">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-sm p-8">
                 <div className="flex items-start space-x-6">
                   <div className="relative">
                     <div>

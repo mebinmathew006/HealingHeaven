@@ -5,16 +5,46 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-
+from schemas.payment import RazorpayOrder
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
+from fastapi import HTTPException
+from dependencies.razorpay import create_razorpay_order
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 router = APIRouter(tags=["payments"])
 
 
+from fastapi import HTTPException
+from razorpay.errors import BadRequestError, ServerError
 
+@router.post("/create_razorpay_order")
+async def create_order(
+    otp_schema: RazorpayOrder,
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        razorpay_order = create_razorpay_order(otp_schema.totalAmount)
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "razorpay_order_id": razorpay_order["id"],
+                "currency": razorpay_order["currency"],
+                "amount": otp_schema.totalAmount,
+            }
+        )
+    except (BadRequestError, ServerError) as e:
+        raise HTTPException(status_code=400, detail=f"Razorpay error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+    
+    
 # @router.post("/signup", response_model=users.UserOut)
 # async def create_user(user: users.UserCreate,background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
 #     db_user = await crud.get_user_by_email(session, user.email_address)
@@ -127,15 +157,7 @@ router = APIRouter(tags=["payments"])
 #             detail="Something went wrong. Please try again later."
 #         )
     
-# @router.post('/forget_password_otp_verify')
-# async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: AsyncSession = Depends(get_session)):
-#     stored_otp = await redis_client.get(f"otp:{otp_schema.email}")
-#     if int(otp_schema.otp) == int(stored_otp):
-#         await crud.update_user_password(session,otp_schema.email,otp_schema.password)   
-#         await redis_client.delete(f"otp:{otp_schema.email}")
-#         return JSONResponse(content={"status": "success"}, status_code=200)
-#     else:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
+
     
     
 # @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])

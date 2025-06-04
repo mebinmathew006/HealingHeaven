@@ -1,0 +1,409 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  Plus,
+  Minus,
+} from "lucide-react";
+
+import Sidebar from "../../components/Sidebar";
+import { useSelector } from "react-redux";
+import axiosInstance from "../../axiosconfig";
+import { toast } from "react-toastify";
+
+const WalletPage = () => {
+ const [loading, setLoading] = useState(false);
+    
+  const [activeSection, setActiveSection] = useState("wallet");
+  const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+  console.log(keyId)
+  const userId = useSelector((state) => state.userDetails.id);
+  const scrollRef = useRef(null);
+
+  const fetchWallet = async () => {
+    try {
+    //   const response = await axiosInstance.get(
+    //     `/users/get_user_details/${userId}`
+    //   );
+    //   setFormData(response.data);
+    //   setCurrentProfileImage(response.data.profile_image);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const HandlePayment = async (finalTotal) => {
+    try {
+          const razorpayOrderResponse = await axiosInstance.post(
+            "/payments/create_razorpay_order",
+            {
+              user_id: userId,
+              totalAmount: finalTotal,
+            }
+          );
+          console.log(razorpayOrderResponse.data);
+          
+          const { razorpay_order_id,currency,amount } =
+            razorpayOrderResponse.data;
+
+          const options = {
+            key: keyId,
+            amount: amount * 100,
+            currency,
+            name: "Healing Heaven",
+            description: "Consultation Fee",
+            order_id: razorpay_order_id,
+            handler: async (response) => {
+              try {
+                const paymentResponse = await axiosInstance.post(
+                  "payments/add_money_to_wallet",
+                  {
+                    
+                    userId,
+                    totalAmount: totalAmount,
+                    status: 'credit',
+                  }
+                );
+
+                if (paymentResponse.status === 201) {
+                  toast.success("Payment Successful! Money Added.", {
+                    position: "bottom-center",
+                  });
+                  fetchWallet()
+                }
+              } catch (paymentError) {
+                console.log(paymentError);
+                
+                toast.error(
+                  "Failed to Add Money",{position:'bottom-center'}
+                );
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                setLoading(false);
+                // Only show message and navigate if it was a cancellation, not a failure
+                // We can check this by looking at a flag we'll set in payment.failed
+                if (!window.paymentFailedFlag) {
+                  setLoading(false);
+                  toast.info("Payment cancelled.", {
+                    position: "bottom-center",
+                  });
+                  
+                }
+                // Reset the flag
+                window.paymentFailedFlag = false;
+              },
+              confirm_close: true,
+              escape: true,
+              animation: true,
+            },
+            retry: {
+              enabled: false,
+            },
+            prefill: {
+              name: "Guest",
+              email: "customercare@healingHaven.com",
+              contact: "7356332693",
+            },
+            theme: {
+              color: "#3399cc",
+            },
+          };
+          const rzp = new Razorpay(options);
+          rzp.open();
+        } catch (error) {
+          setLoading(false);
+
+          toast.error("Failed to initialize payment. Please try again.",{position:'bottom-center'});
+          setLoading(false);
+          fetchWallet
+        }
+  };
+
+  useEffect(() => {
+    fetchWallet();
+    const el = scrollRef.current;
+
+    const onWheel = (e) => {
+      const atTop = el.scrollTop === 0;
+      const atBottom = el.scrollHeight - el.scrollTop === el.clientHeight;
+
+      if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) {
+        e.preventDefault();
+        // allow scroll to bubble up to parent
+        el.parentElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const [walletData, setWalletData] = useState({
+    balance: 12450,
+    user_id: 1,
+  });
+
+  const [transactions, setTransactions] = useState([
+    { id: 1, transaction_amount: 500, created_at: "2024-06-03T10:30:00Z" },
+    { id: 2, transaction_amount: -200, created_at: "2024-06-02T15:45:00Z" },
+    { id: 3, transaction_amount: 1000, created_at: "2024-06-01T09:20:00Z" },
+    
+  ]);
+
+  const [filter, setFilter] = useState("all"); // all, credit, debit
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const filteredTransactions = transactions.filter((transaction) => {
+    if (filter === "credit") return transaction.transaction_amount > 0;
+    if (filter === "debit") return transaction.transaction_amount < 0;
+    return true;
+  });
+
+  const getTransactionIcon = (amount) => {
+    return amount > 0 ? (
+      <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+        <ArrowDownLeft className="w-5 h-5 text-green-600" />
+      </div>
+    ) : (
+      <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
+        <ArrowUpRight className="w-5 h-5 text-red-600" />
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div > 
+      <Sidebar activeSection={activeSection} />
+      </div>
+
+      {/* Main Content */}
+      <div
+        className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto"
+        ref={scrollRef}
+      >
+        <div className="">
+          {/* Balance Card */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center mb-4">
+                  <Wallet className="w-8 h-8 mr-3" />
+                  <h2 className="text-xl font-semibold">Current Balance</h2>
+                </div>
+                <div className="text-4xl font-bold mb-2">
+                  {formatCurrency(walletData.balance)}
+                </div>
+                <p className="text-blue-100">Available to spend</p>
+              </div>
+              
+                <button className="gap-12 text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer" onClick={() => HandlePayment(500)}>
+                  Add 500
+                </button>
+                <button className="text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer" onClick={() => HandlePayment(1000)}>
+                  Add 1000
+                </button>
+            </div>
+          </div>
+
+          {/* Transaction History */}
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                  <Clock className="w-5 h-5 mr-2" />
+                  Transaction History
+                </h3>
+              </div>
+
+              {/* Filter Buttons */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filter === "all"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  All Transactions
+                </button>
+                <button
+                  onClick={() => setFilter("credit")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filter === "credit"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Credits
+                </button>
+                <button
+                  onClick={() => setFilter("debit")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filter === "debit"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Debits
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {filteredTransactions.length > 0 ? (
+                filteredTransactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="p-6 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {getTransactionIcon(transaction.transaction_amount)}
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-gray-800">
+                              {transaction.transaction_amount > 0
+                                ? "Money Added"
+                                : "Money Spent"}
+                            </p>
+                            {transaction.transaction_amount > 0 ? (
+                              <Plus className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Minus className="w-4 h-4 text-red-600" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(transaction.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`text-lg font-semibold ${
+                            transaction.transaction_amount > 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {transaction.transaction_amount > 0 ? "+" : ""}
+                          {formatCurrency(
+                            Math.abs(transaction.transaction_amount)
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          ID: {transaction.id}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Clock className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h4 className="text-lg font-medium text-gray-800 mb-2">
+                    No transactions found
+                  </h4>
+                  <p className="text-gray-500">
+                    {filter === "credit"
+                      ? "No credit transactions to display"
+                      : filter === "debit"
+                      ? "No debit transactions to display"
+                      : "Your transaction history will appear here"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Total Credits</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(
+                      transactions
+                        .filter((t) => t.transaction_amount > 0)
+                        .reduce((sum, t) => sum + t.transaction_amount, 0)
+                    )}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <ArrowDownLeft className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Total Debits</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {formatCurrency(
+                      Math.abs(
+                        transactions
+                          .filter((t) => t.transaction_amount < 0)
+                          .reduce((sum, t) => sum + t.transaction_amount, 0)
+                      )
+                    )}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <ArrowUpRight className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Total Transactions
+                  </p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {transactions.length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default WalletPage;
