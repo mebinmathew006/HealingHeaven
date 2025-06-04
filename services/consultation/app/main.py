@@ -1,11 +1,5 @@
-import asyncio
 from fastapi import FastAPI
-from infra.db.session import engine
-from infra.db.base import Base
-
+from api import consultation
 app = FastAPI()
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+app.include_router(consultation.router)

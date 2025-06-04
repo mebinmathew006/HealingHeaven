@@ -1,38 +1,84 @@
 import asyncio
-from logging.config import fileConfig
-from sqlalchemy.ext.asyncio import AsyncEngine
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
-from alembic import context
-from infra.db.base import Base  # import your Base here
-from domain.models import user  # make sure all models are imported
 import os
-from dotenv import load_dotenv
-
+import sys
+from logging.config import fileConfig
+from sqlalchemy import create_engine 
+from sqlalchemy import pool
+from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from alembic import context
+from models.consultation import Base  # Adjust the import path as needed
+from dependencies.database import DATABASE_URL
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
-fileConfig(config.config_file_name)
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
+
+# Add the parent directory to path if needed to find the models
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+
+
+
 target_metadata = Base.metadata
 
-load_dotenv()  # Load .env file from the project root (or specify path)
+# other values from the config, defined by the needs of env.py,
+# can be acquired:
+# my_important_option = config.get_main_option("my_important_option")
+# ... etc.
 
-DATABASE_URL = config.get_main_option("sqlalchemy.url") or os.getenv("USER_DATABASE_URL")
 
-print("Alembic DATABASE_URL:", DATABASE_URL)
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
+    sync_database_url = DATABASE_URL.replace("asyncpg", "psycopg2")
 
-def do_run_migrations(connection: Connection):
     context.configure(
-        connection=connection,
+        url=sync_database_url,
         target_metadata=target_metadata,
-        compare_type=True
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
-async def run_migrations_online():
-    connectable = create_async_engine(DATABASE_URL, poolclass=pool.NullPool)
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
 
-asyncio.run(run_migrations_online())
+
+def do_run_migrations(connection):
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
+
+    # Use sync URL for Alembic (required!)
+    sync_database_url = DATABASE_URL.replace("asyncpg", "psycopg2")
+
+    # Use sync engine for Alembic (even if project uses async)
+    connectable = create_engine(sync_database_url, poolclass=pool.NullPool)
+
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    asyncio.run(run_migrations_online())
