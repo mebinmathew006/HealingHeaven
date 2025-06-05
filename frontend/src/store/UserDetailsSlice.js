@@ -21,8 +21,14 @@ const UserDetailsSlice = createSlice({
       state.access_token = action.payload.access_token;
     },
 
-    destroyDetails: () => {
-      return undefined;
+    destroyDetails: (state, action) => {
+      state.id = '';
+      state.name = '';
+      state.email = '';
+      state.role = '';
+      state.is_verified = '';
+      state.is_active = '';
+      state.access_token = '';
     },
 
     updateAccessToken: (state, action) => {

@@ -125,7 +125,7 @@ const UserProfile = () => {
       <div>
         <Sidebar activeSection={activeSection} />
       </div>
-      <div className="flex-1 bg-gray-50 overflow-auto">
+      <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto">
         <div className=" mx-auto p-6">
           <div className="space-y-8">
             {/* Profile Header */}

@@ -1,23 +1,31 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
-
+from sqlalchemy import Column, Integer, String, Text, Date, Boolean, ForeignKey, TIMESTAMP
+from sqlalchemy.sql import func
 Base = declarative_base()
 
-# class Wallet(Base):
-#     __tablename__ = "wallet"
+class Consultation(Base):
+    __tablename__ = "consultation"
 
-#     id = Column(Integer, primary_key=True, index=True)
-#     user_id = Column(Integer, unique=True, index=True)
-#     balance = Column(Integer, default=0)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, unique=True, index=True)
+    psychologist_id = Column(Integer, unique=True, index=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
+    status = Column(String(20))
+    
+    payments = relationship("Payments", back_populates="consultation", uselist=False)
 
-#     # One-to-many relationship: one Wallet -> many WalletTransactions
-#     wallet_transactions = relationship("WalletTransaction", back_populates="wallet", cascade="all, delete-orphan")
 
-# class WalletTransaction(Base):
-#     __tablename__ = "wallet_transaction"
 
-#     id = Column(Integer, primary_key=True, index=True)
-#     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
-#     transaction_amount = Column(Integer)
+class Payments(Base):
+    __tablename__ = "payments"
 
-#     wallet = relationship("Wallet", back_populates="wallet_transactions")
+    id = Column(Integer, primary_key=True, index=True)
+    consultation_id = Column(Integer, ForeignKey("consultation.id"), nullable=False)
+    psychologist_fee = Column(Integer)
+    payment_status=Column(String(20))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
+
+    consultation = relationship("Consultation", back_populates="payments")

@@ -12,114 +12,112 @@ import Sidebar from "../../components/Sidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 const WalletPage = () => {
- const [loading, setLoading] = useState(false);
-    
+  const [loading, setLoading] = useState(false);
+  const [walletData, setWalletData] = useState(0);
+  const [transactions, setTransactions] = useState([]);
   const [activeSection, setActiveSection] = useState("wallet");
   const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
-  console.log(keyId)
   const userId = useSelector((state) => state.userDetails.id);
   const scrollRef = useRef(null);
+  const navigate = useNavigate()
 
   const fetchWallet = async () => {
     try {
-    //   const response = await axiosInstance.get(
-    //     `/users/get_user_details/${userId}`
-    //   );
-    //   setFormData(response.data);
-    //   setCurrentProfileImage(response.data.profile_image);
+      const response = await axiosInstance.get(
+        `/payments/get_wallet_details_with_transactions/${userId}`
+      );
+      setWalletData(response.data.balance);
+      setTransactions(response.data.wallet_transactions);
     } catch (error) {
       console.log(error);
     }
   };
   const HandlePayment = async (finalTotal) => {
     try {
-          const razorpayOrderResponse = await axiosInstance.post(
-            "/payments/create_razorpay_order",
-            {
-              user_id: userId,
-              totalAmount: finalTotal,
-            }
-          );
-          console.log(razorpayOrderResponse.data);
-          
-          const { razorpay_order_id,currency,amount } =
-            razorpayOrderResponse.data;
-
-          const options = {
-            key: keyId,
-            amount: amount * 100,
-            currency,
-            name: "Healing Heaven",
-            description: "Consultation Fee",
-            order_id: razorpay_order_id,
-            handler: async (response) => {
-              try {
-                const paymentResponse = await axiosInstance.post(
-                  "payments/add_money_to_wallet",
-                  {
-                    
-                    userId,
-                    totalAmount: totalAmount,
-                    status: 'credit',
-                  }
-                );
-
-                if (paymentResponse.status === 201) {
-                  toast.success("Payment Successful! Money Added.", {
-                    position: "bottom-center",
-                  });
-                  fetchWallet()
-                }
-              } catch (paymentError) {
-                console.log(paymentError);
-                
-                toast.error(
-                  "Failed to Add Money",{position:'bottom-center'}
-                );
-              }
-            },
-            modal: {
-              ondismiss: function () {
-                setLoading(false);
-                // Only show message and navigate if it was a cancellation, not a failure
-                // We can check this by looking at a flag we'll set in payment.failed
-                if (!window.paymentFailedFlag) {
-                  setLoading(false);
-                  toast.info("Payment cancelled.", {
-                    position: "bottom-center",
-                  });
-                  
-                }
-                // Reset the flag
-                window.paymentFailedFlag = false;
-              },
-              confirm_close: true,
-              escape: true,
-              animation: true,
-            },
-            retry: {
-              enabled: false,
-            },
-            prefill: {
-              name: "Guest",
-              email: "customercare@healingHaven.com",
-              contact: "7356332693",
-            },
-            theme: {
-              color: "#3399cc",
-            },
-          };
-          const rzp = new Razorpay(options);
-          rzp.open();
-        } catch (error) {
-          setLoading(false);
-
-          toast.error("Failed to initialize payment. Please try again.",{position:'bottom-center'});
-          setLoading(false);
-          fetchWallet
+      const razorpayOrderResponse = await axiosInstance.post(
+        "/payments/create_razorpay_order",
+        {
+          user_id: userId,
+          totalAmount: finalTotal,
         }
+      );
+      console.log(razorpayOrderResponse.data);
+
+      const { razorpay_order_id, currency, amount } =
+        razorpayOrderResponse.data;
+
+      const options = {
+        key: keyId,
+        amount: amount * 100,
+        currency,
+        name: "Healing Heaven",
+        description: "Consultation Fee",
+        order_id: razorpay_order_id,
+        handler: async (response) => {
+          try {
+            const paymentResponse = await axiosInstance.post(
+              "/payments/add_money_to_wallet",
+              {
+                user_id: userId,
+                totalAmount: finalTotal,
+              }
+            );
+
+            if (paymentResponse.status === 201) {
+              toast.success("Payment Successful! Money Added.", {
+                position: "bottom-center",
+              });
+              fetchWallet();
+            }
+          } catch (paymentError) {
+            console.log(paymentError);
+
+            toast.error("Failed to Add Money", { position: "bottom-center" });
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+            // Only show message and navigate if it was a cancellation, not a failure
+            // We can check this by looking at a flag we'll set in payment.failed
+            if (!window.paymentFailedFlag) {
+              setLoading(false);
+              toast.info("Payment cancelled.", {
+                position: "bottom-center",
+              });
+            }
+            // Reset the flag
+            window.paymentFailedFlag = false;
+          },
+          confirm_close: true,
+          escape: true,
+          animation: true,
+        },
+        retry: {
+          enabled: false,
+        },
+        prefill: {
+          name: "Guest",
+          email: "customercare@healingHaven",
+          contact: "7356332693",
+        },
+        theme: {
+          color: "#3399cc",
+        },
+      };
+      const rzp = new Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      setLoading(false);
+
+      toast.error("Failed to initialize payment. Please try again.", {
+        position: "bottom-center",
+      });
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -143,18 +141,6 @@ const WalletPage = () => {
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
-
-  const [walletData, setWalletData] = useState({
-    balance: 12450,
-    user_id: 1,
-  });
-
-  const [transactions, setTransactions] = useState([
-    { id: 1, transaction_amount: 500, created_at: "2024-06-03T10:30:00Z" },
-    { id: 2, transaction_amount: -200, created_at: "2024-06-02T15:45:00Z" },
-    { id: 3, transaction_amount: 1000, created_at: "2024-06-01T09:20:00Z" },
-    
-  ]);
 
   const [filter, setFilter] = useState("all"); // all, credit, debit
 
@@ -198,8 +184,8 @@ const WalletPage = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div > 
-      <Sidebar activeSection={activeSection} />
+      <div>
+        <Sidebar activeSection={activeSection} />
       </div>
 
       {/* Main Content */}
@@ -207,27 +193,40 @@ const WalletPage = () => {
         className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto"
         ref={scrollRef}
       >
+         <button className="text-sm font-medium text-blue-600 hover:cursor-pointer" onClick={()=>navigate(-1)}>
+                    Back
+                  </button>
         <div className="">
           {/* Balance Card */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center mb-4">
-                  <Wallet className="w-8 h-8 mr-3" />
-                  <h2 className="text-xl font-semibold">Current Balance</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <Wallet className="w-8 h-8 mr-3" />
+                    <h2 className="text-xl font-semibold">Current Balance</h2>
+                  </div>
+                 
                 </div>
+
                 <div className="text-4xl font-bold mb-2">
-                  {formatCurrency(walletData.balance)}
+                  {formatCurrency(walletData)}
                 </div>
                 <p className="text-blue-100">Available to spend</p>
               </div>
-              
-                <button className="gap-12 text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer" onClick={() => HandlePayment(500)}>
-                  Add 500
-                </button>
-                <button className="text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer" onClick={() => HandlePayment(1000)}>
-                  Add 1000
-                </button>
+
+              <button
+                className="gap-12 text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer"
+                onClick={() => HandlePayment(500)}
+              >
+                Add 500
+              </button>
+              <button
+                className="text-base font-bold bg-white bg-opacity-20 rounded-lg p-2 text-indigo-900 mb-1 hover:cursor-pointer"
+                onClick={() => HandlePayment(1000)}
+              >
+                Add 1000
+              </button>
             </div>
           </div>
 

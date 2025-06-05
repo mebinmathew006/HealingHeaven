@@ -6,13 +6,15 @@ import {Mic,Camera,Wallet,CreditCard,User,Lock,Shield,Video,X,ArrowRight,UserPlu
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../axiosconfig";
 
 const VideoCallPermissionModal = ({
   isOpen,
   onClose,
   onStartCall,
-  doctor ,
-  walletBalance = 1200,
+  doctor 
+  
 }) => {
   const [permissions, setPermissions] = useState({
     camera: false,
@@ -20,6 +22,8 @@ const VideoCallPermissionModal = ({
     charges: false,
     privacy: false,
   });
+  const navigate = useNavigate()
+  const [walletBalance, setWalletBalance] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState(1); // 1: permissions, 2: confirmation
 
@@ -33,10 +37,24 @@ const VideoCallPermissionModal = ({
   const allPermissionsGranted = Object.values(permissions).every(Boolean);
 
   const [permissionStatus, setPermissionStatus] = useState({
-  camera: 'prompt', // 'granted', 'denied', 'prompt'
+  camera: 'prompt', 
   microphone: 'prompt'
 });
 const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
+
+const getWalletBalance = async ()=>{
+try {
+  if(userId){
+    const response = await axiosInstance.get(`/payments/get_wallet_balance/${userId}`)
+    setWalletBalance(response.data.balance)
+  }
+   
+} catch (error) {
+  
+}
+ 
+
+}
 
 const requestPermissions = async () => {
   setIsRequestingPermissions(true);
@@ -59,7 +77,7 @@ const requestPermissions = async () => {
     
     return true;
   } catch (error) {
-    console.error('Permission denied or error:', error);
+    toast.error('Permission denied or error:', {position:'bottom-center'});
     
     // Check specific error types
     if (error.name === 'NotAllowedError') {
@@ -68,7 +86,7 @@ const requestPermissions = async () => {
         microphone: 'denied'
       });
     } else if (error.name === 'NotFoundError') {
-      console.error('Camera or microphone not found');
+      toast.error('Camera or microphone not found', {position:'bottom-center'});
     }
     
     return false;
@@ -89,13 +107,21 @@ const checkExistingPermissions = async () => {
       microphone: micPermission.state
     });
   } catch (error) {
-    console.error('Error checking permissions:', error);
+    console.toast('Error checking permissions:', {position:'bottom-center'});
   }
 };
 
 
 
 const handleContinue = async () => {
+
+  if ((walletBalance - doctor.fees)<0) {
+    toast.error('first Add Money To Wallet',{position:'bottom-center'})
+    navigate('/wallet')
+    return
+  }
+
+
   if (step === 1) {
     const granted = await requestPermissions();
 
@@ -106,31 +132,41 @@ const handleContinue = async () => {
     }
   } else if (step === 2) {
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      onStartCall();
-    }, 2000);
+  const data = {
+    user_id:userId,
+    psychologist_id:doctor.id,
+    psychologist_fee:doctor.fees
   }
+  console.log(data)
+  try {
+    const response = await axiosInstance.post('/consultations/create_consultation',data)
+    console.log(response.data);
+    
+    toast.success('Can Start Now',{position:'bottom-center'})
+    navigate('/videocall')
+  } catch (error) {
+    toast.error('Unable to Start Now',{position:'bottom-center'})
+  }
+
+  } 
 };
 
 
 // Check permissions on component mount
 useEffect(() => {
   checkExistingPermissions();
+  getWalletBalance()
 }, []);
 
 const onHandleLoginRedirect = () => {
-    setShowLoginModal(false);
+    // setShowLoginModal(false);
     onClose();
-    window.location.href = '/login';
-    // or if using React Router: navigate('/login');
+    navigate('/login');
   };
   const handleSignupRedirect = () => {
     setShowLoginModal(false);
     onClose();
-    // Redirect to signup page
-    window.location.href = '/signup';
-    // or if using React Router: navigate('/signup');
+    navigate('/signup');
   };
 
   const handleBack = () => {

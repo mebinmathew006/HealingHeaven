@@ -27,6 +27,9 @@ import PsychologistsDirectory from "../pages/Public/PsychologistsDirectory";
 import UserViewDoctorDetails from "../pages/User/UserViewDoctorDetails";
 import DoctorDetailsPage from "../pages/Public/DoctorDetailsPage";
 import WalletPage from "../pages/User/WalletPage";
+import UserVideoCallPage from "../pages/User/UserVideoCallPage";
+import AdminConsultationList from "../pages/Admin/AdminConsultationList";
+import PublicProtectedRoute from "./PublicProtectedRoute copy";
 
 const AppRoutes = () => {
   return (
@@ -54,6 +57,7 @@ const AppRoutes = () => {
         <Route path="/user_view_psychologist" element={<UserProtectedRoute><ViewPsychologists /></UserProtectedRoute>} />
         <Route path="/user_view_psychologist_details" element={<UserProtectedRoute><UserViewDoctorDetails /></UserProtectedRoute>} />
         <Route path="/wallet" element={<UserProtectedRoute><WalletPage/></UserProtectedRoute>} />
+        <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
       </Route>
 
 
@@ -66,6 +70,7 @@ const AppRoutes = () => {
         <Route path="/admin_user_page" element={<AdminProtectedRoute><AdminUser /></AdminProtectedRoute>} />
         <Route path="/admin_psychologists_page" element={<AdminProtectedRoute><AdminPsychologist /></AdminProtectedRoute>} />
         <Route path="/pending_psychologist/:userId" element={<AdminProtectedRoute><AdminPsychoPending /></AdminProtectedRoute>} />
+        <Route path="/admin_consultation_page" element={<AdminProtectedRoute><AdminConsultationList/></AdminProtectedRoute>} />
     </Routes>
   );
 };
