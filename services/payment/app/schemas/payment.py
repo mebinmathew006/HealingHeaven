@@ -3,52 +3,40 @@
 from pydantic import BaseModel, EmailStr, Field,validator
 from typing import Optional
 from datetime import date, datetime
-
+from typing import List
 
 class RazorpayOrder(BaseModel):
     user_id: int
-    totalAmount: int
+    totalAmount: float
+    
+class WalletTransactionOut(BaseModel):
+    id: int
+    wallet_id: int
+    transaction_amount: int
 
-# class UserOut(BaseModel):
-#     id: int
-#     name: str
-#     email_address: EmailStr
-#     mobile_number: str
-#     role: str
+    model_config = {
+        "from_attributes": True
+    }
 
-#     model_config = {
-#         "from_attributes": True
-#     }
-    
-# class OtpVerification(BaseModel):
-#     otp:str
-#     email : EmailStr
-    
-# class LoginSchema(BaseModel):
-#     email:EmailStr
-#     password :str
-    
-# class ForgetPasswordSchema(BaseModel):
-#     email:EmailStr
-   
+class WalletWithTransactionsOut(BaseModel):
+    id: int
+    user_id: int
+    balance: int
+    wallet_transactions: List[WalletTransactionOut] = []
 
-# class ForgetPasswordOTPSchema(BaseModel):
-#     email:EmailStr
-#     otp:int
-#     password :str
+    model_config = {
+        "from_attributes": True
+    }
     
-    
-# class PsychologistProfileOut(BaseModel):
-#     id: int
-#     user: UserOut
-#     specialization: Optional[str]
-#     profile_image: Optional[str]
-#     is_verified: bool
-#     is_available: Optional[bool]
+class WalletBalanceOut(BaseModel):
+    balance: int
 
-#     model_config = {
-#         "from_attributes": True
-#     }
+    model_config = {
+        "from_attributes": True
+    }
+    
+    
+
     
 # class UserProfileOut(BaseModel):
 #     id: int

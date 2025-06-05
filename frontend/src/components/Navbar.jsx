@@ -51,7 +51,8 @@ function Navbar() {
   return (
     <nav className="bg-white py-4 px-6 flex items-center justify-between shadow-sm">
       <div className="flex items-center">
-        <h1 className="text-green-700 font-bold text-xl">HealingHavens</h1>
+        <img src="/logo.png" alt="" className="w-35 h-20"/>
+        {/* <h1 className="text-green-700 font-bold text-xl">HealingHavens</h1> */}
       </div>
 
       {/* Desktop Navigation */}

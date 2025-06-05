@@ -5,12 +5,13 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.payment import RazorpayOrder
+from schemas.payment import RazorpayOrder,WalletWithTransactionsOut,WalletBalanceOut
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
 from fastapi import HTTPException
 from dependencies.razorpay import create_razorpay_order
+from crud.crud import money_to_wallet,get_wallet_balance_by_id
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,18 +24,18 @@ from fastapi import HTTPException
 from razorpay.errors import BadRequestError, ServerError
 
 @router.post("/create_razorpay_order")
-async def create_order(
-    otp_schema: RazorpayOrder,
+async def create_razorpay_orders(
+    rzrpay_schema: RazorpayOrder,
     session: AsyncSession = Depends(get_session)
 ):
     try:
-        razorpay_order = create_razorpay_order(otp_schema.totalAmount)
+        razorpay_order = await create_razorpay_order(rzrpay_schema.totalAmount)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content={
                 "razorpay_order_id": razorpay_order["id"],
                 "currency": razorpay_order["currency"],
-                "amount": otp_schema.totalAmount,
+                "amount": rzrpay_schema.totalAmount,
             }
         )
     except (BadRequestError, ServerError) as e:
@@ -43,6 +44,57 @@ async def create_order(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@router.post("/add_money_to_wallet")
+async def add_money_to_wallet(
+    rzrpay_schema: RazorpayOrder,
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        await money_to_wallet(session, rzrpay_schema.user_id, rzrpay_schema.totalAmount)
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"status": "success"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Internal server error: {str(e)}"
+        )
+
+
+@router.get('/get_wallet_details_with_transactions/{user_id}', response_model=WalletWithTransactionsOut)
+async def get_wallet_details_with_transactions(user_id : int ,session: AsyncSession = Depends(get_session)):
+    try:
+        data = await crud.get_wallet_details_with_transactions_by_id(session,user_id)
+        return data
+    except HTTPException as http_exc:
+        logger.error('dddfdddd',http_exc)
+        raise http_exc
+    
+    except Exception as e:
+        logger.error('dddfdddd',e)
+        
+        raise HTTPException(status_code=500, detail="Internal server error while fetching wallet.")  
+    
+    
+@router.get("/get_wallet_balance/{user_id}", response_model=WalletBalanceOut)
+async def get_wallet_balance(user_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        wallet = await get_wallet_balance_by_id(session, user_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found.")
+        return wallet
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error while fetching wallet balance.")
+    
+@router.get("/get_wallet_balance/{user_id}", response_model=WalletBalanceOut)
+async def get_wallet_balance(user_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        wallet = await get_wallet_balance_by_id(session, user_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found.")
+        return wallet
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error while fetching wallet balance.")
     
     
 # @router.post("/signup", response_model=users.UserOut)
@@ -160,19 +212,7 @@ async def create_order(
 
     
     
-# @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
-# async def view_psychologist(session: AsyncSession = Depends(get_session)):
-#     try:
-#         data = await crud.get_all_psychologist_with_profile(session)
-#         return [users.PsychologistProfileOut.model_validate(p) for p in data]
-#     except HTTPException as http_exc:
-#         logger.error('dddfdddd',http_exc)
-#         raise http_exc
-    
-#     except Exception as e:
-#         logger.error('dddfdddd',e)
-        
-#         raise HTTPException(status_code=500, detail="Internal server error while fetching psychologists.")
+
 
 # @router.patch('/update_availability/{user_id}')
 # async def update_availability(user_id:int,session: AsyncSession = Depends(get_session)):

@@ -4,7 +4,8 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 
 const DoctorProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const user = useSelector((state) => state.userDetails);
+  const user = useSelector((state) => state.userDetails.id);
+    const role = useSelector((state) => state.userDetails.role);
   // const isAuthenticated = Boolean(user?.access_token);
 
   if (!user) {
@@ -13,7 +14,7 @@ const DoctorProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role=='doctor') {
+  if (role=='doctor') {
     return children;
     
   }

@@ -223,11 +223,12 @@ const DoctorDetailsPage = (props) => {
                     onClose={() => setShowModal(false)}
                     onStartCall={handleStartCall}
                     doctor={{
+                      id : id,
                       name: doctor.user?.name ,
                       fees: doctor?.fees,
                       image:doctor?.profile_image,
                     }}
-                    walletBalance={1200}
+                    
                   />
                 )}
                 {/* Languages */}
