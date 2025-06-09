@@ -9,9 +9,9 @@ from schemas.consultation import CreateConsultationSchema,ConsultationResponse
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
-from crud.crud import create_consultation,get_all_consultation
+from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations
 
-router = APIRouter(tags=["payments"])
+router = APIRouter(tags=["consultations"])
 
 
 
@@ -29,6 +29,15 @@ async def get_consultation(
     session: AsyncSession = Depends(get_session),
 ):
     consultation = await get_all_consultation(session)
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    return consultation
+
+@router.get("/get_consulted_user_details/{doctorId}", response_model=List[ConsultationResponse])
+async def get_consultation(doctorId:int,
+    session: AsyncSession = Depends(get_session),
+):
+    consultation = await get_doctor_consultations(session,doctorId)
     if not consultation:
         raise HTTPException(status_code=404, detail="Consultation not found")
     return consultation

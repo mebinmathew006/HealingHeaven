@@ -17,19 +17,13 @@ import { useWebRTC } from '../../utils/useWebrtc';
 import { useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { createSocket } from '../../utils/createSocket';
-const UserVideoCallPage = () => {
-  const location = useLocation();
-  const { remoteUserId, isCaller } = location.state || {};
+import { useWebRTCDoctor } from '../../utils/useWebRTCDoctor';
+const DoctorVideoCallPage = () => {
   const userId = useSelector((state)=>state.userDetails.id)
   const socket = useMemo(()=>createSocket(userId),[userId])
-  console.log('About to call useWebRTC', { socket, remoteUserId, isCaller });
 
-  const {
-    localStream,
-    remoteStream,
-    connectionState,
-    error
-  } = useWebRTC({ socket, remoteUserId, isCaller });
+  const location = useLocation();
+  const { remoteUserId, isCaller } = location.state || {};
 
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
@@ -58,17 +52,22 @@ const UserVideoCallPage = () => {
     image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face'
   };
 
-  
+  const {
+    localStream,
+    remoteStream,
+    connectionState,
+    error
+  } = useWebRTCDoctor({ socket});
 
-  // useEffect(() => {
-  //   let interval;
-  //   if (isCallActive) {
-  //     interval = setInterval(() => {
-  //       setCallDuration(prev => prev + 1);
-  //     }, 1000);
-  //   }
-  //   return () => clearInterval(interval);
-  // }, [isCallActive]);
+  useEffect(() => {
+    let interval;
+    if (isCallActive) {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isCallActive]);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -367,4 +366,4 @@ const UserVideoCallPage = () => {
   );
 };
 
-export default UserVideoCallPage;
+export default DoctorVideoCallPage;

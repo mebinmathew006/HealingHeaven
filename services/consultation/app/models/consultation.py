@@ -8,8 +8,8 @@ class Consultation(Base):
     __tablename__ = "consultation"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, unique=True, index=True)
-    psychologist_id = Column(Integer, unique=True, index=True)
+    user_id = Column(Integer, index=True)
+    psychologist_id = Column(Integer, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
     status = Column(String(20))

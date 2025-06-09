@@ -20,6 +20,8 @@ import DoctorVerification from "./DoctorVerification";
 import DoctorPendingPage from "./DoctorPendingPage";
 import { toast } from "react-toastify";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
+import Swal from 'sweetalert2';
+import { useNavigate } from "react-router-dom";
 
 const DoctorProfile = () => {
   const [activeSection, setActiveSection] = useState("user_profile");
@@ -29,7 +31,7 @@ const DoctorProfile = () => {
   const [isAvailable, setIsAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-
+  const navigate = useNavigate()
   useEffect(() => {
     fetchDoctor();
   }, []);
@@ -96,12 +98,42 @@ const DoctorProfile = () => {
     const newStatus = !isAvailable;
 
     try {
-      // Make API request
+      // here need a confirmation
+    const result = await Swal.fire({
+    title: "Go Available?",
+    text: "Patients may start contacting you once you're available.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Yes, go available",
+    cancelButtonText: "Cancel",
+  });
+
+  if (!result.isConfirmed) return;
+
       const response = await axiosInstance.patch(
         `/users/update_availability/${userId}`
       );
       setIsAvailable(response.data.status);
-      fetchDoctor()
+      
+      if (response.data.status==true){
+        await Swal.fire({
+              title: "You're now available!",
+              text: "Patients can now contact you for consultations.",
+              icon: "success",
+              timer: 2000,
+              showConfirmButton: false,
+              customClass: {
+                popup: 'rounded-2xl shadow-2xl',
+                title: 'text-xl font-semibold text-gray-900',
+                htmlContainer: 'text-gray-600',
+                icon: 'border-4 border-green-100 text-green-500'
+              },
+              buttonsStyling: false,
+              background: '#ffffff',
+            });
+      await navigate('/doctor_waiting_area')
+
+      }
     } catch (error) {
       toast.error(`Error updating availability:`, {
         position: "bottom-center",
@@ -223,8 +255,8 @@ const DoctorProfile = () => {
                           {isLoading
                             ? "Updating..."
                             : isAvailable
-                            ? "Available"
-                            : "Not Available"}
+                            ? "Stop Consultation"
+                            : "Start Consultation"}
                         </span>
                       </div>
                     </div>

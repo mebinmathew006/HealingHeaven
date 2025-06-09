@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {Mic,Camera,Wallet,CreditCard,User,Lock,Shield,Video,X,ArrowRight,UserPlus,  Mail,Phone,
   AlertCircle,
@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosconfig";
+import { createSocket } from "../utils/createSocket";
 
 const VideoCallPermissionModal = ({
   isOpen,
@@ -17,8 +18,6 @@ const VideoCallPermissionModal = ({
   
 }) => {
   const [permissions, setPermissions] = useState({
-    camera: false,
-    microphone: false,
     charges: false,
     privacy: false,
   });
@@ -36,10 +35,7 @@ const VideoCallPermissionModal = ({
   const userId = useSelector((state) => state.userDetails.id);
   const allPermissionsGranted = Object.values(permissions).every(Boolean);
 
-  const [permissionStatus, setPermissionStatus] = useState({
-  camera: 'prompt', 
-  microphone: 'prompt'
-});
+  
 const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
 
 const getWalletBalance = async ()=>{
@@ -52,64 +48,11 @@ try {
 } catch (error) {
   
 }
- 
-
 }
 
-const requestPermissions = async () => {
-  setIsRequestingPermissions(true);
-  
-  try {
-    // Request both camera and microphone permissions
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    });
-    
-    // If we get here, permissions were granted
-    setPermissionStatus({
-      camera: 'granted',
-      microphone: 'granted'
-    });
-    
-    // Stop the stream since we only needed it for permission
-    stream.getTracks().forEach(track => track.stop());
-    
-    return true;
-  } catch (error) {
-    toast.error('Permission denied or error:', {position:'bottom-center'});
-    
-    // Check specific error types
-    if (error.name === 'NotAllowedError') {
-      setPermissionStatus({
-        camera: 'denied',
-        microphone: 'denied'
-      });
-    } else if (error.name === 'NotFoundError') {
-      toast.error('Camera or microphone not found', {position:'bottom-center'});
-    }
-    
-    return false;
-  } finally {
-    setIsRequestingPermissions(false);
-  }
-};
 
-const checkExistingPermissions = async () => {
-  try {
-    // Check camera permission
-    const cameraPermission = await navigator.permissions.query({ name: 'camera' });
-    // Check microphone permission  
-    const micPermission = await navigator.permissions.query({ name: 'microphone' });
-    
-    setPermissionStatus({
-      camera: cameraPermission.state,
-      microphone: micPermission.state
-    });
-  } catch (error) {
-    console.toast('Error checking permissions:', {position:'bottom-center'});
-  }
-};
+
+
 
 
 
@@ -123,13 +66,7 @@ const handleContinue = async () => {
 
 
   if (step === 1) {
-    const granted = await requestPermissions();
-
-    if (granted && Object.values(permissions).every(Boolean)) {
-      setStep(2);
-    } else if (!granted) {
-      toast.error("Please allow access to both camera and microphone.",{position:'bottom-center'});
-    }
+    setStep(2)
   } else if (step === 2) {
     setIsProcessing(true);
   const data = {
@@ -140,10 +77,9 @@ const handleContinue = async () => {
   console.log(data)
   try {
     const response = await axiosInstance.post('/consultations/create_consultation',data)
-    console.log(response.data);
     
     toast.success('Can Start Now',{position:'bottom-center'})
-    navigate('/videocall')
+    navigate('/videocall', {state: { remoteUserId: doctor.id, isCaller: true }})
   } catch (error) {
     toast.error('Unable to Start Now',{position:'bottom-center'})
   }
@@ -154,7 +90,6 @@ const handleContinue = async () => {
 
 // Check permissions on component mount
 useEffect(() => {
-  checkExistingPermissions();
   getWalletBalance()
 }, []);
 

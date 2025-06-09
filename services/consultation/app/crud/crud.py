@@ -37,3 +37,10 @@ async def get_all_consultation(session: AsyncSession):
         .options(selectinload(Consultation.payments))
     )
     return result.scalars().all()
+
+async def get_doctor_consultations(session: AsyncSession,doctorId):
+    result = await session.execute(
+        select(Consultation)
+        .options(selectinload(Consultation.payments)).where(Consultation.psychologist_id==doctorId)
+    )
+    return result.scalars().all()

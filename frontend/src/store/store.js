@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage'; // defaults to localStorage
 import UserDetailsSlice from './UserDetailsSlice';
+import SocketSlice from './socketSlice';
 import { combineReducers } from 'redux';
 
 // 1. Create persist config
@@ -14,6 +15,7 @@ const persistConfig = {
 // 2. Combine reducers
 const rootReducer = combineReducers({
   userDetails: UserDetailsSlice,
+  socketDetails: SocketSlice,
 });
 
 // 3. Wrap with persistReducer
