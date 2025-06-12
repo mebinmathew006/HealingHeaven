@@ -1,24 +1,37 @@
+// socketSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   socket: null,
+  status: 'disconnected', // 'connecting', 'connected', 'error'
+  error: null
 };
 
-const SocketSlice = createSlice({
-  name: "socketDetailsSlice",
-  initialState: initialState,
+const socketSlice = createSlice({
+  name: "socketDetails",
+  initialState,
   reducers: {
-    setSocket: (state, action) => {
-      state.socket = action.payload.socket;
+    socketConnecting: (state) => {
+      state.status = 'connecting';
     },
-    clearSocket: (state, action) => {
-      if (state.socket) {
-        state.socket.disconnect();
+    socketConnected: (state, action) => {
+      state.socket = action.payload;
+      state.status = 'connected';
+      state.error = null;
+    },
+    socketDisconnected: (state) => {
+      if (state.socket?.readyState === WebSocket.OPEN) {
+        state.socket.close();
       }
       state.socket = null;
+      state.status = 'disconnected';
     },
-  },
+    socketError: (state, action) => {
+      state.error = action.payload;
+      state.status = 'error';
+    }
+  }
 });
 
-export const {setSocket,clearSocket} =SocketSlice.actions;
-export default SocketSlice.reducer
+export const { socketConnecting, socketConnected, socketDisconnected, socketError } = socketSlice.actions;
+export default socketSlice.reducer;

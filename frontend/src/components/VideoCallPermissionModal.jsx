@@ -49,13 +49,6 @@ try {
   
 }
 }
-
-
-
-
-
-
-
 const handleContinue = async () => {
 
   if ((walletBalance - doctor.fees)<0) {
@@ -78,8 +71,9 @@ const handleContinue = async () => {
   try {
     const response = await axiosInstance.post('/consultations/create_consultation',data)
     
+    
     toast.success('Can Start Now',{position:'bottom-center'})
-    navigate('/videocall', {state: { remoteUserId: doctor.id, isCaller: true }})
+    navigate('/videocall', {state: { doctorId: doctor.id}})
   } catch (error) {
     toast.error('Unable to Start Now',{position:'bottom-center'})
   }

@@ -1,19 +1,24 @@
-export const createSocket = (userId) => {
-  
+// createSocket.js
+export const createSocket = (userId, {
+  onOpen,
+  onClose,
+  onError,
+} = {}) => {
   const socket = new WebSocket(`ws://localhost/consultations/ws/create_socket/${userId}`);
 
-  socket.userId = userId;
-
   socket.onopen = () => {
-    console.log("WebSocket connected!");
+    console.log('Socket connected');
+    onOpen?.(socket);
   };
 
   socket.onclose = () => {
-    console.log("WebSocket disconnected.");
+    console.log('Socket disconnected');
+    onClose?.();
   };
 
-  socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
+  socket.onerror = (err) => {
+    console.error('Socket error', err);
+    onError?.(err);
   };
 
   return socket;

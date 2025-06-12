@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Settings, Bell, Shield, CreditCard, HelpCircle, LogOut, Wallet, Menu, X } from "lucide-react";
+import { User, Settings, Bell, Shield, CreditCard, HelpCircle, LogOut, Wallet, Menu, X, ChartArea } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
@@ -29,7 +29,7 @@ const Sidebar = ({ activeSection }) => {
     { id: 'user_profile', label: 'Profile', icon: User },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'privacy', label: 'Privacy & Security', icon: Shield },
+    { id: 'chat', label: 'Chat', icon: ChartArea },
     { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
     { id: 'help', label: 'Help & Support', icon: HelpCircle },
   ];

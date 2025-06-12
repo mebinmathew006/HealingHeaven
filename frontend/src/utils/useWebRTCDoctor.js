@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { toast } from "react-toastify";
+// useWebRTCDoctor.js
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export function useWebRTCDoctor({ socket }) {
   const [localStream, setLocalStream] = useState(null);
@@ -8,33 +8,40 @@ export function useWebRTCDoctor({ socket }) {
   const [error, setError] = useState(null);
 
   const peerRef = useRef(null);
-  const socketRef = useRef(socket);
   const remoteUserIdRef = useRef(null);
 
-  useEffect(() => {
-    socketRef.current = socket;
-  }, [socket]);
+  const cleanup = useCallback(() => {
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null);
+    }
+    setRemoteStream(null);
+    setConnectionState("disconnected");
+  }, [localStream]);
 
   useEffect(() => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      cleanup();
+      return;
+    }
+
     const peer = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        // Optional: add TURN servers here for production
-      ],
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     });
-
     peerRef.current = peer;
     setConnectionState("connecting");
 
     const handleIceCandidate = (event) => {
       if (event.candidate && remoteUserIdRef.current) {
-        socketRef.current?.send(
-          JSON.stringify({
-            to: remoteUserIdRef.current,
-            type: "ice-candidate",
-            payload: event.candidate,
-          })
-        );
+        socket.send(JSON.stringify({
+          to: remoteUserIdRef.current,
+          type: "ice-candidate",
+          payload: event.candidate
+        }));
       }
     };
 
@@ -46,76 +53,62 @@ export function useWebRTCDoctor({ socket }) {
     peer.onicecandidate = handleIceCandidate;
     peer.ontrack = handleTrack;
 
-    const init = async () => {
+    const initMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true,
+          audio: true
         });
-
-        stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+        stream.getTracks().forEach(track => peer.addTrack(track, stream));
         setLocalStream(stream);
       } catch (err) {
         setError(err);
         setConnectionState("failed");
-        toast.error("Media device not found", { position: "bottom-center" });
+        cleanup();
       }
     };
-
-    init();
 
     const handleMessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
-        const peer = peerRef.current;
-
-        if (!peer) return;
+        if (!peerRef.current) return;
 
         switch (data.type) {
           case "offer":
             remoteUserIdRef.current = data.from;
-            await peer.setRemoteDescription(data.payload);
-            const answer = await peer.createAnswer();
-            await peer.setLocalDescription(answer);
-            socketRef.current?.send(
-              JSON.stringify({
-                to: remoteUserIdRef.current,
-                type: "answer",
-                payload: answer,
-              })
-            );
+            await peerRef.current.setRemoteDescription(data.payload);
+            const answer = await peerRef.current.createAnswer();
+            await peerRef.current.setLocalDescription(answer);
+            socket.send(JSON.stringify({
+              to: remoteUserIdRef.current,
+              type: "answer",
+              payload: answer
+            }));
             break;
-
-          case "answer":
-            // unlikely doctor will receive an answer, but added for completeness
-            await peer.setRemoteDescription(data.payload);
-            break;
-
           case "ice-candidate":
             try {
-              await peer.addIceCandidate(new RTCIceCandidate(data.payload));
+              await peerRef.current.addIceCandidate(new RTCIceCandidate(data.payload));
             } catch (err) {
               console.error("Error adding ICE candidate:", err);
             }
             break;
-
           default:
             break;
         }
       } catch (err) {
+        console.error("Error handling message:", err);
         setError(err);
-        console.error("Error handling socket message:", err);
       }
     };
 
-    socketRef.current?.addEventListener("message", handleMessage);
+    initMedia();
+    socket.addEventListener("message", handleMessage);
 
     return () => {
-      peer.close();
-      localStream?.getTracks().forEach((t) => t.stop());
-      socketRef.current?.removeEventListener("message", handleMessage);
+      cleanup();
+      socket.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, [socket, cleanup]);
 
   return { localStream, remoteStream, connectionState, error };
 }

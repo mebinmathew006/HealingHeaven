@@ -29,3 +29,24 @@ class Payments(Base):
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
 
     consultation = relationship("Consultation", back_populates="payments")
+    
+class ConsultationMapping(Base):
+    __tablename__='consultation_mapping'
+    
+    id = Column(Integer, primary_key=True,index=True )
+    user_id = Column(Integer, index=True)
+    psychologist_id = Column(Integer, index=True)
+    
+    # One-to-many relationship
+    chat_messages = relationship("Chat", back_populates="consultation_mapping", cascade="all, delete-orphan")
+
+
+class Chat(Base):
+    __tablename__ = 'chat'
+
+    id = Column(Integer, primary_key=True, index=True)
+    message = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    consultation_id = Column(Integer, ForeignKey('consultation_mapping.id', ondelete="CASCADE"))
+    
+    consultation_mapping = relationship("ConsultationMapping", back_populates="chat_messages")

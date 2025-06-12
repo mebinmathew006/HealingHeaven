@@ -31,8 +31,7 @@ import UserVideoCallPage from "../pages/User/UserVideoCallPage";
 import AdminConsultationList from "../pages/Admin/AdminConsultationList";
 import PublicProtectedRoute from "./PublicProtectedRoute copy";
 import DoctorVideoCallPage from "../pages/Doctor/DoctorVideoCallPage";
-import DoctorConsultationDashboard from "../pages/Doctor/DoctorConsultationDashboard";
-import DoctorWaitingPage from "../pages/Doctor/DoctorWaitingPage";
+import DoctorChat from "../pages/Doctor/DoctorChat";
 
 const AppRoutes = () => {
   return (
@@ -67,7 +66,7 @@ const AppRoutes = () => {
        {/* Doctor */}
         <Route path="/doctor_home_page" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />
         <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} />
-        <Route path="/doctor_waiting_area" element={<DoctorProtectedRoute><DoctorWaitingPage/></DoctorProtectedRoute>} />
+        <Route path="/doctor_chat" element={<DoctorProtectedRoute><DoctorChat/></DoctorProtectedRoute>} />
 
 
         {/* Admin */}

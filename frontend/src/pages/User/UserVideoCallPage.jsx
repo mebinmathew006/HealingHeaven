@@ -1,370 +1,356 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Video, 
-  VideoOff, 
-  Mic, 
-  MicOff, 
-  PhoneOff, 
-  MessageSquare, 
-  Settings, 
-  Send,
-  X,
-  Maximize,
-  Minimize,
-  Clock,
-} from 'lucide-react';
-import { useWebRTC } from '../../utils/useWebrtc';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { createSocket } from '../../utils/createSocket';
-const UserVideoCallPage = () => {
+import { useLocation } from 'react-router-dom';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, Monitor, Settings, MessageCircle } from 'lucide-react';
+import axiosInstance from '../../axiosconfig';
+
+function UserVideoCallPage() {
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('Connecting...');
+  
+  const userId = useSelector((state) => state.userDetails.id);
   const location = useLocation();
-  const { remoteUserId, isCaller } = location.state || {};
-  const userId = useSelector((state)=>state.userDetails.id)
-  const socket = useMemo(()=>createSocket(userId),[userId])
-  console.log('About to call useWebRTC', { socket, remoteUserId, isCaller });
-
-  const {
-    localStream,
-    remoteStream,
-    connectionState,
-    error
-  } = useWebRTC({ socket, remoteUserId, isCaller });
-
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isAudioOn, setIsAudioOn] = useState(true);
-  const [isCallActive, setIsCallActive] = useState(true);
-  const [showChat, setShowChat] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      sender: 'Dr. Sarah Johnson',
-      message: 'Hello! How are you feeling today?',
-      time: '10:30 AM',
-      isDoctor: true
-    }
-  ]);
-
+  const doctorId = location?.state?.doctorId;
+  const wsRef = useRef(null);
+  const pcRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
 
-  const doctor = {
-    name: 'Dr. Sarah Johnson',
-    specialization: 'Cardiologist',
-    image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face'
-  };
 
-  
+  const signalingURL = `ws://localhost/consultations/ws/create_signaling/${userId}`;
+  const type = 'development';
 
-  // useEffect(() => {
-  //   let interval;
-  //   if (isCallActive) {
-  //     interval = setInterval(() => {
-  //       setCallDuration(prev => prev + 1);
-  //     }, 1000);
-  //   }
-  //   return () => clearInterval(interval);
-  // }, [isCallActive]);
+
+const fetchIceServers = async () => {
+  try {
+    const res = await axiosInstance.get('/consultations/turn-credentials');
+    return res.data.iceServers; // Make sure the backend responds with this structure
+  } catch (error) {
+    console.error('Failed to fetch ICE servers:', error);
+    return [
+      { urls: 'stun:stun.l.google.com:19302' } // fallback to public STUN
+    ];
+  }
+};
 
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [localStream, remoteStream]);
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    initializeWebRTC();
+
+    return () => {
+      if (pcRef.current) pcRef.current.close();
+      if (wsRef.current) wsRef.current.close();
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+    };
+  }, []);
+
+  const initializeWebRTC = async () => {
+    setConnectionStatus('Connecting...');
+    
+    wsRef.current = new WebSocket(signalingURL);
+
+    await new Promise((resolve) => {
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        setConnectionStatus('Connected');
+        resolve();
+      };
+      
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionStatus('Connection failed');
+      };
+    });
+
+    wsRef.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionStatus('Connection error');
+    };
+
+    wsRef.current.onclose = (event) => {
+      console.log('WebSocket closed:', event.code, event.reason);
+      setConnectionStatus('Disconnected');
+      setIsConnected(false);
+    };
+
+    wsRef.current.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === 'call-answer') {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(message.answer));
+        setIsConnected(true);
+        setConnectionStatus('Call connected');
+      }
+
+      if (message.type === 'ice-candidate') {
+        try {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(message.candidate));
+        } catch (err) {
+          console.error('Error adding remote ICE candidate', err);
+        }
+      }
+    };
+  const iceServers = await fetchIceServers();
+  // pcRef.current = new RTCPeerConnection({ iceServers });
+  const pc = new RTCPeerConnection({ iceServers });
+  //   const pc = new RTCPeerConnection({
+  //     iceServers:  [
+  //   {
+  //     urls: 'stun:stun.l.google.com:19302' 
+  //   },
+  //   {
+  //     urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+  //     username: 'YOUR_USERNAME',
+  //     credential: 'YOUR_CREDENTIAL'
+  //   }
+  // ]
+  //   });
+    pcRef.current = pc;
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        wsRef.current.send(JSON.stringify({
+          type: 'ice-candidate',
+          targetId: doctorId,
+          senderId: userId,
+          candidate: event.candidate
+        }));
+      }
+    };
+
+    pc.ontrack = (event) => {
+      remoteVideoRef.current.srcObject = event.streams[0];
+      setRemoteStream(event.streams[0]);
+    };
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (err) {
+      console.warn('Camera unavailable, using default video');
+      stream = await createVideoStream('/default.mp4');
+    }
+
+    setLocalStream(stream);
+    localVideoRef.current.srcObject = stream;
+
+    stream.getTracks().forEach((track) => {
+      pc.addTrack(track, stream);
+    });
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    console.log("Sending SDP offer", offer);
+    sendOffer(offer);
+  };
+
+  const sendOffer = async (offer) => {
+    const message = {
+      type: 'call-initiate',
+      offer,
+      senderId: userId,
+      targetId: doctorId
+    };
+
+    const sendWithRetry = async (attempt = 0) => {
+      try {
+        if (wsRef.current.readyState !== WebSocket.OPEN) {
+          throw new Error('WebSocket not open');
+        }
+        wsRef.current.send(JSON.stringify(message));
+      } catch (err) {
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+          return sendWithRetry(attempt + 1);
+        }
+        console.error('Failed to send offer after 3 attempts', err);
+      }
+    };
+
+    await sendWithRetry();
+  };
+
+  const createVideoStream = async (videoSrc) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.src = videoSrc;
+      video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+
+      video.addEventListener('loadeddata', () => {
+        const stream = video.captureStream();
+        resolve(stream);
+      });
+
+      video.style.display = 'none';
+      document.body.appendChild(video);
+      video.play();
+    });
+  };
+
+  const toggleMute = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMuted(!audioTrack.enabled);
+      }
+    }
   };
 
   const toggleVideo = () => {
-    setIsVideoOn(!isVideoOn);
-    localStream?.getVideoTracks().forEach(track => (track.enabled = !track.enabled));
-  };
-
-  const toggleAudio = () => {
-    setIsAudioOn(!isAudioOn);
-    localStream?.getAudioTracks().forEach(track => (track.enabled = !track.enabled));
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoOff(!videoTrack.enabled);
+      }
+    }
   };
 
   const endCall = () => {
-    setIsCallActive(false);
-    localStream?.getTracks().forEach(track => track.stop());
-    alert('Call ended. Redirecting to summary...');
-  };
-
-  const sendMessage = () => {
-    if (chatMessage.trim()) {
-      const newMessage = {
-        id: chatMessages.length + 1,
-        sender: 'You',
-        message: chatMessage,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isDoctor: false
-      };
-      setChatMessages([...chatMessages, newMessage]);
-      setChatMessage('');
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      sendMessage();
-    }
+    if (pcRef.current) pcRef.current.close();
+    if (wsRef.current) wsRef.current.close();
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
+    setConnectionStatus('Call ended');
+    setIsConnected(false);
   };
 
   return (
-    <div className={`h-screen bg-gray-900 text-white flex flex-col ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
       {/* Header */}
-      <div className="bg-gray-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <img 
-              src={doctor.image} 
-              alt={doctor.name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <div>
-              <h2 className="font-semibold">{doctor.name}</h2>
-              <p className="text-sm text-gray-400">{doctor.specialization}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 text-green-400">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-sm">Connected</span>
-          </div>
+      <div className="flex items-center justify-between p-6 bg-black/20 backdrop-blur-sm border-b border-white/10">
+        <div className="flex items-center space-x-4">
+          <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+          <h1 className="text-white text-xl font-semibold">Video Consultation</h1>
+          <span className={`text-sm px-3 py-1 rounded-full ${
+            isConnected ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+          }`}>
+            {connectionStatus}
+          </span>
         </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-gray-300">
-            <Clock className="w-4 h-4" />
-            <span className="font-mono">{formatTime(callDuration)}</span>
-          </div>
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+        
+        <div className="flex items-center space-x-3">
+          <button className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
+            <MessageCircle size={20} />
+          </button>
+          <button className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
+            <Settings size={20} />
           </button>
         </div>
       </div>
 
       {/* Main Video Area */}
-      <div className="flex-1 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-2 h-full gap-1">
-          {/* Doctor's Video */}
-          <div className="relative bg-gray-800 flex items-center justify-center">
-            <div 
-              ref={remoteVideoRef}
-              className="w-full h-full flex items-center justify-center rounded-lg"
-            >
+      <div className="flex-1 relative p-6">
+        {/* Remote Video (Main) */}
+        <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-800/50 backdrop-blur-sm border border-white/10 shadow-2xl">
+          <video 
+            ref={remoteVideoRef} 
+            autoPlay 
+            className="w-full h-full object-cover"
+            poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23334155'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23cbd5e1' text-anchor='middle' dy='.3em'%3EWaiting for remote video...%3C/text%3E%3C/svg%3E"
+          />
+          {!remoteStream && (
+            <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <img 
-                  src={doctor.image} 
-                  alt={doctor.name}
-                  className="w-32 h-32 rounded-full object-cover mx-auto mb-4 border-4 border-white/20"
-                />
-                <p className="text-xl font-semibold">{doctor.name}</p>
-                <p className="text-gray-400">Video is on</p>
+                <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mb-4 mx-auto">
+                  <Video size={40} className="text-white" />
+                </div>
+                <p className="text-white/70 text-lg">Waiting for doctor to join...</p>
               </div>
             </div>
-          </div>
-
-          {/* Your Video */}
-          <div className="relative bg-gray-700 flex items-center justify-center">
-            <div 
-              ref={localVideoRef}
-              className="w-full h-full flex items-center justify-center rounded-lg"
-            >
-              {isVideoOn ? (
-                <div className="text-center">
-                  <div className="w-32 h-32 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <span className="text-4xl font-bold">You</span>
-                  </div>
-                  <p className="text-xl font-semibold">Your Video</p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-32 h-32 bg-gray-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <VideoOff className="w-16 h-16 text-gray-400" />
-                  </div>
-                  <p className="text-xl font-semibold">Camera Off</p>
-                </div>
-              )}
-            </div>
+          )}
+          
+          {/* Remote Video Overlay */}
+          <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-sm rounded-lg px-3 py-2">
+            <p className="text-white text-sm font-medium">Dr. Smith</p>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-          <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl px-6 py-4 flex items-center gap-4">
-            <button
-              onClick={toggleAudio}
-              className={`p-4 rounded-full transition-all ${
-                isAudioOn 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
-            >
-              {isAudioOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
-            </button>
-
-            <button
-              onClick={toggleVideo}
-              className={`p-4 rounded-full transition-all ${
-                isVideoOn 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
-            >
-              {isVideoOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-            </button>
-
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className="p-4 rounded-full bg-gray-700 hover:bg-gray-600 text-white transition-all relative"
-            >
-              <MessageSquare className="w-6 h-6" />
-              {chatMessages.length > 1 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-xs">
-                  {chatMessages.length - 1}
-                </div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-4 rounded-full bg-gray-700 hover:bg-gray-600 text-white transition-all"
-            >
-              <Settings className="w-6 h-6" />
-            </button>
-
-            <button
-              onClick={endCall}
-              className="p-4 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all"
-            >
-              <PhoneOff className="w-6 h-6" />
+        {/* Local Video (Picture-in-Picture) */}
+        <div className="absolute bottom-6 right-6 w-64 h-48 rounded-xl overflow-hidden bg-slate-800 border-2 border-white/20 shadow-2xl group hover:scale-105 transition-transform duration-200">
+          <video 
+            ref={localVideoRef} 
+            autoPlay 
+            muted 
+            className="w-full h-full object-cover"
+          />
+          {isVideoOff && (
+            <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                <VideoOff size={24} className="text-white" />
+              </div>
+            </div>
+          )}
+          
+          <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded px-2 py-1">
+            <p className="text-white text-xs">You</p>
+          </div>
+          
+          {/* Local video controls overlay */}
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+            <button className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+              <Monitor size={16} className="text-white" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Chat Panel */}
-      {showChat && (
-        <div className="fixed right-0 top-0 h-full w-80 bg-gray-800 border-l border-gray-700 flex flex-col z-40">
-          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-            <h3 className="font-semibold">Chat</h3>
-            <button
-              onClick={() => setShowChat(false)}
-              className="p-1 hover:bg-gray-700 rounded"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+      {/* Control Bar */}
+      <div className="p-6 bg-black/30 backdrop-blur-sm border-t border-white/10">
+        <div className="flex items-center justify-center space-x-4">
+          {/* Mute Button */}
+          <button
+            onClick={toggleMute}
+            className={`p-4 rounded-2xl transition-all duration-200 ${
+              isMuted 
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25' 
+                : 'bg-white/10 hover:bg-white/20 text-white'
+            }`}
+          >
+            {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+          </button>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {chatMessages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.isDoctor ? 'justify-start' : 'justify-end'}`}>
-                <div className={`max-w-xs p-3 rounded-lg ${
-                  msg.isDoctor 
-                    ? 'bg-gray-700 text-white' 
-                    : 'bg-blue-600 text-white'
-                }`}>
-                  <p className="text-sm font-medium mb-1">{msg.sender}</p>
-                  <p className="text-sm">{msg.message}</p>
-                  <p className="text-xs text-gray-300 mt-1">{msg.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Video Button */}
+          <button
+            onClick={toggleVideo}
+            className={`p-4 rounded-2xl transition-all duration-200 ${
+              isVideoOff 
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25' 
+                : 'bg-white/10 hover:bg-white/20 text-white'
+            }`}
+          >
+            {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
+          </button>
 
-          <div className="p-4 border-t border-gray-700">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
-                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={sendMessage}
-                className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          {/* End Call Button */}
+          <button
+            onClick={endCall}
+            className="p-4 rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-500/40"
+          >
+            <PhoneOff size={24} />
+          </button>
+
+          {/* Screen Share Button */}
+          <button className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all duration-200">
+            <Monitor size={24} />
+          </button>
+
+          {/* More Options */}
+          <button className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all duration-200">
+            <Settings size={24} />
+          </button>
         </div>
-      )}
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-96 max-w-[90vw]">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold">Settings</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="p-1 hover:bg-gray-700 rounded"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Camera</label>
-                <select className="w-full p-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Default Camera</option>
-                  <option>External Camera</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Microphone</label>
-                <select className="w-full p-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Default Microphone</option>
-                  <option>External Microphone</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Speaker</label>
-                <select className="w-full p-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>Default Speaker</option>
-                  <option>Headphones</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Background Blur</span>
-                <button className="w-12 h-6 bg-blue-600 rounded-full relative">
-                  <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowSettings(false)}
-              className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors"
-            >
-              Save Settings
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
-};
+}
 
 export default UserVideoCallPage;

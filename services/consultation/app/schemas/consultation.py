@@ -41,3 +41,17 @@ class ConsultationResponse(ConsultationBase):
     model_config = {
         "from_attributes": True
     }
+    
+class MappingResponse(ConsultationBase):
+    id: int
+    user_id: int
+    psychologist_id: int
+    
+
+    model_config = {
+        "from_attributes": True
+    }
+    
+class ConsultationRequest(BaseModel):
+    user_id: str
+    doctor_id: str

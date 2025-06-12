@@ -131,7 +131,8 @@ const DoctorProfile = () => {
               buttonsStyling: false,
               background: '#ffffff',
             });
-      await navigate('/doctor_waiting_area')
+       navigate('/doctor_video_call')
+      //  navigate('/doctor_waiting_area')
 
       }
     } catch (error) {
