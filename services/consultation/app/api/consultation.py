@@ -5,11 +5,12 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ConsultationRequest,MappingResponse
+from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
-from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
+from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id
+from infra.external.user_service import get_user_details
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Optional
 import uuid
@@ -58,9 +59,22 @@ async def get_consultation(doctorId:int,
     
         if not consultation:
             raise HTTPException(status_code=404, detail="Consultation not found")
-        return consultation
+        enriched_consultations=[]
+        for consult in consultation:
+            user_data = await get_user_details(consult.user_id) 
+            enriched_consultations.append(MappingResponse(
+                id=consult.id,
+                user_id=consult.user_id,
+                psychologist_id=consult.psychologist_id,
+                user=user_data  
+            ))
+
+        return enriched_consultations
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
     
 @router.get("/get_consulted_user_details/{doctorId}", response_model=List[ConsultationResponse])
 async def get_consultation(doctorId:int,
@@ -73,7 +87,6 @@ async def get_consultation(doctorId:int,
 
 
 
-
 @router.get("/turn-credentials")
 async def get_turn_credentials():
     url = await f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Tokens.json"
@@ -81,6 +94,14 @@ async def get_turn_credentials():
     return {"iceServers": response.json()["ice_servers"]}
 
 
+
+@router.get('/get_chat_messages/{consultation_id}',response_model=List[ChatResponse])
+async def get_chat_messages(consultation_id:int,session : AsyncSession = Depends(get_session)):
+    try:
+        messages = await get_chat_messages_using_cons_id(session,consultation_id)
+        return messages
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -217,60 +238,57 @@ active_chat_connections: Dict[str, WebSocket] = {}
 chat_lock = asyncio.Lock()
 
 @router.websocket("/ws/chat/{user_id}")
-async def chat_websocket(websocket: WebSocket, user_id: str):
+async def chat_websocket(websocket: WebSocket, user_id: str, session: AsyncSession = Depends(get_session)):
     await websocket.accept()
 
-    # Add user connection
     async with chat_lock:
         active_chat_connections[user_id] = websocket
-        logger.info(f"[CHAT CONNECT] {user_id} connected. Active: {list(active_chat_connections.keys())}")
+        logger.info(f"[CHAT CONNECTED] {user_id}")
 
     try:
         while True:
-            try:
-                data = await websocket.receive_json()
-                logger.info(f"[CHAT MESSAGE RECEIVED] {user_id}: {data}")
-            except WebSocketDisconnect:
-                logger.info(f"[CHAT DISCONNECT] {user_id}")
-                break
-            except Exception as e:
-                logger.warning(f"[CHAT ERROR] Invalid message from {user_id}: {e}")
-                continue
+            data = await websocket.receive_json()
+            logger.info(f"[MESSAGE RECEIVED] {user_id}: {data}")
 
-            # Validate payload
-            msg_type = data.get("type")
-            sender_id = data.get("senderId")
-            target_id = data.get("targetId")
             message = data.get("message")
+            sender_id = data.get("sender_id")
+            target_id = data.get("target_id")
+            consultation_id = data.get("consultation_id")
+            sender_type = data.get("sender_type")
 
-            if not all([msg_type, sender_id, target_id, message]):
-                logger.warning(f"[CHAT VALIDATION FAILED] Missing fields in message from {user_id}")
+            if not all([message, sender_id, target_id, consultation_id,sender_type]):
+                logger.warning(f"[VALIDATION ERROR] Missing fields in message from {user_id}")
                 continue
 
-            # Forward to target
-            async with chat_lock:
-                target_ws = active_chat_connections.get(target_id)
+            # Save message to DB
+            try:
+                await adding_chat_messages(session,message,consultation_id,sender_type)
+               
+                logger.info(f"[MESSAGE SAVED] Consultation {consultation_id}")
+            except Exception as e:
+                logger.error(f"[DB ERROR] Failed to save message: {e}")
 
+            # Forward message to target if connected
+            async with chat_lock:
+                target_ws = active_chat_connections.get(str(target_id))
                 if target_ws:
                     try:
                         await target_ws.send_json({
                             "type": "chat",
                             "senderId": sender_id,
-                            "message": message
+                            "message": message,
+                            "consultationId": consultation_id
                         })
-                        logger.info(f"[CHAT FORWARDED] From {sender_id} to {target_id}")
+                        logger.info(f"[MESSAGE FORWARDED] From {sender_id} to {target_id}")
                     except Exception as e:
-                        logger.warning(f"[CHAT FORWARD ERROR] {e}")
-                        # Optionally: remove target from connections if needed
-                        active_chat_connections.pop(target_id, None)
-                else:
-                    logger.warning(f"[CHAT TARGET NOT FOUND] {target_id} not connected")
+                        logger.warning(f"[SEND ERROR] {e}")
+                        active_chat_connections.pop(str(target_id), None)
 
+    except WebSocketDisconnect:
+        logger.info(f"[DISCONNECTED] {user_id}")
     except Exception as e:
-        logger.error(f"[CHAT SERVER ERROR] {user_id}: {str(e)}")
-
+        logger.error(f"[WEBSOCKET ERROR] {user_id}: {e}")
     finally:
-        # Remove connection on disconnect
         async with chat_lock:
             active_chat_connections.pop(user_id, None)
-            logger.info(f"[CHAT CLEANUP] {user_id} disconnected. Remaining: {list(active_chat_connections.keys())}")
+            logger.info(f"[CLEANUP] {user_id} disconnected")

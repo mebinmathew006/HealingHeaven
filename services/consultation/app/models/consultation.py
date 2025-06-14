@@ -47,6 +47,7 @@ class Chat(Base):
     id = Column(Integer, primary_key=True, index=True)
     message = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    consultation_id = Column(Integer, ForeignKey('consultation_mapping.id', ondelete="CASCADE"))
+    sender = Column(Text,nullable=False)
+    consultation_map_id = Column(Integer, ForeignKey('consultation_mapping.id', ondelete="CASCADE"))
     
     consultation_mapping = relationship("ConsultationMapping", back_populates="chat_messages")

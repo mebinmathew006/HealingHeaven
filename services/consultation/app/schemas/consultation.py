@@ -42,11 +42,33 @@ class ConsultationResponse(ConsultationBase):
         "from_attributes": True
     }
     
-class MappingResponse(ConsultationBase):
+class ChatResponse(BaseModel):
+    id: int
+    message: str
+    created_at: Optional[datetime]
+    sender :str
+    model_config = {
+        "from_attributes": True
+    }
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email_address: EmailStr
+    mobile_number: str
+    role: str
+    
+class UserProfileImage(BaseModel):
+    profile_image: Optional[str]
+    
+class UserNameWithProfileImage(BaseModel):
+    name: str
+    user_profile: Optional[UserProfileImage] = None
+    
+class MappingResponse(BaseModel):
     id: int
     user_id: int
     psychologist_id: int
-    
+    user: Optional[UserNameWithProfileImage]
 
     model_config = {
         "from_attributes": True
@@ -55,3 +77,4 @@ class MappingResponse(ConsultationBase):
 class ConsultationRequest(BaseModel):
     user_id: str
     doctor_id: str
+    

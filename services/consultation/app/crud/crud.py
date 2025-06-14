@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from schemas.consultation import CreateConsultationSchema
-from models.consultation import Consultation,Payments,ConsultationMapping
+from models.consultation import Consultation,Payments,ConsultationMapping,Chat
 
 
 async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
@@ -73,9 +73,27 @@ async def get_all_mapping_for_chat(session: AsyncSession,doctorId:int):
     )
     return result.scalars().all()
 
+async def get_chat_messages_using_cons_id(session: AsyncSession,consultation_id:int):
+    result = await session.execute(
+        select(Chat).where(Chat.consultation_map_id==consultation_id)
+        
+    )
+    return result.scalars().all()
+
 async def get_doctor_consultations(session: AsyncSession,doctorId):
     result = await session.execute(
         select(Consultation)
         .options(selectinload(Consultation.payments)).where(Consultation.psychologist_id==doctorId)
     )
     return result.scalars().all()
+
+async def adding_chat_messages(session: AsyncSession,message:str,consultation_id:int,sender_type:str):  
+    result =   Chat(
+                    message=message,
+                    consultation_map_id=consultation_id,
+                    sender=sender_type,
+                )
+    session.add(result)
+    await session.commit()
+    
+    return 
