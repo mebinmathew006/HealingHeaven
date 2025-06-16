@@ -5,12 +5,14 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse
+from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
-from datetime import date 
-from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id
-from infra.external.user_service import get_user_details
+from datetime import datetime 
+
+from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user
+from infra.external.user_service import get_user_details,get_doctor_details
+from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Optional
 import uuid
@@ -35,10 +37,15 @@ logger = logging.getLogger("uvicorn.error")
 @router.post("/create_consultation")
 async def create_consultation_route(data: CreateConsultationSchema, session: AsyncSession = Depends(get_session)):
     try:
+        payment = await fetch_money_from_wallet(data)
+        print(payment)
+        
         return await create_consultation(session, data)
     except Exception as e:
         logger.info.error(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
+    
+    
 
 @router.get("/get_consultation", response_model=List[ConsultationResponse])
 async def get_consultation(
@@ -65,6 +72,31 @@ async def get_consultation(doctorId:int,
             enriched_consultations.append(MappingResponse(
                 id=consult.id,
                 user_id=consult.user_id,
+                psychologist_id=consult.psychologist_id,
+                user=user_data  
+            ))
+
+        return enriched_consultations
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/get_consultation_mapping_for_user_chat/{userId}", response_model=List[MappingResponseUser])
+async def get_consultation_mapping_for_user_chat(userId:int,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        
+        consultation = await get_all_mapping_for_chat_user(session,userId)
+    
+        if not consultation:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+        enriched_consultations=[]
+        for consult in consultation:
+            user_data = await get_doctor_details(consult.psychologist_id) 
+            enriched_consultations.append(MappingResponseUser(
+                id=consult.id,
+                user_id=consult.user_id,    
                 psychologist_id=consult.psychologist_id,
                 user=user_data  
             ))
@@ -234,61 +266,50 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 # In-memory storage (consider Redis for production)
 
 
-active_chat_connections: Dict[str, WebSocket] = {}
-chat_lock = asyncio.Lock()
+active_chat_rooms: Dict[int, List[WebSocket]] = {}  # consultation_id -> list of WebSockets
+room_lock = asyncio.Lock()
 
-@router.websocket("/ws/chat/{user_id}")
-async def chat_websocket(websocket: WebSocket, user_id: str, session: AsyncSession = Depends(get_session)):
+@router.websocket("/ws/chat/{consultation_id}")
+async def chat_websocket(websocket: WebSocket, consultation_id: int, session: AsyncSession = Depends(get_session)):
     await websocket.accept()
 
-    async with chat_lock:
-        active_chat_connections[user_id] = websocket
-        logger.info(f"[CHAT CONNECTED] {user_id}")
+    async with room_lock:
+        active_chat_rooms.setdefault(consultation_id, []).append(websocket)
+        logger.info(f"[JOINED] WebSocket joined room {consultation_id}")
 
     try:
         while True:
             data = await websocket.receive_json()
-            logger.info(f"[MESSAGE RECEIVED] {user_id}: {data}")
+            logger.info(f"[RECEIVED] Room {consultation_id}: {data}")
 
             message = data.get("message")
             sender_id = data.get("sender_id")
-            target_id = data.get("target_id")
-            consultation_id = data.get("consultation_id")
             sender_type = data.get("sender_type")
 
-            if not all([message, sender_id, target_id, consultation_id,sender_type]):
-                logger.warning(f"[VALIDATION ERROR] Missing fields in message from {user_id}")
+            if not all([message, sender_id, sender_type]):
+                logger.warning("[VALIDATION ERROR] Missing message fields")
                 continue
 
-            # Save message to DB
-            try:
-                await adding_chat_messages(session,message,consultation_id,sender_type)
-               
-                logger.info(f"[MESSAGE SAVED] Consultation {consultation_id}")
-            except Exception as e:
-                logger.error(f"[DB ERROR] Failed to save message: {e}")
+            # Save to DB
+            await adding_chat_messages(session, message, consultation_id, sender_type)
 
-            # Forward message to target if connected
-            async with chat_lock:
-                target_ws = active_chat_connections.get(str(target_id))
-                if target_ws:
+            # Broadcast to all participants in the room
+            async with room_lock:
+                for client in active_chat_rooms[consultation_id]:
                     try:
-                        await target_ws.send_json({
-                            "type": "chat",
-                            "senderId": sender_id,
+                        await client.send_json({
+                            "type": "message",
+                            "consultation_id": consultation_id,
+                            "sender_id": sender_id,
+                            "sender_type": sender_type,
                             "message": message,
-                            "consultationId": consultation_id
+                            "created_at": datetime.utcnow().isoformat()
                         })
-                        logger.info(f"[MESSAGE FORWARDED] From {sender_id} to {target_id}")
                     except Exception as e:
                         logger.warning(f"[SEND ERROR] {e}")
-                        active_chat_connections.pop(str(target_id), None)
-
     except WebSocketDisconnect:
-        logger.info(f"[DISCONNECTED] {user_id}")
+        async with room_lock:
+            active_chat_rooms[consultation_id].remove(websocket)
+            logger.info(f"[DISCONNECTED] from room {consultation_id}")
     except Exception as e:
-        logger.error(f"[WEBSOCKET ERROR] {user_id}: {e}")
-    finally:
-        async with chat_lock:
-            active_chat_connections.pop(user_id, None)
-            logger.info(f"[CLEANUP] {user_id} disconnected")
+        logger.error(f"[ERROR] {e}")

@@ -62,6 +62,9 @@ function Navbar() {
         <Link to={userDetails.id ? "/user_view_psychologist" : "/therapists"} className="text-gray-800 hover:text-green-600">Therapists</Link>
         <Link className="text-gray-800 hover:text-green-600" to={"/aboutus"}>About Us</Link>
         <Link className="text-gray-800 hover:text-green-600" to={"/contactus"}>Contact</Link>
+        {userDetails.role=='patient' && <Link className="text-gray-800 hover:text-green-600" to={"/user_chat"}>Chat</Link>}
+        
+
       </div>
 
       {/* User Profile Icon or Sign Up Icon */}

@@ -27,6 +27,21 @@ async def get_user_by_id_for_profile(session: AsyncSession, user_id: int):
     )
     return result.scalars().first()
 
+async def get_doctor_by_id_for_profile(session: AsyncSession, psychologist_id: int):
+    result = await session.execute(
+        select(User)
+        .outerjoin(User.psychologist_profile)  
+        .options(contains_eager(User.psychologist_profile))  
+        .where(User.id == psychologist_id)
+    )
+    return result.scalars().first()
+
+async def get_user_details_by_id(session: AsyncSession, user_id: int):
+    result = await session.execute(
+        select(User).where(User.id == user_id)
+    )
+    return result.scalars().first()
+
 async def get_psycholgist_by_id(session: AsyncSession, user_id: int):
     result = await session.execute(
         select(PsychologistProfile).options(joinedload(PsychologistProfile.user))

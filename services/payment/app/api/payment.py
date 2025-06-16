@@ -5,13 +5,13 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.payment import RazorpayOrder,WalletWithTransactionsOut,WalletBalanceOut
+from schemas.payment import RazorpayOrder,WalletWithTransactionsOut,WalletBalanceOut,UserConsultationMoney
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
 from fastapi import HTTPException
 from dependencies.razorpay import create_razorpay_order
-from crud.crud import money_to_wallet,get_wallet_balance_by_id
+from crud.crud import money_to_wallet,get_wallet_balance_by_id,money_from_wallet
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -51,6 +51,22 @@ async def add_money_to_wallet(
 ):
     try:
         await money_to_wallet(session, rzrpay_schema.user_id, rzrpay_schema.totalAmount)
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"status": "success"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Internal server error: {str(e)}"
+        )
+        
+@router.post("/fetch_money_from_wallet")
+async def fetch_money_from_wallet(
+    fetch_money_schema: UserConsultationMoney,
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        await money_from_wallet(session, fetch_money_schema.user_id, fetch_money_schema.psychologist_fee)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content={"status": "success"},

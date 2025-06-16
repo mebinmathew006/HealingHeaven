@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Camera, Save, Edit3, Phone, Calendar } from "lucide-react";
-import Sidebar from "../../components/Sidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import { Upload, X, User, Check, RotateCw } from "lucide-react";
 import { toast } from "react-toastify";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
+import UserSidebar from "../../components/UserSidebar";
 const UserProfile = () => {
   const [activeSection, setActiveSection] = useState("user_profile");
   const [formData, setFormData] = useState({});
@@ -123,7 +123,7 @@ const UserProfile = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <div>
-        <Sidebar activeSection={activeSection} />
+        <UserSidebar activeSection={activeSection} />
       </div>
       <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto">
         <div className=" mx-auto p-6">

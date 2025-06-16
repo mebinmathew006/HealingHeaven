@@ -8,7 +8,7 @@ import {
   Minus,
 } from "lucide-react";
 
-import Sidebar from "../../components/Sidebar";
+import Sidebar from "../../components/DoctorSidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";

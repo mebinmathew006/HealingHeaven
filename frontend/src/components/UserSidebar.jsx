@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
 
-const Sidebar = ({ activeSection }) => {
+const UserSidebar = ({ activeSection }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const logout = useLogout();
@@ -29,7 +29,7 @@ const Sidebar = ({ activeSection }) => {
     { id: 'user_profile', label: 'Profile', icon: User },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'chat', label: 'Chat', icon: ChartArea },
+    { id: 'user_chat', label: 'Chat', icon: ChartArea },
     { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
     { id: 'help', label: 'Help & Support', icon: HelpCircle },
   ];
@@ -126,4 +126,4 @@ const Sidebar = ({ activeSection }) => {
   );
 };
 
-export default Sidebar;
+export default UserSidebar;

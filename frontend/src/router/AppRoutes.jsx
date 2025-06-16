@@ -32,6 +32,9 @@ import AdminConsultationList from "../pages/Admin/AdminConsultationList";
 import PublicProtectedRoute from "./PublicProtectedRoute copy";
 import DoctorVideoCallPage from "../pages/Doctor/DoctorVideoCallPage";
 import DoctorChat from "../pages/Doctor/DoctorChat";
+import UserChat from "../pages/User/UserChat";
+import DoctorFeedbackPage from "../pages/Doctor/DoctorFeedbackPage";
+import UserFeedbackPage from "../pages/User/UserFeedbackPage";
 
 const AppRoutes = () => {
   return (
@@ -60,6 +63,8 @@ const AppRoutes = () => {
         <Route path="/user_view_psychologist_details" element={<UserProtectedRoute><UserViewDoctorDetails /></UserProtectedRoute>} />
         <Route path="/wallet" element={<UserProtectedRoute><WalletPage/></UserProtectedRoute>} />
         <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
+        <Route path="/user_chat" element={<UserProtectedRoute><UserChat/></UserProtectedRoute>} />
+        <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
       </Route>
 
 
@@ -67,6 +72,7 @@ const AppRoutes = () => {
         <Route path="/doctor_home_page" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />
         <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} />
         <Route path="/doctor_chat" element={<DoctorProtectedRoute><DoctorChat/></DoctorProtectedRoute>} />
+        <Route path="/doctor_feedback_page" element={<DoctorProtectedRoute><DoctorFeedbackPage/></DoctorProtectedRoute>} />
 
 
         {/* Admin */}

@@ -13,7 +13,6 @@ import {
   Eye,
   Camera,
 } from "lucide-react";
-import Sidebar from "../../components/Sidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import DoctorVerification from "./DoctorVerification";
@@ -22,6 +21,7 @@ import { toast } from "react-toastify";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
 import Swal from 'sweetalert2';
 import { useNavigate } from "react-router-dom";
+import DoctorSidebar from "../../components/DoctorSidebar";
 
 const DoctorProfile = () => {
   const [activeSection, setActiveSection] = useState("user_profile");
@@ -200,7 +200,7 @@ const DoctorProfile = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar activeSection={activeSection} />
+      <DoctorSidebar activeSection={activeSection} />
       <div className="flex-1 bg-gray-50 overflow-auto">
         <div className="max-w-4xl mx-auto p-6">
           <div className="space-y-8">

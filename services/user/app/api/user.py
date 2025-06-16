@@ -176,6 +176,22 @@ async def get_user_details(user_id: int, session: AsyncSession = Depends(get_ses
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return data
 
+@router.get("/get_user_details_by_id/{user_id}", response_model=users.UserNameWithProfileImage)
+async def get_user_details_by_id(user_id: int, session: AsyncSession = Depends(get_session)):
+
+    data = await crud.get_user_by_id_for_profile(session,user_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return data
+
+@router.get("/get_doctor_details_by_id/{psychologist_id}", response_model=users.DoctorNameWithProfileImage)
+async def get_doctor_details_by_id(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+
+    data = await crud.get_doctor_by_id_for_profile(session,psychologist_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return data
+
 
 @router.get("/get_psycholgist_details/{user_id}", response_model=users.DoctorVerificationOut)
 async def get_psycholgist_details(user_id: int, session: AsyncSession = Depends(get_session)):

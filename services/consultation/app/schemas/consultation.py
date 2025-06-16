@@ -78,3 +78,24 @@ class ConsultationRequest(BaseModel):
     user_id: str
     doctor_id: str
     
+class DoctorProfileDetails(BaseModel):
+    profile_image: Optional[str]
+    specialization: Optional[str]
+        
+class DoctorNameWithProfileImage(BaseModel):
+    name: str
+    psychologist_profile: Optional[DoctorProfileDetails] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+    
+class MappingResponseUser(BaseModel):
+    id: int
+    user_id: int
+    psychologist_id: int
+    user: Optional[DoctorNameWithProfileImage]
+
+    model_config = {
+        "from_attributes": True
+    }

@@ -1,59 +1,58 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Send,
-  MoreVertical,
   Phone,
   Video,
   Search,
   Menu,
   X,
   MessageCircle,
-  User,
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 
-export default function DoctorChat() {
+export default function UserChat() {
   const [activeChat, setActiveChat] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const doctorId = useSelector((state) => state.userDetails.id);
-  const [users, setUsers] = useState([]);
+  const userId = useSelector((state) => state.userDetails.id);
+  const [doctors, setDoctors] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [activeUser, setActiveUser] = useState(null);
+  const [activeDoctor, setActiveDoctor] = useState(null);
   const [activeConsultationId, setActiveConsultationId] = useState(null);
   const wsRef = useRef(null);
-  const [connectionStatus, setConnectionStatus] = useState("select patient...");
+  const [connectionStatus, setConnectionStatus] = useState("Select doctor...");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Memoize scroll function to prevent unnecessary re-creations
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Memoize fetch users function
-  const fetchUsers = useCallback(async () => {
-    if (!doctorId) return;
+  // Memoize fetch doctors function
+  const fetchDoctors = useCallback(async () => {
+    if (!userId) return;
     
     try {
       const response = await axiosInstance.get(
-        `/consultations/get_consultation_mapping_for_chat/${doctorId}`
+        `/consultations/get_consultation_mapping_for_user_chat/${userId}`
       );
-      setUsers(response.data);
-      console.log("Users:", response.data);
+      setDoctors(response.data);
+      console.log("Doctors:", response.data);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching doctors:", error);
     }
-  }, [doctorId]);
+  }, [userId]);
 
-  // Fetch users on component mount and when doctorId changes
+  // Fetch doctors on component mount and when userId changes
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchDoctors();
+  }, [fetchDoctors]);
 
   // Optimized WebSocket message handler with useCallback
   const handleWebSocketMessage = useCallback((event) => {
@@ -68,7 +67,7 @@ export default function DoctorChat() {
           created_at: data.created_at || new Date().toISOString(),
           sender: data.sender_type,
         };
-
+     
         // Use functional update to prevent stale closures
         setMessages((prev) => {
           // Check for duplicate messages
@@ -81,6 +80,11 @@ export default function DoctorChat() {
           if (isDuplicate) return prev;
           return [...prev, receivedMessage];
         });
+      }
+
+      // Handle typing indicator
+      if (data.type === "typing") {
+        setIsTyping(data.is_typing);
       }
     } catch (error) {
       console.error("Failed to parse WebSocket message:", error);
@@ -123,8 +127,8 @@ export default function DoctorChat() {
     const messageData = {
       message: messageToSend,
       consultation_id: activeConsultationId,
-      sender_id: doctorId,
-      sender_type: "doctor",
+      sender_id: userId,
+      sender_type: "user",
     };
 
     // Send via WebSocket
@@ -135,12 +139,12 @@ export default function DoctorChat() {
       id: `temp-${Date.now()}`, // Temporary ID with prefix
       message: messageToSend,
       created_at: new Date().toISOString(),
-      sender: "doctor",
+      sender: "user",
     };
 
     // setMessages((prev) => [...prev, localMessage]);
     setNewMessage("");
-  }, [newMessage, activeConsultationId, doctorId, isConnected]);
+  }, [newMessage, activeConsultationId, userId, isConnected]);
 
   // Optimized WebSocket initialization
   const initializeChat = useCallback(async (consultationId) => {
@@ -164,7 +168,7 @@ export default function DoctorChat() {
 
         ws.onopen = () => {
           clearTimeout(timeout);
-          console.log("[Doctor] WebSocket connected to room:", consultationId);
+          console.log("[User] WebSocket connected to room:", consultationId);
           setIsConnected(true);
           setConnectionStatus("Connected");
           resolve();
@@ -172,7 +176,7 @@ export default function DoctorChat() {
 
         ws.onerror = (error) => {
           clearTimeout(timeout);
-          console.error("[Doctor] WebSocket error:", error);
+          console.error("[User] WebSocket error:", error);
           setIsConnected(false);
           setConnectionStatus("Connection failed");
           reject(error);
@@ -200,8 +204,8 @@ export default function DoctorChat() {
     }
   }, [handleSendMessage]);
 
-  // Optimized user selection handler
-  const handleUserSelect = useCallback(async (userId, consultationId) => {
+  // Optimized doctor selection handler
+  const handleDoctorSelect = useCallback(async (doctorId, consultationId) => {
     if (activeConsultationId === consultationId) return; // Already selected
 
     try {
@@ -217,12 +221,12 @@ export default function DoctorChat() {
       setMessages(response.data || []);
       console.log("Chat messages:", response.data);
 
-      setActiveChat(userId);
+      setActiveChat(doctorId);
       setActiveConsultationId(consultationId);
 
-      // Find and set active user
-      const user = users.find((u) => u.user_id === userId);
-      setActiveUser(user);
+      // Find and set active doctor
+      const doctor = doctors.find((d) => d.psychologist_id === doctorId);
+      setActiveDoctor(doctor);
 
       setSidebarOpen(false);
     } catch (error) {
@@ -231,9 +235,9 @@ export default function DoctorChat() {
     } finally {
       setIsLoadingMessages(false);
     }
-  }, [activeConsultationId, users, initializeChat]);
+  }, [activeConsultationId, doctors, initializeChat]);
 
-  // Memoized time formatting functions
+  // Memoize time formatting functions
   const formatTime = useCallback((dateString) => {
     if (!dateString) return "";
 
@@ -259,15 +263,24 @@ export default function DoctorChat() {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }, []);
 
+  // Memoized filtered doctors
+  const filteredDoctors = useMemo(() => {
+    if (!searchQuery) return doctors;
+    return doctors.filter(doctor =>
+      doctor.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doctor.user?.psychologist_profile?.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [doctors, searchQuery]);
+
   // Memoized message components to prevent unnecessary re-renders
-  const MessageBubble = React.memo(({ message, isDoctor, senderName, activeUser, formatMessageTime }) => (
-    <div className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}>
+  const MessageBubble = React.memo(({ message, isUser, senderName, activeDoctor, formatMessageTime }) => (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-        isDoctor ? "flex-row-reverse space-x-reverse" : ""
+        isUser ? "flex-row-reverse space-x-reverse" : ""
       }`}>
-        {!isDoctor && (
+        {!isUser && (
           <img
-            src={activeUser?.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+            src={activeDoctor?.user?.psychologist_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
             alt="Avatar"
             className="w-8 h-8 rounded-full"
           />
@@ -275,14 +288,14 @@ export default function DoctorChat() {
         <div className="flex flex-col">
           <span className="text-xs text-gray-500 mb-1">{senderName}</span>
           <div className={`px-4 py-2 rounded-2xl ${
-            isDoctor
+            isUser
               ? "bg-blue-500 text-white rounded-br-sm"
               : "bg-white text-gray-900 rounded-bl-sm shadow-sm border border-gray-200"
           }`}>
             <p className="text-sm">{message.message}</p>
           </div>
           <span className={`text-xs text-gray-500 mt-1 ${
-            isDoctor ? "text-right" : "text-left"
+            isUser ? "text-right" : "text-left"
           }`}>
             {formatMessageTime(message.created_at)}
           </span>
@@ -291,35 +304,37 @@ export default function DoctorChat() {
     </div>
   ));
 
-  // Memoized user list item
-  const UserListItem = React.memo(({ user, activeChat, handleUserSelect, formatTime }) => (
+  // Memoized doctor list item
+  const DoctorListItem = React.memo(({ doctor, activeChat, handleDoctorSelect, formatTime }) => (
     <div
-      key={user.id}
-      onClick={() => handleUserSelect(user.user_id, user.id)}
+      key={doctor.id}
+      onClick={() => handleDoctorSelect(doctor.psychologist_id, doctor.id)}
       className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
-        activeChat === user.user_id ? "bg-blue-50 border-r-2 border-r-blue-500" : ""
+        activeChat === doctor.psychologist_id ? "bg-blue-50 border-r-2 border-r-blue-500" : ""
       }`}
     >
       <div className="relative">
         <img
-          src={user.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+          src={doctor.user?.psychologist_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
           alt=""
           className="w-12 h-12 rounded-full"
         />
-        {user.online && (
+        {doctor.online && (
           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
         )}
       </div>
       <div className="ml-3 flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-900 truncate">{user.user?.name}</p>
-          <p className="text-xs text-gray-500">{formatTime(user.last_message_time)}</p>
+          <p className="text-sm font-medium text-gray-900 truncate">Dr. {doctor.user?.name}</p>
+          <p className="text-xs text-gray-500">{formatTime(doctor.last_message_time)}</p>
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600 truncate">{user.user?.email}</p>
-          {user.unread > 0 && (
+          <p className="text-sm text-gray-600 truncate">
+            {doctor.user?.psychologist_profile?.specialization || "General"}
+          </p>
+          {doctor.unread > 0 && (
             <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-500 rounded-full">
-              {user.unread}
+              {doctor.unread}
             </span>
           )}
         </div>
@@ -328,25 +343,23 @@ export default function DoctorChat() {
   ));
 
   // Memoized rendered messages
-  
   const renderedMessages = useMemo(() => {
     return messages.map((message) => {
-      const isDoctor = message.sender ? message.sender === "doctor" : false;
-
-      const senderName = isDoctor ? "You" : activeUser?.user?.name || "User";
+      const isUser = message.sender ? message.sender === "user" : false;
+      const senderName = isUser ? "You" : activeDoctor?.user?.name || "Doctor";
 
       return (
         <MessageBubble
           key={`${message.id}-${message.created_at}`}
           message={message}
-          isDoctor={isDoctor}
+          isUser={isUser}
           senderName={senderName}
-          activeUser={activeUser}
+          activeDoctor={activeDoctor}
           formatMessageTime={formatMessageTime}
         />
       );
     });
-  }, [messages, activeUser, formatMessageTime]);
+  }, [messages, activeDoctor, formatMessageTime]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -360,7 +373,7 @@ export default function DoctorChat() {
           {/* Sidebar Header */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+              <h2 className="text-lg font-semibold text-gray-900">My Doctors</h2>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="lg:hidden p-2 hover:bg-gray-100 rounded-full"
@@ -381,21 +394,23 @@ export default function DoctorChat() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search conversations..."
+                placeholder="Search doctors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
 
-          {/* Users List */}
-          {users.length > 0 && (
+          {/* Doctors List */}
+          {filteredDoctors.length > 0 && (
             <div className="flex-1 overflow-y-auto">
-              {users.map((user) => (
-                <UserListItem
-                  key={user.id}
-                  user={user}
+              {filteredDoctors.map((doctor) => (
+                <DoctorListItem
+                  key={doctor.id}
+                  doctor={doctor}
                   activeChat={activeChat}
-                  handleUserSelect={handleUserSelect}
+                  handleDoctorSelect={handleDoctorSelect}
                   formatTime={formatTime}
                 />
               ))}
@@ -423,22 +438,22 @@ export default function DoctorChat() {
             >
               <Menu className="w-5 h-5 text-gray-600" />
             </button>
-            {activeUser && (
+            {activeDoctor && (
               <>
                 <div className="relative">
                   <img
-                    src={activeUser.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
-                    alt={activeUser.user?.name}
+                    src={activeDoctor.user?.psychologist_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+                    alt={activeDoctor.user?.name}
                     className="w-10 h-10 rounded-full"
                   />
-                  {activeUser.online && (
+                  {activeDoctor.online && (
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                   )}
                 </div>
                 <div>
-                  <h1 className="font-semibold text-gray-900">{activeUser.user?.name}</h1>
-                  <p className={`text-sm ${activeUser.online ? "text-green-500" : "text-gray-500"}`}>
-                    {activeUser.online ? "Online" : "Offline"}
+                  <h1 className="font-semibold text-gray-900">Dr. {activeDoctor.user?.name}</h1>
+                  <p className={`text-sm ${activeDoctor.online ? "text-green-500" : "text-gray-500"}`}>
+                    {activeDoctor.user?.psychologist_profile?.specialization || "General"}
                   </p>
                 </div>
               </>
@@ -463,7 +478,7 @@ export default function DoctorChat() {
                 <div className="flex justify-start">
                   <div className="flex items-end space-x-2 max-w-xs">
                     <img
-                      src={activeUser?.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+                      src={activeDoctor?.user?.psychologist_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
                       alt="Avatar"
                       className="w-8 h-8 rounded-full"
                     />
@@ -494,6 +509,7 @@ export default function DoctorChat() {
                     placeholder="Type a message..."
                     className="w-full px-4 py-3 pr-12 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={!isConnected}
+                    maxLength={1000}
                   />
                 </div>
                 <button
@@ -510,8 +526,8 @@ export default function DoctorChat() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-              <p className="text-gray-500">Choose a contact to start messaging</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a doctor</h3>
+              <p className="text-gray-500">Choose a doctor to start messaging</p>
             </div>
           </div>
         )}

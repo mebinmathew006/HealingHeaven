@@ -9,6 +9,11 @@ class RazorpayOrder(BaseModel):
     user_id: int
     totalAmount: float
     
+class UserConsultationMoney(BaseModel):
+    user_id:int
+    psychologist_id:int
+    psychologist_fee:int
+    
 class WalletTransactionOut(BaseModel):
     id: int
     wallet_id: int

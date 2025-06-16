@@ -23,7 +23,7 @@ async def create_consultation(session: AsyncSession, data: CreateConsultationSch
             payment = Payments(
                 consultation_id=consultation.id,
                 psychologist_fee=data.psychologist_fee,
-                payment_status="pending"
+                payment_status="paid"
             )
             session.add(payment)
             await session.flush()
@@ -69,6 +69,13 @@ async def get_all_consultation(session: AsyncSession):
 async def get_all_mapping_for_chat(session: AsyncSession,doctorId:int):
     result = await session.execute(
         select(ConsultationMapping).where(ConsultationMapping.psychologist_id==doctorId)
+        
+    )
+    return result.scalars().all()
+
+async def get_all_mapping_for_chat_user(session: AsyncSession,user_id:int):
+    result = await session.execute(
+        select(ConsultationMapping).where(ConsultationMapping.user_id==user_id)
         
     )
     return result.scalars().all()

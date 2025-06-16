@@ -123,7 +123,7 @@ class UserProfileFields(BaseModel):
     model_config = {
         "from_attributes": True
     }
-
+    
 class UserWithOptionalProfileOut(BaseModel):
     id: int
     name: str
@@ -131,6 +131,29 @@ class UserWithOptionalProfileOut(BaseModel):
     mobile_number: str
     role: str
     user_profile: Optional[UserProfileFields] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+    
+class UserProfileImage(BaseModel):
+    profile_image: Optional[str]
+    
+class DoctorProfileDetails(BaseModel):
+    profile_image: Optional[str]
+    specialization: Optional[str]
+    
+class UserNameWithProfileImage(BaseModel):
+    name: str
+    user_profile: Optional[UserProfileImage] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+    
+class DoctorNameWithProfileImage(BaseModel):
+    name: str
+    psychologist_profile: Optional[DoctorProfileDetails] = None
 
     model_config = {
         "from_attributes": True
