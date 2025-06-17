@@ -5,12 +5,12 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser
+from schemas.consultation import NotificationResponse,CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import datetime 
 
-from crud.crud import create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user
+from crud.crud import get_all_notifications,create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation,create_feedback
 from infra.external.user_service import get_user_details,get_doctor_details
 from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -37,15 +37,49 @@ logger = logging.getLogger("uvicorn.error")
 @router.post("/create_consultation")
 async def create_consultation_route(data: CreateConsultationSchema, session: AsyncSession = Depends(get_session)):
     try:
-        payment = await fetch_money_from_wallet(data)
-        print(payment)
+        payment = await fetch_money_from_wallet(data.dict())
+        logger.info(payment,'ddddddddddddddddddddddddd')
         
         return await create_consultation(session, data)
     except Exception as e:
-        logger.info.error(f"Error creating user: {e}")
+        logger.info(f"Error creating user: {e}")
+        raise HTTPException(status_code=400, detail="Failed to update user")
+    
+@router.post("/add_feedback")
+async def add_feedback(data: CreateFeedbackSchema, session: AsyncSession = Depends(get_session)):
+    try:
+        return await create_feedback(session, data)
+    except Exception as e:
+        logger.info(f"Error creating feedback: {e}")
+        raise HTTPException(status_code=400, detail="Failed to create feedback")
+    
+    
+@router.post("/create_new_notification")
+async def create_new_notification(data: CreateNotificationSchema, session: AsyncSession = Depends(get_session)):
+    try:
+        return await create_notification(session, data)
+    except Exception as e:
+        logger.info(f"Error creating notification: {e}")
+        raise HTTPException(status_code=400, detail="Failed to create notification")
+    
+@router.put("/set_analysis_from_doctor")
+async def set_analysis_from_doctor(data: UpdateConsultationSchema, session: AsyncSession = Depends(get_session)):
+    try:
+        return await update_analysis_consultation(session, data)
+    except Exception as e:
+        logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
     
     
+
+@router.get("/get_all_notifications", response_model=List[NotificationResponse])
+async def get_all_notifications_route(
+    session: AsyncSession = Depends(get_session),
+):
+    Notification = await get_all_notifications(session)
+    if not Notification:
+        raise HTTPException(status_code=404, detail="Notifications not found")
+    return Notification
 
 @router.get("/get_consultation", response_model=List[ConsultationResponse])
 async def get_consultation(
@@ -151,7 +185,7 @@ active_connections: Dict[str, WebSocket] = {}
 connection_lock = asyncio.Lock()
 
 VALIDATION_RULES = {
-    "call-initiate": ["offer", "senderId", "targetId"],
+    "call-initiate": ["offer", "senderId", "targetId","consultation_id"],
     "call-answer": ["answer", "senderId", "targetId"],
     "ice-candidate": ["candidate", "senderId", "targetId"],
     "call-rejected": ["senderId", "targetId"],

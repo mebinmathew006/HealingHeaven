@@ -17,12 +17,8 @@ const AdminSidebar = ({ activeSection, onSectionChange }) => {
     { id: "profile", label: "Dashboard", icon: Home, path: "/admin_home_page" },
     { id: "account", label: "Users", icon: User, path: "/admin_user_page" },
     { id: "consultation", label: "Consultation", icon: Video, path: "/admin_consultation_page" },
-    {
-      id: "notifications",
-      label: "Psychologists",
-      icon: Hospital,
-      path: "/admin_psychologists_page",
-    },
+    { id: "psychologists",label: "Psychologists",icon: Hospital,path: "/admin_psychologists_page"},
+    { id: "notifications",label: "Notification",icon: Bell,path: "/admin_notification_page"},
   ];
 
   const handleNavigation = (item) => {

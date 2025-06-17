@@ -158,10 +158,10 @@ async def view_psychologist(session: AsyncSession = Depends(get_session)):
         
         raise HTTPException(status_code=500, detail="Internal server error while fetching psychologists.")
 
-@router.patch('/update_availability/{user_id}')
-async def update_availability(user_id:int,session: AsyncSession = Depends(get_session)):
+@router.patch('/update_availability/{user_id}/{isAvailable}')
+async def update_availability(user_id:int,isAvailable:bool,session: AsyncSession = Depends(get_session)):
     try :
-        data= await crud.psychologist_availability_update(session,user_id)
+        data= await crud.psychologist_availability_update(session,user_id,isAvailable)
         return JSONResponse(content={"status": data}, status_code=200)
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")

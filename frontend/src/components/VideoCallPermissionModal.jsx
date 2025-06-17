@@ -69,11 +69,11 @@ const handleContinue = async () => {
   }
   console.log(data)
   try {
-    await axiosInstance.post('/consultations/create_consultation',data)
-    
+    const response= await axiosInstance.post('/consultations/create_consultation',data)
+    const consultation_id=response.data.consultation_id
     
     toast.success('Video Call will Start Now',{position:'bottom-center'})
-    navigate('/videocall', {state: { doctorId: doctor.id,psychologist_fee:doctor.fees}})
+    navigate('/videocall', {state: { doctorId: doctor.id,psychologist_fee:doctor.fees,consultation_id:consultation_id}})
   } catch (error) {
     toast.error('Unable to Start Now',{position:'bottom-center'})
   }

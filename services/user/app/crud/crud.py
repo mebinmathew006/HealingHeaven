@@ -88,9 +88,9 @@ async def toggle_psychologist_status_by_id(session: AsyncSession,user_id:int):
     await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=~PsychologistProfile.is_verified))
     await session.commit()
     
-async def psychologist_availability_update(session: AsyncSession,user_id:int):
+async def psychologist_availability_update(session: AsyncSession,user_id:int,isAvailable:bool):
     try:
-        user =await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_available=~PsychologistProfile.is_available).returning(PsychologistProfile.is_available))
+        user =await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_available=isAvailable).returning(PsychologistProfile.is_available))
         await session.commit()
         new_value = user.scalar_one()
         return new_value

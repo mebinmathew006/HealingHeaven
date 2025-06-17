@@ -15,18 +15,18 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../axiosconfig";
 
 function DoctorVideoCallPage() {
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(
-    "Waiting for patient..."
-  );
+  const [localStream, setLocalStream] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [consultationId, setConsultationId] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("Waiting for patient");
   const [isUsingFallbackVideo, setIsUsingFallbackVideo] = useState(false);
   const navigate = useNavigate();
   const wsRef = useRef(null);
@@ -59,15 +59,6 @@ function DoctorVideoCallPage() {
     }
     return () => clearInterval(interval);
   }, [isConnected]);
-
-  // const cleanup = () => {
-  //   if (pcRef.current) pcRef.current.close();
-  //   if (wsRef.current) wsRef.current.close();
-  //   if (localStream) localStream.getTracks().forEach((track) => track.stop());
-  //   if (fallbackVideoElement.current) {
-  //     document.body.removeChild(fallbackVideoElement.current);
-  //   }
-  // };
 
   const cleanup = () => {
     console.log("🧹 Cleaning up call resources...");
@@ -174,8 +165,8 @@ function DoctorVideoCallPage() {
         const stream = canvas.captureStream(30); // 30 FPS
 
         // Add a silent audio track
-        const audioContext = new (window.AudioContext ||
-          window.webkitAudioContext)();
+        const audioContext = new (window.AudioContext || window.AudioContext)();
+        // window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
 
@@ -315,6 +306,17 @@ function DoctorVideoCallPage() {
     }
   };
 
+  const updateUserAvailability = async (doctorId, status) => {
+    try {
+      await axiosInstance.patch(
+        `/users/update_availability/${doctorId}/${status}`
+      );
+    } catch (error) {
+      console.error("Availability update failed:", error);
+      // Consider retry logic here if important
+    }
+  };
+
   const initializeWebRTC = async () => {
     setConnectionStatus("Connecting...");
 
@@ -340,7 +342,9 @@ function DoctorVideoCallPage() {
         console.log("Incoming WebSocket message:", message);
 
         if (message.type === "call-initiate") {
+          updateUserAvailability(doctorId, false).catch(console.error);
           const incomingUserId = message.senderId;
+          setConsultationId(message.consultation_id);
           setUserId(incomingUserId);
           setConnectionStatus("Patient connecting...");
 
@@ -443,10 +447,11 @@ function DoctorVideoCallPage() {
         }
 
         if (message.type === "call-end") {
-          cleanup();
+          // cleanup();
           setConnectionStatus("Call ended by other user");
           setIsConnected(false);
-          console.log("Call ended by other user");
+          toast.info("Call ended by other user");
+          endCall();
         }
       };
     } catch (error) {
@@ -481,25 +486,6 @@ function DoctorVideoCallPage() {
     }
   };
 
-  // const endCall = () => {
-  //   if (wsRef.current?.readyState === WebSocket.OPEN) {
-  //     wsRef.current.send(
-  //       JSON.stringify({
-  //         type: "call-end",
-  //         senderId: doctorId,
-  //         sender: "doctor",
-  //         targetId: userId,
-  //       })
-  //     );
-  //   }
-
-  //   cleanup();
-  //   setConnectionStatus("Call ended");
-  //   setIsConnected(false);
-  //   console.log("📞 User ended the call");
-  //   navigate('/doctor_feedback_page')
-  // };
-
   const endCall = () => {
     console.log("📞 Ending the call...");
 
@@ -521,10 +507,12 @@ function DoctorVideoCallPage() {
     // Update state
     setConnectionStatus("Call ended");
     setIsConnected(false);
-
+    updateUserAvailability(doctorId, true).catch(console.error);
     // Navigate after slight delay to ensure cleanup is complete
     setTimeout(() => {
-      navigate("/doctor_feedback_page");
+      navigate("/doctor_feedback_page", {
+        state: { consultationId: consultationId },
+      });
     }, 500); // 500ms is typically enough
   };
 

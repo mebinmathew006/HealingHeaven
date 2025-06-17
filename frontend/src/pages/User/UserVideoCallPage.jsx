@@ -27,12 +27,12 @@ function UserVideoCallPage() {
   const [usingFallback, setUsingFallback] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState("good");
   const [retryCount, setRetryCount] = useState(0);
-  
+
   const userId = useSelector((state) => state.userDetails.id);
-  const location = useLocation();           
-  const navigate = useNavigate();           
-  const {doctorId,psychologist_fee} = location?.state;
-  
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { doctorId, psychologist_fee, consultation_id } = location?.state;
+
   const wsRef = useRef(null);
   const pcRef = useRef(null);
   const localVideoRef = useRef(null);
@@ -40,7 +40,7 @@ function UserVideoCallPage() {
   const fallbackCanvasRef = useRef(null);
   const fallbackAnimationRef = useRef(null);
   const connectionStatsRef = useRef(null);
-  let attempt = 1
+  let attempt = 1;
   const signalingURL = `ws://localhost/consultations/ws/create_signaling/${userId}`;
 
   const fetchIceServers = async () => {
@@ -60,21 +60,26 @@ function UserVideoCallPage() {
   const createCanvasFallbackStream = () => {
     return new Promise((resolve, reject) => {
       try {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = 640;
         canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        
+        const ctx = canvas.getContext("2d");
+
         fallbackCanvasRef.current = canvas;
-        canvas.style.display = 'none';
+        canvas.style.display = "none";
         document.body.appendChild(canvas);
 
         let animationFrame = 0;
         const animate = () => {
           // Clear canvas with gradient background
-          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-          gradient.addColorStop(0, '#1e293b');
-          gradient.addColorStop(1, '#334155');
+          const gradient = ctx.createLinearGradient(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+          gradient.addColorStop(0, "#1e293b");
+          gradient.addColorStop(1, "#334155");
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -82,27 +87,34 @@ function UserVideoCallPage() {
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
           const radius = 50 + Math.sin(animationFrame * 0.05) * 20;
-          
-          const circleGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-          circleGradient.addColorStop(0, 'rgba(99, 102, 241, 0.8)');
-          circleGradient.addColorStop(1, 'rgba(99, 102, 241, 0.2)');
-          
+
+          const circleGradient = ctx.createRadialGradient(
+            centerX,
+            centerY,
+            0,
+            centerX,
+            centerY,
+            radius
+          );
+          circleGradient.addColorStop(0, "rgba(99, 102, 241, 0.8)");
+          circleGradient.addColorStop(1, "rgba(99, 102, 241, 0.2)");
+
           ctx.fillStyle = circleGradient;
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
           ctx.fill();
 
           // User icon in center
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 32px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('👤', centerX, centerY + 10);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 32px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("👤", centerX, centerY + 10);
 
           // Status text
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '16px Arial';
-          ctx.fillText('Fallback Video Active', centerX, centerY + 60);
-          ctx.fillText('Camera unavailable', centerX, centerY + 80);
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "16px Arial";
+          ctx.fillText("Fallback Video Active", centerX, centerY + 60);
+          ctx.fillText("Camera unavailable", centerX, centerY + 80);
 
           animationFrame++;
           fallbackAnimationRef.current = requestAnimationFrame(animate);
@@ -112,12 +124,13 @@ function UserVideoCallPage() {
 
         // Create video stream from canvas at 30 FPS
         const videoStream = canvas.captureStream(30);
-        
+
         // Create silent audio track
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = new (window.AudioContext ||
+          window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
         gainNode.gain.value = 0; // Silent
@@ -132,7 +145,7 @@ function UserVideoCallPage() {
         // Combine video and audio streams
         const combinedStream = new MediaStream([
           ...videoStream.getVideoTracks(),
-          ...audioStream.getAudioTracks()
+          ...audioStream.getAudioTracks(),
         ]);
 
         console.log("✅ Canvas fallback stream created successfully");
@@ -147,8 +160,8 @@ function UserVideoCallPage() {
 
   // Enhanced video file fallback with multiple sources
   const createVideoFileFallbackStream = async () => {
-    const videoSources = ['/default.mp4', '/fallback.mp4', '/placeholder.webm'];
-    
+    const videoSources = ["/default.mp4", "/fallback.mp4", "/placeholder.webm"];
+
     for (const videoSrc of videoSources) {
       try {
         const stream = await new Promise((resolve, reject) => {
@@ -172,7 +185,9 @@ function UserVideoCallPage() {
                 video.style.display = "none";
                 document.body.appendChild(video);
                 video.play();
-                console.log(`✅ Video fallback stream created from: ${videoSrc}`);
+                console.log(
+                  `✅ Video fallback stream created from: ${videoSrc}`
+                );
                 setUsingFallback(true);
                 resolve(stream);
               } else {
@@ -195,26 +210,26 @@ function UserVideoCallPage() {
         continue;
       }
     }
-    
+
     throw new Error("All video sources failed");
   };
 
   // Enhanced media stream acquisition with robust fallback
   const getMediaStream = async () => {
     if (!navigator.mediaDevices) {
-    throw new Error("Media devices not available");
-  }
+      throw new Error("Media devices not available");
+    }
     const constraints = {
       video: {
         width: { ideal: 1280, min: 640 },
         height: { ideal: 720, min: 480 },
-        frameRate: { ideal: 30, min: 15 }
+        frameRate: { ideal: 30, min: 15 },
       },
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true
-      }
+        autoGainControl: true,
+      },
     };
 
     try {
@@ -225,7 +240,9 @@ function UserVideoCallPage() {
       return stream;
     } catch (primaryError) {
       console.warn("Primary camera failed:", primaryError);
-      toast.warn("Camera unavailable, switching to fallback video", { position: 'bottom-center' });
+      toast.warn("Camera unavailable, switching to fallback video", {
+        position: "bottom-center",
+      });
 
       try {
         // Secondary: Try canvas-based fallback
@@ -240,11 +257,15 @@ function UserVideoCallPage() {
           return videoStream;
         } catch (videoError) {
           console.error("All fallback methods failed:", videoError);
-          
+
           // Final fallback: Audio only
           try {
-            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            toast.error("Video unavailable, audio-only mode", { position: 'bottom-center' });
+            const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            toast.error("Video unavailable, audio-only mode", {
+              position: "bottom-center",
+            });
             return audioOnlyStream;
           } catch (audioError) {
             throw new Error("No media devices available");
@@ -262,9 +283,9 @@ function UserVideoCallPage() {
       try {
         const stats = await pcRef.current.getStats();
         let inboundRtp = null;
-        
-        stats.forEach(report => {
-          if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
+
+        stats.forEach((report) => {
+          if (report.type === "inbound-rtp" && report.mediaType === "video") {
             inboundRtp = report;
           }
         });
@@ -272,7 +293,8 @@ function UserVideoCallPage() {
         if (inboundRtp) {
           const packetsLost = inboundRtp.packetsLost || 0;
           const packetsReceived = inboundRtp.packetsReceived || 0;
-          const lossRate = packetsReceived > 0 ? packetsLost / packetsReceived : 0;
+          const lossRate =
+            packetsReceived > 0 ? packetsLost / packetsReceived : 0;
 
           if (lossRate > 0.05) {
             setConnectionQuality("poor");
@@ -292,11 +314,11 @@ function UserVideoCallPage() {
 
   // Enhanced WebRTC initialization with retry logic
   const initializeWebRTC = async (attempt) => {
-     if (!window.RTCPeerConnection) {
-    throw new Error("WebRTC not supported");
-  }
+    if (!window.RTCPeerConnection) {
+      throw new Error("WebRTC not supported");
+    }
     const maxAttempts = 3;
-    
+
     try {
       setConnectionStatus(`Connecting... (Attempt ${attempt})`);
       setRetryCount(attempt - 1);
@@ -330,7 +352,7 @@ function UserVideoCallPage() {
         console.log("WebSocket closed:", event.code, event.reason);
         setConnectionStatus("Disconnected");
         setIsConnected(false);
-        
+
         // Auto-reconnect logic
         if (event.code !== 1000 && attempt < maxAttempts) {
           setTimeout(() => {
@@ -361,7 +383,12 @@ function UserVideoCallPage() {
               }
               break;
 
-            case "call-ended":
+            case "call-end":
+              setConnectionStatus("Call ended by other user");
+              setIsConnected(false);
+              toast.info("Call ended by other user",{position:'bottom-center'});
+              endCall();
+              break;
             case "peer-disconnected":
               console.log("📞 Remote peer ended the call");
               handleCallEnded();
@@ -377,23 +404,25 @@ function UserVideoCallPage() {
 
       // Enhanced RTCPeerConnection setup
       const iceServers = await fetchIceServers();
-      const pc = new RTCPeerConnection({ 
+      const pc = new RTCPeerConnection({
         iceServers,
         iceCandidatePoolSize: 10,
-        iceTransportPolicy: 'all'
+        iceTransportPolicy: "all",
       });
-      
+
       pcRef.current = pc;
 
       // Enhanced ICE candidate handling
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          ws.send(JSON.stringify({
-            type: "ice-candidate",
-            targetId: doctorId,
-            senderId: userId,
-            candidate: event.candidate,
-          }));
+          ws.send(
+            JSON.stringify({
+              type: "ice-candidate",
+              targetId: doctorId,
+              senderId: userId,
+              candidate: event.candidate,
+            })
+          );
         }
       };
 
@@ -401,14 +430,14 @@ function UserVideoCallPage() {
       pc.onconnectionstatechange = () => {
         console.log("Connection state:", pc.connectionState);
         switch (pc.connectionState) {
-          case 'connected':
+          case "connected":
             setConnectionStatus("Connected");
             setIsConnected(true);
             break;
-          case 'disconnected':
+          case "disconnected":
             setConnectionStatus("Reconnecting...");
             break;
-          case 'failed':
+          case "failed":
             setConnectionStatus("Connection failed");
             if (attempt < maxAttempts) {
               setTimeout(() => {
@@ -420,7 +449,7 @@ function UserVideoCallPage() {
               cleanup();
             }
             break;
-          case 'closed':
+          case "closed":
             console.log("🔌 Connection closed - stopping camera");
             cleanup();
             break;
@@ -431,21 +460,20 @@ function UserVideoCallPage() {
       pc.ontrack = (event) => {
         console.log("✅ Remote stream received!", event.streams[0]);
         const remoteStream = event.streams[0];
-        
+
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
         }
-        
+
         setRemoteStream(remoteStream);
         setIsConnected(true);
         setConnectionStatus("Call connected");
-        
       };
 
       // Get local media stream with fallback
       const stream = await getMediaStream();
       setLocalStream(stream);
-      
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
@@ -458,16 +486,18 @@ function UserVideoCallPage() {
       // Create and send offer
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
-        offerToReceiveVideo: true
+        offerToReceiveVideo: true,
       });
-      
+
       await pc.setLocalDescription(offer);
       console.log("📤 Sending SDP offer");
       await sendOffer(offer);
-
     } catch (error) {
-      console.error(`❌ WebRTC initialization failed (attempt ${attempt}):`, error);
-      
+      console.error(
+        `❌ WebRTC initialization failed (attempt ${attempt}):`,
+        error
+      );
+
       if (attempt < maxAttempts) {
         setConnectionStatus(`Retrying... (${attempt}/${maxAttempts})`);
         setTimeout(() => {
@@ -476,7 +506,7 @@ function UserVideoCallPage() {
       } else {
         setConnectionStatus("Connection failed");
         toast.error("Failed to establish connection after multiple attempts", {
-          position: 'bottom-center'
+          position: "bottom-center",
         });
       }
     }
@@ -489,27 +519,28 @@ function UserVideoCallPage() {
       offer,
       senderId: userId,
       targetId: doctorId,
+      consultation_id: consultation_id,
     };
 
     const sendWithRetry = async (attempt = 0) => {
       const maxRetries = 5;
-      
+
       try {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
           throw new Error("WebSocket not open");
         }
-        
+
         wsRef.current.send(JSON.stringify(message));
         console.log("✅ Offer sent successfully");
       } catch (err) {
         console.warn(`Failed to send offer (attempt ${attempt + 1}):`, err);
-        
+
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return sendWithRetry(attempt + 1);
         }
-        
+
         console.error("❌ Failed to send offer after all attempts");
         throw new Error("Failed to send offer after multiple attempts");
       }
@@ -518,85 +549,85 @@ function UserVideoCallPage() {
     await sendWithRetry();
   };
 
-const cleanup = async () => {
-  console.log("🧹 Starting cleanup process...");
+  const cleanup = async () => {
+    console.log("🧹 Starting cleanup process...");
 
-  // Stop connection monitoring
-  if (connectionStatsRef.current) {
-    clearInterval(connectionStatsRef.current);
-    connectionStatsRef.current = null;
-  }
-
-  // Stop animation
-  if (fallbackAnimationRef.current) {
-    cancelAnimationFrame(fallbackAnimationRef.current);
-    fallbackAnimationRef.current = null;
-  }
-
-  // Clean up canvas
-  if (fallbackCanvasRef.current) {
-    fallbackCanvasRef.current.remove();
-    fallbackCanvasRef.current = null;
-  }
-
-  // Stop ALL tracks from local stream
-  if (localStream) {
-    console.log("📷 Stopping camera and microphone...");
-    localStream.getTracks().forEach((track) => {
-      console.log(`Stopping ${track.kind} track:`, track.label);
-      track.stop(); // This is synchronous
-    });
-    
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
+    // Stop connection monitoring
+    if (connectionStatsRef.current) {
+      clearInterval(connectionStatsRef.current);
+      connectionStatsRef.current = null;
     }
-  }
 
-  // Stop remote stream tracks
-  if (remoteStream) {
-    console.log("🎥 Stopping remote stream...");
-    remoteStream.getTracks().forEach((track) => {
-      track.stop();
-    });
-    
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null;
+    // Stop animation
+    if (fallbackAnimationRef.current) {
+      cancelAnimationFrame(fallbackAnimationRef.current);
+      fallbackAnimationRef.current = null;
     }
-  }
 
-  // Close peer connection
-  if (pcRef.current) {
-    console.log("🔌 Closing peer connection...");
-    pcRef.current.close();
-    pcRef.current = null;
-  }
+    // Clean up canvas
+    if (fallbackCanvasRef.current) {
+      fallbackCanvasRef.current.remove();
+      fallbackCanvasRef.current = null;
+    }
 
-  // Close WebSocket with small delay to ensure messages are sent
-  if (wsRef.current) {
-    console.log("🌐 Closing WebSocket connection...");
-    // Give a small time for any pending messages to send
-    await new Promise(resolve => setTimeout(resolve, 100));
-    wsRef.current.close();
-    wsRef.current = null;
-  }
+    // Stop ALL tracks from local stream
+    if (localStream) {
+      console.log("📷 Stopping camera and microphone...");
+      localStream.getTracks().forEach((track) => {
+        console.log(`Stopping ${track.kind} track:`, track.label);
+        track.stop(); // This is synchronous
+      });
 
-  // Reset all states
-  setIsConnected(false);
-  setUsingFallback(false);
-  setConnectionStatus("Disconnected");
-  setIsMuted(false);
-  setIsVideoOff(false);
-  setConnectionQuality("good");
-  attempt =3
-  console.log("✅ Cleanup completed");
-};
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+    }
+
+    // Stop remote stream tracks
+    if (remoteStream) {
+      console.log("🎥 Stopping remote stream...");
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+    }
+
+    // Close peer connection
+    if (pcRef.current) {
+      console.log("🔌 Closing peer connection...");
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+
+    // Close WebSocket with small delay to ensure messages are sent
+    if (wsRef.current) {
+      console.log("🌐 Closing WebSocket connection...");
+      // Give a small time for any pending messages to send
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Reset all states
+    setIsConnected(false);
+    setUsingFallback(false);
+    setConnectionStatus("Disconnected");
+    setIsMuted(false);
+    setIsVideoOff(false);
+    setConnectionQuality("good");
+    attempt = 3;
+    console.log("✅ Cleanup completed");
+  };
 
   // Handle call ended
   const handleCallEnded = () => {
     console.log("📞 Call ended - initiating cleanup");
     cleanup();
-    toast.info("Call ended", { position: 'bottom-center' });
-    
+    toast.info("Call ended", { position: "bottom-center" });
+
     // Optional: Navigate back to previous page or dashboard
     // navigate(-1); // if using react-router navigate
   };
@@ -637,15 +668,17 @@ const cleanup = async () => {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
-        
+
         // Send mute status to remote peer
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            type: "audio-toggle",
-            targetId: doctorId,
-            senderId: userId,
-            muted: !audioTrack.enabled
-          }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: "audio-toggle",
+              targetId: doctorId,
+              senderId: userId,
+              muted: !audioTrack.enabled,
+            })
+          );
         }
       }
     }
@@ -657,97 +690,109 @@ const cleanup = async () => {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoOff(!videoTrack.enabled);
-        
+
         // Send video status to remote peer
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            type: "video-toggle",
-            targetId: doctorId,
-            senderId: userId,
-            videoOff: !videoTrack.enabled
-          }));
+          wsRef.current.send(
+            JSON.stringify({
+              type: "video-toggle",
+              targetId: doctorId,
+              senderId: userId,
+              videoOff: !videoTrack.enabled,
+            })
+          );
         }
       }
     }
   };
 
- const endCall = async () => {
-  setIsConnected(false);
-  console.log("📞 User ended the call");
+  const endCall = async () => {
+    setIsConnected(false);
+    console.log("📞 User ended the call");
 
-  // Notify remote peer first
-  if (wsRef.current?.readyState === WebSocket.OPEN) {
-    try {
-      wsRef.current.send(JSON.stringify({
-        type: "call-end",
-        targetId: doctorId,
-        senderId: userId
-      }));
-      // Small delay to ensure message is sent
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (err) {
-      console.error("Error sending call-end message:", err);
+    // Notify remote peer first
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "call-end",
+            targetId: doctorId,
+            sender: "user",
+            senderId: userId,
+          })
+        );
+        // Small delay to ensure message is sent
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (err) {
+        console.error("Error sending call-end message:", err);
+      }
     }
-  }
-
-  // Perform cleanup
-  await cleanup();
-
-  // Navigate after cleanup is complete
-  navigate('/user_feedback_page');
-};
-
+    // Perform cleanup
+    await cleanup();
+    // Navigate after cleanup is complete
+    navigate("/user_feedback_page", {
+      state: { consultation_id: consultation_id },
+    });
+  };
 
   // Connection quality indicator
   const getConnectionIcon = () => {
     switch (connectionQuality) {
-      case 'good':
+      case "good":
         return <Wifi className="text-green-400" size={16} />;
-      case 'fair':
+      case "fair":
         return <Wifi className="text-yellow-400" size={16} />;
-      case 'poor':
+      case "poor":
         return <WifiOff className="text-red-400" size={16} />;
       default:
         return <Wifi className="text-gray-400" size={16} />;
     }
   };
 
- useEffect(() => {
-  let isMounted = true;
-  
-  const initialize = async () => {
-    if (isMounted) {
-      await initializeWebRTC();
+  useEffect(() => {
+    console.log(doctorId, consultation_id);
+    if (!doctorId || !consultation_id) {
+      navigate("/unauthorized", { replace: true }); // or redirect to home/login
     }
-  };
-  
-  initialize();
+    let isMounted = true;
 
-  // Add event listeners
-  window.addEventListener('beforeunload', handleBeforeUnload);
-  document.addEventListener('visibilitychange', handleVisibilityChange);
+    const initialize = async () => {
+      if (isMounted) {
+        await initializeWebRTC();
+      }
+    };
 
-  return () => {
-    console.log("🧹 Component unmounting - cleaning up");
-    isMounted = false;
-    
-    // Remove event listeners
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Perform cleanup
-    cleanup().catch(err => {
-      console.error("Cleanup error:", err);
-    });
-  };
-}, []);
+    initialize();
+
+    // Add event listeners
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      console.log("🧹 Component unmounting - cleaning up");
+      isMounted = false;
+
+      // Remove event listeners
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      // Perform cleanup
+      cleanup().catch((err) => {
+        console.error("Cleanup error:", err);
+      });
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
       {/* Enhanced Header */}
       <div className="flex items-center justify-between p-6 bg-black/20 backdrop-blur-sm border-b border-white/10">
         <div className="flex items-center space-x-4">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`}></div>
+          <div
+            className={`w-3 h-3 rounded-full ${
+              isConnected ? "bg-emerald-400" : "bg-amber-400"
+            } animate-pulse`}
+          ></div>
           <h1 className="text-white text-xl font-semibold">
             Video Consultation
           </h1>
@@ -889,7 +934,7 @@ const cleanup = async () => {
           </button>
 
           {/* Screen Share Button */}
-          <button 
+          <button
             className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all duration-200 transform hover:scale-105"
             title="Share screen"
           >
@@ -897,7 +942,7 @@ const cleanup = async () => {
           </button>
 
           {/* More Options */}
-          <button 
+          <button
             className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all duration-200 transform hover:scale-105"
             title="Settings"
           >

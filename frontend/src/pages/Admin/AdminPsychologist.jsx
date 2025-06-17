@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 
 function AdminPsychologist() {
-  const [activeSection, setActiveSection] = useState("notifications");
+  const [activeSection, setActiveSection] = useState("psychologists");
   useEffect(() => {
     fetchPsychologist();
   }, []);

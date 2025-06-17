@@ -5,10 +5,25 @@ from typing import Optional
 from datetime import date, datetime
 
 
+class UpdateConsultationSchema(BaseModel):
+    consultation_id: int
+    message: str
+    
+    
 class CreateConsultationSchema(BaseModel):
     user_id: int
     psychologist_id: int
     psychologist_fee: int
+    
+class CreateFeedbackSchema(BaseModel):
+    consultation_id: int
+    rating: int
+    user_id: int
+    message: str
+    
+class CreateNotificationSchema(BaseModel):
+    title: str
+    message: str
     
 class PaymentBase(BaseModel):
     consultation_id: int
@@ -37,6 +52,15 @@ class ConsultationResponse(ConsultationBase):
     created_at: datetime
     updated_at: Optional[datetime]
     payments: Optional[PaymentResponse]
+
+    model_config = {
+        "from_attributes": True
+    }
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+    created_at: datetime
 
     model_config = {
         "from_attributes": True

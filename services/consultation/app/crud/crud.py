@@ -3,8 +3,8 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
-from schemas.consultation import CreateConsultationSchema
-from models.consultation import Consultation,Payments,ConsultationMapping,Chat
+from schemas.consultation import CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
+from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification
 
 
 async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
@@ -58,11 +58,61 @@ async def create_consultation(session: AsyncSession, data: CreateConsultationSch
         await session.rollback()
         # Log error or raise appropriate exception
         raise e
+    
+    
+async def create_feedback(session: AsyncSession, data: CreateFeedbackSchema):
+    try:
+        
+        # Create consultation
+        feedback = Feedback(
+            user_id=data.user_id,
+            consultation_id=data.consultation_id,
+            message=data.message,
+            rating=data.rating,
+        )
+        session.add(feedback)
+        await session.commit()        
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        # Log error or raise appropriate exception
+        raise e
+    
+async def create_notification(session: AsyncSession, data: CreateNotificationSchema):
+    try:
+        # Create consultation
+        notification = Notification(
+            
+            message=data.message,
+            title=data.title,
+        )
+        session.add(notification)
+        await session.commit()        
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        # Log error or raise appropriate exception
+        raise e
+    
+    
+async def update_analysis_consultation(session: AsyncSession, data: UpdateConsultationSchema):
+    result = await session.execute(select(Consultation).where(Consultation.id == data.consultation_id))
+    consultation = result.scalar_one_or_none()
+    consultation.analysis = data.message
+    consultation.status='completed'
+    await session.commit()
+    
 
 async def get_all_consultation(session: AsyncSession):
     result = await session.execute(
         select(Consultation)
         .options(selectinload(Consultation.payments))
+    )
+    return result.scalars().all()
+
+async def get_all_notifications(session: AsyncSession):
+    result = await session.execute(
+        select(Notification)
     )
     return result.scalars().all()
 

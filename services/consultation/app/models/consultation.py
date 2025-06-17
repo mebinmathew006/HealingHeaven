@@ -10,19 +10,30 @@ class Consultation(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True)
     psychologist_id = Column(Integer, index=True)
+    analysis=Column(Text)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
     status = Column(String(20))
     
     payments = relationship("Payments", back_populates="consultation", uselist=False)
+    feedback = relationship('Feedback',back_populates='consultation',uselist=False)
 
+class Feedback(Base):
+    __tablename__='feedback'
+    
+    id = Column(Integer, primary_key=True, index = True)
+    user_id = Column(Integer, index=True,nullable=False)
+    consultation_id = Column(Integer,ForeignKey('consultation.id', ondelete='CASCADE'),nullable=False)
+    message = Column(Text,nullable=False)
+    rating = Column(Integer,nullable=False) 
 
+    consultation = relationship('Consultation',back_populates='feedback',uselist=False)
 
 class Payments(Base):
     __tablename__ = "payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    consultation_id = Column(Integer, ForeignKey("consultation.id"), nullable=False)
+    consultation_id = Column(Integer, ForeignKey("consultation.id", ondelete='CASCADE'), nullable=False)
     psychologist_fee = Column(Integer)
     payment_status=Column(String(20))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -51,3 +62,12 @@ class Chat(Base):
     consultation_map_id = Column(Integer, ForeignKey('consultation_mapping.id', ondelete="CASCADE"))
     
     consultation_mapping = relationship("ConsultationMapping", back_populates="chat_messages")
+    
+    
+class Notification(Base):
+    __tablename__ = 'notifications'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(Text, nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

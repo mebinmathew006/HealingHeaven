@@ -35,6 +35,7 @@ import DoctorChat from "../pages/Doctor/DoctorChat";
 import UserChat from "../pages/User/UserChat";
 import DoctorFeedbackPage from "../pages/Doctor/DoctorFeedbackPage";
 import UserFeedbackPage from "../pages/User/UserFeedbackPage";
+import AdminNotification from "../pages/Admin/AdminNotification";
 
 const AppRoutes = () => {
   return (
@@ -81,6 +82,7 @@ const AppRoutes = () => {
         <Route path="/admin_psychologists_page" element={<AdminProtectedRoute><AdminPsychologist /></AdminProtectedRoute>} />
         <Route path="/pending_psychologist/:userId" element={<AdminProtectedRoute><AdminPsychoPending /></AdminProtectedRoute>} />
         <Route path="/admin_consultation_page" element={<AdminProtectedRoute><AdminConsultationList/></AdminProtectedRoute>} />
+        <Route path="/admin_notification_page" element={<AdminProtectedRoute><AdminNotification/></AdminProtectedRoute>} />
     </Routes>
   );
 };

@@ -111,7 +111,7 @@ const DoctorProfile = () => {
   if (!result.isConfirmed) return;
 
       const response = await axiosInstance.patch(
-        `/users/update_availability/${userId}`
+        `/users/update_availability/${userId}/${!isAvailable}`
       );
       setIsAvailable(response.data.status);
       

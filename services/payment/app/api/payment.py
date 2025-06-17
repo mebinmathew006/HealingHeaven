@@ -65,6 +65,7 @@ async def fetch_money_from_wallet(
     fetch_money_schema: UserConsultationMoney,
     session: AsyncSession = Depends(get_session)
 ):
+    logger.info('ddddddddddddddddddddddddddddddddddddddddddddddddd')
     try:
         await money_from_wallet(session, fetch_money_schema.user_id, fetch_money_schema.psychologist_fee)
         return JSONResponse(
@@ -72,7 +73,7 @@ async def fetch_money_from_wallet(
             content={"status": "success"},
         )
     except Exception as e:
-        raise HTTPException(
+        raise HTTPException(    
             status_code=500, detail=f"Internal server error: {str(e)}"
         )
 
