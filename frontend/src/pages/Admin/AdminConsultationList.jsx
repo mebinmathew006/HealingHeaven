@@ -121,57 +121,7 @@ const AdminConsultationList = () => {
             </p>
           </div>
 
-          {/* Filters and Search */}
-          {/* <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4"> */}
-              {/* Search */}
-              {/* <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search by ID, User ID, or Psychologist ID"
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div> */}
-
-              {/* Status Filter */}
-              {/* <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <select
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div> */}
-
-              {/* Payment Status Filter */}
-              {/* <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <select
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  value={paymentStatusFilter}
-                  onChange={(e) => setPaymentStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Payment Status</option>
-                  <option value="paid">Paid</option>
-                  <option value="pending">Pending</option>
-                  <option value="refunded">Refunded</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div> */}
-
-              {/* Results Count */}
-              
-            {/* </div>
-          </div> */}
+          
 
           {/* Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">

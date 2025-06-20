@@ -39,6 +39,7 @@ import AdminNotification from "../pages/Admin/AdminNotification";
 import UserViewConsultation from "../pages/User/UserViewConsultation";
 import UserComplaintView from "../pages/User/UserComplaintView";
 import UserViewNotification from "../pages/User/UserViewNotification";
+import AdminComplaint from "../pages/Admin/AdminComplaint";
 
 const AppRoutes = () => {
   return (
@@ -89,6 +90,7 @@ const AppRoutes = () => {
         <Route path="/pending_psychologist/:userId" element={<AdminProtectedRoute><AdminPsychoPending /></AdminProtectedRoute>} />
         <Route path="/admin_consultation_page" element={<AdminProtectedRoute><AdminConsultationList/></AdminProtectedRoute>} />
         <Route path="/admin_notification_page" element={<AdminProtectedRoute><AdminNotification/></AdminProtectedRoute>} />
+        <Route path="/admin_complaints" element={<AdminProtectedRoute><AdminComplaint/></AdminProtectedRoute>} />
     </Routes>
   );
 };

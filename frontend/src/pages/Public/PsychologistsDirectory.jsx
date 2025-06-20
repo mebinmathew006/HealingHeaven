@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import React from "react";
+import React,{ useEffect, useState } from "react";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import { Clock, CheckCircle, XCircle, Calendar,SquareUser } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-const PsychologistCard = ({ id,name, specialty,availability, imageSrc }) => {
+const PsychologistCard = ({ id,name, specialty,availability, imageSrc ,rating}) => {
   const userId = useSelector((state)=>state.userDetails.id)
   const navigate = useNavigate()
   return (
@@ -47,7 +46,7 @@ const PsychologistCard = ({ id,name, specialty,availability, imageSrc }) => {
       <div className="text-center">
         <h3 className="font-semibold text-gray-800">{name}</h3>
         <p className="text-sm text-gray-600 mb-3">{specialty}</p>
-        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>userId ? navigate('/user_view_psychologist_details',{ state: { id } }) : navigate('/public_view_psychologist_details',{ state: { id } })}>
+        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>userId ? navigate('/user_view_psychologist_details',{ state: { id,rating } }) : navigate('/public_view_psychologist_details',{ state: { id,rating } })}>
           More
         </button>
       </div>
@@ -103,6 +102,7 @@ export default function PsychologistsDirectory() {
       <PsychologistCard
         key={psych.id}
         id={psych.user.id}
+        rating={psych.rating}
         name={psych.user.name}
         specialty={psych.specialization}
         availability={psych.is_available}

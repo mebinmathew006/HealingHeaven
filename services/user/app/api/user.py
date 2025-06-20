@@ -16,7 +16,8 @@ from dependencies.auth import create_access_token,create_refresh_token
 from fastapi.logger import logger
 from datetime import date 
 from dependencies.get_current_user import get_current_user
-
+from infra.external.consultation_service import get_psycholgist_rating
+from asyncio import gather
 router = APIRouter(tags=["users"])
 
 
@@ -148,15 +149,37 @@ async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: 
 async def view_psychologist(session: AsyncSession = Depends(get_session)):
     try:
         data = await crud.get_all_psychologist_with_profile(session)
-        return [users.PsychologistProfileOut.model_validate(p) for p in data]
+        if not data:
+            raise HTTPException(status_code=404, detail="No psychologists found")
+
+        # Parallel rating fetch
+        ratings = await gather(
+            *(get_psycholgist_rating(p.user_id) for p in data)
+        )
+
+        enriched_ratings = [
+            users.PsychologistProfileOut(
+                id=p.id,
+                specialization=p.specialization,
+                profile_image=p.profile_image,
+                is_verified=p.is_verified,
+                is_available=p.is_available,
+                user=p.user,
+                rating=ratings[i] if ratings[i] is not None else 0.0
+            )
+            for i, p in enumerate(data)
+        ]
+
+        return enriched_ratings
+
     except HTTPException as http_exc:
-        logger.error('dddfdddd',http_exc)
+        logger.error("HTTP error while fetching psychologists: %s", http_exc)
         raise http_exc
-    
+
     except Exception as e:
-        logger.error('dddfdddd',e)
-        
+        logger.error("Internal error while fetching psychologists: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error while fetching psychologists.")
+
 
 @router.patch('/update_availability/{user_id}/{isAvailable}')
 async def update_availability(user_id:int,isAvailable:bool,session: AsyncSession = Depends(get_session)):
@@ -198,6 +221,7 @@ async def get_psycholgist_details(user_id: int, session: AsyncSession = Depends(
     try:
         try:
             data = await crud.get_psycholgist_by_id(session, user_id)
+        
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -210,7 +234,7 @@ async def get_psycholgist_details(user_id: int, session: AsyncSession = Depends(
                 detail="User not found"
             )
 
-        return data
+        return data 
 
     except HTTPException as http_exc:
         raise http_exc

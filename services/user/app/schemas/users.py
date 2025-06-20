@@ -55,6 +55,7 @@ class PsychologistProfileOut(BaseModel):
     profile_image: Optional[str]
     is_verified: bool
     is_available: Optional[bool]
+    rating: Optional[float]
 
     model_config = {
         "from_attributes": True

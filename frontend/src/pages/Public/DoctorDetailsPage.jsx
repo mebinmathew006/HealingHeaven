@@ -16,18 +16,9 @@ import VideoCallPermissionModal from "../../components/VideoCallPermissionModal"
 
 const DoctorDetailsPage = (props) => {
   const [showModal, setShowModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
   const [doctor, setDoctor] = useState({});
-  const [patientInfo, setPatientInfo] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    reason: "",
-  });
   const location = useLocation();
-  const { id } = location.state;
-  const { modal } = props;
+  const { id,rating } = location.state;
   useEffect(() => {
     fetchDoctor();
   }, []);
@@ -40,24 +31,7 @@ const DoctorDetailsPage = (props) => {
     setDoctor(response.data);
   }
 
-  const handleBooking = () => {
-    if (
-      selectedDate &&
-      selectedTime &&
-      patientInfo.name &&
-      patientInfo.email &&
-      patientInfo.phone
-    ) {
-      setBookingConfirmed(true);
-      setTimeout(() => {
-        setShowBookingModal(false);
-        setBookingConfirmed(false);
-        setSelectedDate("");
-        setSelectedTime("");
-        setPatientInfo({ name: "", email: "", phone: "", reason: "" });
-      }, 3000);
-    }
-  };
+  
 
   const handleStartCall = () => {
     console.log("Starting call...");
@@ -101,8 +75,8 @@ const DoctorDetailsPage = (props) => {
                       <div className="flex items-center gap-4 mb-4">
                         <div className="flex items-center gap-1">
                           <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                          <span className="font-semibold">4.5</span>
-                          <span className="text-gray-600">(120 reviews)</span>
+                          <span className="font-semibold">{rating}</span>
+                          {/* <span className="text-gray-600">(120 reviews)</span> */}
                         </div>
                         <div className="flex items-center gap-1">
                           <Award className="w-5 h-5 text-green-600" />
@@ -110,16 +84,16 @@ const DoctorDetailsPage = (props) => {
                             {doctor.experience}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1">
+                        {/* <div className="flex items-center gap-1">
                           <Users className="w-5 h-5 text-purple-600" />
                           <span className="text-gray-700">200 patients</span>
-                        </div>
+                        </div> */}
                       </div>
 
-                      <div className="flex items-center gap-2 mb-2">
+                      {/* <div className="flex items-center gap-2 mb-2">
                         <MapPin className="w-4 h-4 text-gray-500" />
                         <span className="text-gray-700">Kochi, Kerala</span>
-                      </div>
+                      </div> */}
 
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">

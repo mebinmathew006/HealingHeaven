@@ -142,7 +142,7 @@ class CompliantSchema(BaseModel):
     type: str
     subject: str
     description: str
-    status: str
+    status: Optional[str]
     
     model_config = {
         "from_attributes": True
@@ -159,3 +159,12 @@ class PaginatedNotificationResponse(BaseModel):
     next: Optional[str]
     previous: Optional[str]
     results: List[NotificationResponse] 
+    
+class CompliantPaginatedResponse(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: List[CompliantSchema] 
+    
+class UpdateComplaintSchema(BaseModel):
+    editingStatus:str

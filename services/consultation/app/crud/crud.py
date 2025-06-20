@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
-from schemas.consultation import CompliantSchema,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
+from schemas.consultation import CompliantSchema,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
 from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint
 
 
@@ -14,7 +14,7 @@ async def create_consultation(session: AsyncSession, data: CreateConsultationSch
             consultation = Consultation(
                 user_id=data.user_id,
                 psychologist_id=data.psychologist_id,
-                status="pending",
+                status="Pending",
                 duration="0",
             )
             session.add(consultation)
@@ -121,7 +121,6 @@ async def update_analysis_consultation(session: AsyncSession, data: UpdateConsul
     consultation.status='completed'
     await session.commit()
     
-
 async def get_all_consultation(session: AsyncSession):
     result = await session.execute(
         select(Consultation)
@@ -166,15 +165,38 @@ async def get_notifications_crud(session: AsyncSession,  skip: int, limit: int):
     )
     return result.scalars().all()
 
+async def get_compliants_crud(session: AsyncSession,  skip: int, limit: int):
+    result = await session.execute(
+        select(Complaint)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
 async def count_consultations(session: AsyncSession, user_id: int):
     result = await session.execute(
         select(func.count()).select_from(Consultation).where(Consultation.user_id == user_id)
     )
     return result.scalar()
 
+async def get_psychologist_rating_crud(session: AsyncSession, psychologist_id: int):
+    result = await session.execute(
+        select(func.avg(Feedback.rating))
+        .join(Consultation, Feedback.consultation_id == Consultation.id)
+        .where(Consultation.psychologist_id == psychologist_id)
+    )
+    return result.scalar()  # Returns None if no ratings found
+
+
 async def count_notifications(session: AsyncSession):
     result = await session.execute(
         select(func.count()).select_from(Notification)
+    )
+    return result.scalar()
+
+async def count_compliants(session: AsyncSession):
+    result = await session.execute(
+        select(func.count()).select_from(Complaint)
     )
     return result.scalar()
 
@@ -209,4 +231,8 @@ async def adding_chat_messages(session: AsyncSession,message:str,consultation_id
     session.add(result)
     await session.commit()
     
-    return 
+async def update_complaints_curd(session: AsyncSession, data :UpdateComplaintSchema,complaint_id:int):
+    result = await session.execute(select(Complaint).where(Complaint.id == complaint_id))
+    complaint = result.scalar_one_or_none()
+    complaint.status=data.editingStatus
+    await session.commit()

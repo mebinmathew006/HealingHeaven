@@ -1,26 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status,Form, File,UploadFile,BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.concurrency import run_in_threadpool
 from typing import List
-from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse
 from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
-from fastapi.responses import JSONResponse
+from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema
 from fastapi.logger import logger
 from datetime import datetime 
-from starlette.websockets import WebSocketState  # ✅ correct
+# from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
+from crud.crud import get_psychologist_rating_crud
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
 from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
-from crud.crud import create_feedback,count_notifications,get_notifications_crud
+from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
 from infra.external.user_service import get_user_details,get_doctor_details
 from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, Optional
-import uuid
+from typing import Dict
 import asyncio
 import logging
 import requests
@@ -83,7 +81,7 @@ async def set_analysis_from_doctor(data: UpdateConsultationSchema, session: Asyn
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
-
+    
 @router.get("/get_all_notifications", response_model=List[NotificationResponse])
 async def get_all_notifications_route(
     session: AsyncSession = Depends(get_session),
@@ -188,9 +186,7 @@ async def get_complaints_route(user_id:int,session : AsyncSession = Depends(get_
         return complaints
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
+    
 @router.get("/get_consultation_for_user/{user_id}", response_model=PaginatedConsultationResponse)
 async def get_consultation_for_user(
     user_id: int,
@@ -252,8 +248,45 @@ async def get_notifications_route(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.get("/get_compliants", response_model=CompliantPaginatedResponse)
+async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query(10, le=100),session: AsyncSession = Depends(get_session),
+):
+    try:
+        total = await count_compliants(session)
+        offset = (page - 1) * limit
+        compliants = await get_compliants_crud(session, skip=offset, limit=limit)
+        next_url = f"/get_compliants?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/get_compliants?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": compliants
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     
+@router.patch("/update_complaints/{complaint_id}")
+async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema, session: AsyncSession = Depends(get_session)):
+    try:
+        return await update_complaints_curd(session, data,complaint_id)
+    except Exception as e:
+        logger.info(f"Error creating user: {e}")
+        raise HTTPException(status_code=400, detail="Failed to update user")
+
+
+@router.get('/get_psycholgist_rating/{psychologist_id}')
+async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        avg_rating = await get_psychologist_rating_crud(session, psychologist_id)
+        return round(avg_rating, 2) if avg_rating is not None else 0.0
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

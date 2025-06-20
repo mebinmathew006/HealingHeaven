@@ -1,5 +1,5 @@
 import React from "react";
-import { User,Home, Hospital, Bell, LogOut, Video } from "lucide-react";
+import { User,Home, Hospital, Bell, LogOut, Video, HelpCircle } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { destroyDetails } from "../store/UserDetailsSlice";
@@ -19,6 +19,7 @@ const AdminSidebar = ({ activeSection, onSectionChange }) => {
     { id: "consultation", label: "Consultation", icon: Video, path: "/admin_consultation_page" },
     { id: "psychologists",label: "Psychologists",icon: Hospital,path: "/admin_psychologists_page"},
     { id: "notifications",label: "Notification",icon: Bell,path: "/admin_notification_page"},
+    { id: "admin_complaints",label: "Complaints",icon: HelpCircle,path: "/admin_complaints"},
   ];
 
   const handleNavigation = (item) => {
