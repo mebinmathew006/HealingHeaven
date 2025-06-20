@@ -38,6 +38,7 @@ import UserFeedbackPage from "../pages/User/UserFeedbackPage";
 import AdminNotification from "../pages/Admin/AdminNotification";
 import UserViewConsultation from "../pages/User/UserViewConsultation";
 import UserComplaintView from "../pages/User/UserComplaintView";
+import UserViewNotification from "../pages/User/UserViewNotification";
 
 const AppRoutes = () => {
   return (
@@ -70,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/user_consultations" element={<UserProtectedRoute><UserViewConsultation/></UserProtectedRoute>} />
         <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
         <Route path="/user_complaint" element={<UserProtectedRoute><UserComplaintView/></UserProtectedRoute>} />
+        <Route path="/user_notifications" element={<UserProtectedRoute><UserViewNotification/></UserProtectedRoute>} />
       </Route>
 
 

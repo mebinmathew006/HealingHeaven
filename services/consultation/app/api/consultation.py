@@ -7,7 +7,7 @@ from dependencies.database import get_session
 import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse
 from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
-from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
+from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import datetime 
@@ -15,7 +15,7 @@ from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
 from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
-from crud.crud import create_feedback
+from crud.crud import create_feedback,count_notifications,get_notifications_crud
 from infra.external.user_service import get_user_details,get_doctor_details
 from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -28,6 +28,7 @@ from requests.auth import HTTPBasicAuth
 import os
 from dotenv import load_dotenv
 load_dotenv()
+from fastapi import Query
 
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', default=None)
@@ -189,7 +190,6 @@ async def get_complaints_route(user_id:int,session : AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-from fastapi import Query
 
 @router.get("/get_consultation_for_user/{user_id}", response_model=PaginatedConsultationResponse)
 async def get_consultation_for_user(
@@ -223,6 +223,31 @@ async def get_consultation_for_user(
             "next": next_url,
             "previous": prev_url,
             "results": enriched
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+    
+@router.get("/get_notifications/", response_model=PaginatedNotificationResponse)
+async def get_notifications_route(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        total = await count_notifications(session)
+        offset = (page - 1) * limit
+        notifications = await get_notifications_crud(session, skip=offset, limit=limit)
+        next_url = f"/get_notifications?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/get_notifications?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": notifications
         }
 
     except Exception as e:

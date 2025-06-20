@@ -158,9 +158,23 @@ async def consultation_for_user(session: AsyncSession, user_id: int, skip: int, 
     )
     return result.scalars().all()
 
+async def get_notifications_crud(session: AsyncSession,  skip: int, limit: int):
+    result = await session.execute(
+        select(Notification)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
 async def count_consultations(session: AsyncSession, user_id: int):
     result = await session.execute(
         select(func.count()).select_from(Consultation).where(Consultation.user_id == user_id)
+    )
+    return result.scalar()
+
+async def count_notifications(session: AsyncSession):
+    result = await session.execute(
+        select(func.count()).select_from(Notification)
     )
     return result.scalar()
 

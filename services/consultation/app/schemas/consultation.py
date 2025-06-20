@@ -153,3 +153,9 @@ class PaginatedConsultationResponse(BaseModel):
     next: Optional[str]
     previous: Optional[str]
     results: List[ConsultationResponseUser]
+    
+class PaginatedNotificationResponse(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: List[NotificationResponse] 

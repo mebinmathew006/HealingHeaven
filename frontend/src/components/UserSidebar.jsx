@@ -28,7 +28,7 @@ const UserSidebar = ({ activeSection }) => {
   const menuItems = [
     { id: 'user_profile', label: 'Profile', icon: User },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'user_notifications', label: 'Notifications', icon: Bell },
     { id: 'user_chat', label: 'Chat', icon: ChartArea },
     { id: 'user_consultations', label: 'Consultations', icon: Video },
     { id: 'user_complaint', label: 'Complaint', icon: HelpCircle },
