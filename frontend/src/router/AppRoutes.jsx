@@ -36,6 +36,8 @@ import UserChat from "../pages/User/UserChat";
 import DoctorFeedbackPage from "../pages/Doctor/DoctorFeedbackPage";
 import UserFeedbackPage from "../pages/User/UserFeedbackPage";
 import AdminNotification from "../pages/Admin/AdminNotification";
+import UserViewConsultation from "../pages/User/UserViewConsultation";
+import UserComplaintView from "../pages/User/UserComplaintView";
 
 const AppRoutes = () => {
   return (
@@ -65,7 +67,9 @@ const AppRoutes = () => {
         <Route path="/wallet" element={<UserProtectedRoute><WalletPage/></UserProtectedRoute>} />
         <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
         <Route path="/user_chat" element={<UserProtectedRoute><UserChat/></UserProtectedRoute>} />
+        <Route path="/user_consultations" element={<UserProtectedRoute><UserViewConsultation/></UserProtectedRoute>} />
         <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
+        <Route path="/user_complaint" element={<UserProtectedRoute><UserComplaintView/></UserProtectedRoute>} />
       </Route>
 
 

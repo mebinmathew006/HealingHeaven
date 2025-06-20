@@ -13,6 +13,7 @@ export default function DoctorFeedbackPage() {
   const [errors, setErrors] = useState({});
   const location = useLocation();
   const consultationId = location?.state?.consultationId;
+  const callDuration = location?.state?.callDuration;
   const userId = useSelector((state) => state.userDetails.id);
   const navigate = useNavigate();
   const handleInputChange = (e) => {
@@ -37,7 +38,7 @@ export default function DoctorFeedbackPage() {
 
         const response = await axiosInstance.put(
           "/consultations/set_analysis_from_doctor",
-          { ...formData, consultation_id: consultationId }
+          { ...formData, consultation_id: consultationId,duration:callDuration }
         );
         console.log("Feedback submitted:", response.data);
         setSubmitted(true);

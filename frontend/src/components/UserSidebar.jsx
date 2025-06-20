@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Settings, Bell, Shield, CreditCard, HelpCircle, LogOut, Wallet, Menu, X, ChartArea } from "lucide-react";
+import { User, Settings, Bell, Shield, CreditCard, HelpCircle, LogOut, Wallet, Menu, X, ChartArea, Video } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
@@ -30,14 +30,14 @@ const UserSidebar = ({ activeSection }) => {
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'user_chat', label: 'Chat', icon: ChartArea },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-    { id: 'help', label: 'Help & Support', icon: HelpCircle },
+    { id: 'user_consultations', label: 'Consultations', icon: Video },
+    { id: 'user_complaint', label: 'Complaint', icon: HelpCircle },
   ];
 
   return (
     <>
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-18 left- z-50">
+      <div className="lg:hidden fixed top-18 left- z-50 ">
         <button
           onClick={toggleMobileMenu}
           className="p-2 bg-white rounded-lg shadow-lg border border-gray-200"

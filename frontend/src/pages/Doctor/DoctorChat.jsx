@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Send,
   MoreVertical,
@@ -9,9 +15,11 @@ import {
   X,
   MessageCircle,
   User,
+  LogOut,
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 export default function DoctorChat() {
   const [activeChat, setActiveChat] = useState(null);
@@ -23,12 +31,14 @@ export default function DoctorChat() {
   const doctorId = useSelector((state) => state.userDetails.id);
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [isOnline, setIsOnline] = useState(false);
   const [activeUser, setActiveUser] = useState(null);
   const [activeConsultationId, setActiveConsultationId] = useState(null);
   const wsRef = useRef(null);
   const [connectionStatus, setConnectionStatus] = useState("select patient...");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const navigate = useNavigate();
 
   // Memoize scroll function to prevent unnecessary re-creations
   const scrollToBottom = useCallback(() => {
@@ -38,7 +48,7 @@ export default function DoctorChat() {
   // Memoize fetch users function
   const fetchUsers = useCallback(async () => {
     if (!doctorId) return;
-    
+
     try {
       const response = await axiosInstance.get(
         `/consultations/get_consultation_mapping_for_chat/${doctorId}`
@@ -56,36 +66,55 @@ export default function DoctorChat() {
   }, [fetchUsers]);
 
   // Optimized WebSocket message handler with useCallback
-  const handleWebSocketMessage = useCallback((event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log("[RECEIVED MESSAGE]", data);
+  const handleWebSocketMessage = useCallback(
+    (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("[RECEIVED MESSAGE]", data);
 
-      if (data.message && data.consultation_id === activeConsultationId) {
-        const receivedMessage = {
-          id: data.id || Date.now(),
-          message: data.message,
-          created_at: data.created_at || new Date().toISOString(),
-          sender: data.sender_type,
-        };
+         if (data.type === "status") {
+          const { status, user_id } = data;
 
-        // Use functional update to prevent stale closures
-        setMessages((prev) => {
-          // Check for duplicate messages
-          const isDuplicate = prev.some(msg => 
-            msg.id === receivedMessage.id || 
-            (msg.message === receivedMessage.message && 
-             Math.abs(new Date(msg.created_at) - new Date(receivedMessage.created_at)) < 1000)
-          );
-          
-          if (isDuplicate) return prev;
-          return [...prev, receivedMessage];
-        });
+          if (user_id !== doctorId) {
+            if (status === "online") {
+              setIsOnline(true);
+            } else if (status === "offline") {
+              setIsOnline(false);
+            }
+          }
+        }
+
+        if (data.message && data.consultation_id === activeConsultationId) {
+          const receivedMessage = {
+            id: data.id || Date.now(),
+            message: data.message,
+            created_at: data.created_at || new Date().toISOString(),
+            sender: data.sender_type,
+          };
+
+          // Use functional update to prevent stale closures
+          setMessages((prev) => {
+            // Check for duplicate messages
+            const isDuplicate = prev.some(
+              (msg) =>
+                msg.id === receivedMessage.id ||
+                (msg.message === receivedMessage.message &&
+                  Math.abs(
+                    new Date(msg.created_at) -
+                      new Date(receivedMessage.created_at)
+                  ) < 1000)
+            );
+
+            if (isDuplicate) return prev;
+            return [...prev, receivedMessage];
+          });
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
       }
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", error);
-    }
-  }, [activeConsultationId]);
+    },
+    [activeConsultationId]
+  );
 
   // WebSocket setup with proper cleanup
   useEffect(() => {
@@ -117,8 +146,13 @@ export default function DoctorChat() {
 
   // Optimized send message handler
   const handleSendMessage = useCallback(() => {
-    if (!newMessage.trim() || !wsRef.current || !activeConsultationId || !isConnected) return;
-
+    if (
+      !newMessage.trim() ||
+      !wsRef.current ||
+      !activeConsultationId ||
+      !isConnected
+    )
+      return;
     const messageToSend = newMessage.trim();
     const messageData = {
       message: messageToSend,
@@ -154,7 +188,9 @@ export default function DoctorChat() {
     setConnectionStatus("Connecting...");
 
     try {
-      const ws = new WebSocket(`ws://localhost/consultations/ws/chat/${consultationId}`);
+      const ws = new WebSocket(
+        `ws://localhost/consultations/ws/chat/${consultationId}`
+      );
       wsRef.current = ws;
 
       await new Promise((resolve, reject) => {
@@ -167,6 +203,13 @@ export default function DoctorChat() {
           console.log("[Doctor] WebSocket connected to room:", consultationId);
           setIsConnected(true);
           setConnectionStatus("Connected");
+          const initPayload = {
+            type: "join",
+            sender_id: doctorId,
+            sender_type: "doctor",
+            consultation_id: consultationId,
+          };
+          ws.send(JSON.stringify(initPayload));
           resolve();
         };
 
@@ -184,7 +227,6 @@ export default function DoctorChat() {
         setConnectionStatus("Disconnected");
         setIsConnected(false);
       };
-
     } catch (error) {
       console.error("Failed to initialize chat:", error);
       setConnectionStatus("Connection failed");
@@ -193,45 +235,51 @@ export default function DoctorChat() {
   }, []);
 
   // Optimized key press handler
-  const handleKeyPress = useCallback((e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  }, [handleSendMessage]);
+  const handleKeyPress = useCallback(
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+    },
+    [handleSendMessage]
+  );
 
   // Optimized user selection handler
-  const handleUserSelect = useCallback(async (userId, consultationId) => {
-    if (activeConsultationId === consultationId) return; // Already selected
+  const handleUserSelect = useCallback(
+    async (userId, consultationId) => {
+      if (activeConsultationId === consultationId) return; // Already selected
 
-    try {
-      setIsLoadingMessages(true);
-      setMessages([]);
-      
-      await initializeChat(consultationId);
-      
-      const response = await axiosInstance.get(
-        `/consultations/get_chat_messages/${consultationId}`
-      );
-      
-      setMessages(response.data || []);
-      console.log("Chat messages:", response.data);
+      try {
+        setIsLoadingMessages(true);
+        setMessages([]);
 
-      setActiveChat(userId);
-      setActiveConsultationId(consultationId);
+        await initializeChat(consultationId);
 
-      // Find and set active user
-      const user = users.find((u) => u.user_id === userId);
-      setActiveUser(user);
+        const response = await axiosInstance.get(
+          `/consultations/get_chat_messages/${consultationId}`
+        );
 
-      setSidebarOpen(false);
-    } catch (error) {
-      console.error("Error fetching chat messages:", error);
-      setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [activeConsultationId, users, initializeChat]);
+        setMessages(response.data || []);
+        console.log("Chat messages:", response.data);
+
+        setActiveChat(userId);
+        setActiveConsultationId(consultationId);
+
+        // Find and set active user
+        const user = users.find((u) => u.user_id === userId);
+        setActiveUser(user);
+
+        setSidebarOpen(false);
+      } catch (error) {
+        console.error("Error fetching chat messages:", error);
+        setMessages([]);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [activeConsultationId, users, initializeChat]
+  );
 
   // Memoized time formatting functions
   const formatTime = useCallback((dateString) => {
@@ -260,75 +308,97 @@ export default function DoctorChat() {
   }, []);
 
   // Memoized message components to prevent unnecessary re-renders
-  const MessageBubble = React.memo(({ message, isDoctor, senderName, activeUser, formatMessageTime }) => (
-    <div className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}>
-      <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-        isDoctor ? "flex-row-reverse space-x-reverse" : ""
-      }`}>
-        {!isDoctor && (
-          <img
-            src={activeUser?.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
-            alt="Avatar"
-            className="w-8 h-8 rounded-full"
-          />
-        )}
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-500 mb-1">{senderName}</span>
-          <div className={`px-4 py-2 rounded-2xl ${
-            isDoctor
-              ? "bg-blue-500 text-white rounded-br-sm"
-              : "bg-white text-gray-900 rounded-bl-sm shadow-sm border border-gray-200"
-          }`}>
-            <p className="text-sm">{message.message}</p>
+  const MessageBubble = React.memo(
+    ({ message, isDoctor, senderName, activeUser, formatMessageTime }) => (
+      <div className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}>
+        <div
+          className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
+            isDoctor ? "flex-row-reverse space-x-reverse" : ""
+          }`}
+        >
+          {!isDoctor && (
+            <img
+              src={
+                activeUser?.user?.user_profile?.profile_image ||
+                "/powerpoint-template-icons-b.jpg"
+              }
+              alt="Avatar"
+              className="w-8 h-8 rounded-full"
+            />
+          )}
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 mb-1">{senderName}</span>
+            <div
+              className={`px-4 py-2 rounded-2xl ${
+                isDoctor
+                  ? "bg-blue-500 text-white rounded-br-sm"
+                  : "bg-white text-gray-900 rounded-bl-sm shadow-sm border border-gray-200"
+              }`}
+            >
+              <p className="text-sm">{message.message}</p>
+            </div>
+            <span
+              className={`text-xs text-gray-500 mt-1 ${
+                isDoctor ? "text-right" : "text-left"
+              }`}
+            >
+              {formatMessageTime(message.created_at)}
+            </span>
           </div>
-          <span className={`text-xs text-gray-500 mt-1 ${
-            isDoctor ? "text-right" : "text-left"
-          }`}>
-            {formatMessageTime(message.created_at)}
-          </span>
         </div>
       </div>
-    </div>
-  ));
+    )
+  );
 
   // Memoized user list item
-  const UserListItem = React.memo(({ user, activeChat, handleUserSelect, formatTime }) => (
-    <div
-      key={user.id}
-      onClick={() => handleUserSelect(user.user_id, user.id)}
-      className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
-        activeChat === user.user_id ? "bg-blue-50 border-r-2 border-r-blue-500" : ""
-      }`}
-    >
-      <div className="relative">
-        <img
-          src={user.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
-          alt=""
-          className="w-12 h-12 rounded-full"
-        />
-        {user.online && (
-          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-        )}
-      </div>
-      <div className="ml-3 flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-900 truncate">{user.user?.name}</p>
-          <p className="text-xs text-gray-500">{formatTime(user.last_message_time)}</p>
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600 truncate">{user.user?.email}</p>
-          {user.unread > 0 && (
-            <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-500 rounded-full">
-              {user.unread}
-            </span>
+  const UserListItem = React.memo(
+    ({ user, activeChat, handleUserSelect, formatTime }) => (
+      <div
+        key={user.id}
+        onClick={() => handleUserSelect(user.user_id, user.id)}
+        className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
+          activeChat === user.user_id
+            ? "bg-blue-50 border-r-2 border-r-blue-500"
+            : ""
+        }`}
+      >
+        <div className="relative">
+          <img
+            src={
+              user.user?.user_profile?.profile_image ||
+              "/powerpoint-template-icons-b.jpg"
+            }
+            alt=""
+            className="w-12 h-12 rounded-full"
+          />
+          {user.online && (
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
           )}
         </div>
+        <div className="ml-3 flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user.user?.name}
+            </p>
+            <p className="text-xs text-gray-500">
+              {formatTime(user.last_message_time)}
+            </p>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600 truncate">{user.user?.email}</p>
+            {user.unread > 0 && (
+              <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-500 rounded-full">
+                {user.unread}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  ));
+    )
+  );
 
   // Memoized rendered messages
-  
+
   const renderedMessages = useMemo(() => {
     return messages.map((message) => {
       const isDoctor = message.sender ? message.sender === "doctor" : false;
@@ -362,6 +432,16 @@ export default function DoctorChat() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
               <button
+                className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                onClick={() => {
+                  navigate(-1);
+                }}
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Exit</span>
+              </button>
+
+              <button
                 onClick={() => setSidebarOpen(false)}
                 className="lg:hidden p-2 hover:bg-gray-100 rounded-full"
               >
@@ -369,7 +449,11 @@ export default function DoctorChat() {
               </button>
             </div>
             <div className="mt-2">
-              <span className={`text-sm ${isConnected ? "text-green-500" : "text-red-500"}`}>
+              <span
+                className={`text-sm ${
+                  isConnected ? "text-green-500" : "text-red-500"
+                }`}
+              >
                 {connectionStatus}
               </span>
             </div>
@@ -427,7 +511,10 @@ export default function DoctorChat() {
               <>
                 <div className="relative">
                   <img
-                    src={activeUser.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+                    src={
+                      activeUser.user?.user_profile?.profile_image ||
+                      "/powerpoint-template-icons-b.jpg"
+                    }
                     alt={activeUser.user?.name}
                     className="w-10 h-10 rounded-full"
                   />
@@ -436,9 +523,15 @@ export default function DoctorChat() {
                   )}
                 </div>
                 <div>
-                  <h1 className="font-semibold text-gray-900">{activeUser.user?.name}</h1>
-                  <p className={`text-sm ${activeUser.online ? "text-green-500" : "text-gray-500"}`}>
-                    {activeUser.online ? "Online" : "Offline"}
+                  <h1 className="font-semibold text-gray-900">
+                    {activeUser.user?.name}
+                  </h1>
+                  <p
+                    className={`text-sm ${
+                      activeUser.online ? "text-green-500" : "text-gray-500"
+                    }`}
+                  >
+                    {isOnline ? "Online" : "Offline"}
                   </p>
                 </div>
               </>
@@ -463,15 +556,24 @@ export default function DoctorChat() {
                 <div className="flex justify-start">
                   <div className="flex items-end space-x-2 max-w-xs">
                     <img
-                      src={activeUser?.user?.user_profile?.profile_image || "/powerpoint-template-icons-b.jpg"}
+                      src={
+                        activeUser?.user?.user_profile?.profile_image ||
+                        "/powerpoint-template-icons-b.jpg"
+                      }
                       alt="Avatar"
                       className="w-8 h-8 rounded-full"
                     />
                     <div className="bg-white px-4 py-2 rounded-2xl rounded-bl-sm shadow-sm border border-gray-200">
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                        <div
+                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.1s" }}
+                        ></div>
+                        <div
+                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.2s" }}
+                        ></div>
                       </div>
                     </div>
                   </div>
@@ -510,8 +612,12 @@ export default function DoctorChat() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-              <p className="text-gray-500">Choose a contact to start messaging</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Select a conversation
+              </h3>
+              <p className="text-gray-500">
+                Choose a contact to start messaging
+              </p>
             </div>
           </div>
         )}

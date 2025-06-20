@@ -5,12 +5,17 @@ from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import NotificationResponse,CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
+from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse
+from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
+from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import datetime 
-
-from crud.crud import get_all_notifications,create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat,adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation,create_feedback
+from starlette.websockets import WebSocketState  # ✅ correct
+from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
+from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
+from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
+from crud.crud import create_feedback
 from infra.external.user_service import get_user_details,get_doctor_details
 from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -37,10 +42,18 @@ logger = logging.getLogger("uvicorn.error")
 @router.post("/create_consultation")
 async def create_consultation_route(data: CreateConsultationSchema, session: AsyncSession = Depends(get_session)):
     try:
-        payment = await fetch_money_from_wallet(data.dict())
-        logger.info(payment,'ddddddddddddddddddddddddd')
+        await fetch_money_from_wallet(data.dict())
         
         return await create_consultation(session, data)
+    except Exception as e:
+        logger.info(f"Error creating user: {e}")
+        raise HTTPException(status_code=400, detail="Failed to update user")
+    
+@router.post("/register_complaint")
+async def register_complaint_route(data: CompliantSchema, session: AsyncSession = Depends(get_session)):
+    try:
+        complaint = await register_complaint_crud(session, data)
+        return complaint
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
@@ -69,8 +82,6 @@ async def set_analysis_from_doctor(data: UpdateConsultationSchema, session: Asyn
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
-    
-    
 
 @router.get("/get_all_notifications", response_model=List[NotificationResponse])
 async def get_all_notifications_route(
@@ -155,7 +166,7 @@ async def get_consultation(doctorId:int,
 
 @router.get("/turn-credentials")
 async def get_turn_credentials():
-    url = await f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Tokens.json"
+    url = await f"https://api.twilio.com/2025-06-20/Accounts/{TWILIO_ACCOUNT_SID}/Tokens.json"
     response = requests.post(url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
     return {"iceServers": response.json()["ice_servers"]}
 
@@ -168,10 +179,56 @@ async def get_chat_messages(consultation_id:int,session : AsyncSession = Depends
         return messages
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get('/get_complaints/{user_id}',response_model=List[CompliantSchema])
+async def get_complaints_route(user_id:int,session : AsyncSession = Depends(get_session)):
+    try:
+        complaints = await get_complaints_crud(session,user_id)
+        return complaints
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+from fastapi import Query
 
+@router.get("/get_consultation_for_user/{user_id}", response_model=PaginatedConsultationResponse)
+async def get_consultation_for_user(
+    user_id: int,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        total = await count_consultations(session, user_id)
+        offset = (page - 1) * limit
+        consultations = await consultation_for_user(session, user_id, skip=offset, limit=limit)
 
+        enriched = []
+        for consult in consultations:
+            user_data = await get_doctor_details(consult.psychologist_id)
+            enriched.append(ConsultationResponseUser(
+                id=consult.id,
+                analysis=consult.analysis,
+                created_at=consult.created_at,
+                status=consult.status,
+                duration=consult.duration,
+                user=user_data
+            ))
+
+        next_url = f"/get_consultation_for_user/{user_id}?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/get_consultation_for_user/{user_id}?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": enriched
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    
 
 
 
@@ -300,20 +357,92 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 # In-memory storage (consider Redis for production)
 
 
-active_chat_rooms: Dict[int, List[WebSocket]] = {}  # consultation_id -> list of WebSockets
+# Global variables for tracking active rooms and locks
+active_chat_rooms: Dict[int, List[Dict]] = {}  # consultation_id -> list of clients
 room_lock = asyncio.Lock()
 
+
+
 @router.websocket("/ws/chat/{consultation_id}")
-async def chat_websocket(websocket: WebSocket, consultation_id: int, session: AsyncSession = Depends(get_session)):
+async def chat_websocket(
+    websocket: WebSocket,
+    consultation_id: int,
+    session: AsyncSession = Depends(get_session)
+):
     await websocket.accept()
 
-    async with room_lock:
-        active_chat_rooms.setdefault(consultation_id, []).append(websocket)
-        logger.info(f"[JOINED] WebSocket joined room {consultation_id}")
+    # Initial user identification
+    try:
+        init_data = await websocket.receive_json()
+    except Exception as e:
+        logger.warning(f"[INIT ERROR] Failed to receive init message: {e}")
+        await websocket.close(code=4001)
+        return
 
+    user_id = init_data.get("sender_id")
+    user_type = init_data.get("sender_type")
+
+    if not all([user_id, user_type]):
+        await websocket.close(code=4000)
+        return
+
+    # ping_task = asyncio.create_task(send_ping_periodically(websocket, user_id, consultation_id))
+
+    client = {
+        "websocket": websocket,
+        "user_id": user_id,
+        "user_type": user_type,
+    }
+
+    # Register user in room
+    async with room_lock:
+        active_chat_rooms.setdefault(consultation_id, [])
+
+        # Remove old duplicates
+        active_chat_rooms[consultation_id] = [
+            c for c in active_chat_rooms[consultation_id] if c["user_id"] != user_id
+        ]
+
+        # Add new client
+        active_chat_rooms[consultation_id].append(client)
+        logger.info(f"[JOINED] user_id {user_id} joined consultation {consultation_id}")
+
+        # Notify others that this user is online
+        for c in active_chat_rooms[consultation_id]:
+            if c["user_id"] != user_id:
+                try:
+                    await c["websocket"].send_json({
+                        "type": "status",
+                        "status": "online",
+                        "user_id": user_id,
+                        "user_type": user_type,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except Exception as e:
+                    logger.warning(f"[STATUS SEND ERROR] {e}")
+
+        # Notify this user about others who are already online
+        for c in active_chat_rooms[consultation_id]:
+            if c["user_id"] != user_id:
+                try:
+                    await websocket.send_json({
+                        "type": "status",
+                        "status": "online",
+                        "user_id": c["user_id"],
+                        "user_type": c["user_type"],
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except Exception as e:
+                    logger.warning(f"[SEND CURRENT USERS ERROR] {e}")
+
+    # Message loop
     try:
         while True:
             data = await websocket.receive_json()
+
+            if data.get("type") == "pong":
+                continue  # pong received, ignore for now
+
             logger.info(f"[RECEIVED] Room {consultation_id}: {data}")
 
             message = data.get("message")
@@ -327,11 +456,11 @@ async def chat_websocket(websocket: WebSocket, consultation_id: int, session: As
             # Save to DB
             await adding_chat_messages(session, message, consultation_id, sender_type)
 
-            # Broadcast to all participants in the room
+            # Broadcast to everyone
             async with room_lock:
                 for client in active_chat_rooms[consultation_id]:
                     try:
-                        await client.send_json({
+                        await client["websocket"].send_json({
                             "type": "message",
                             "consultation_id": consultation_id,
                             "sender_id": sender_id,
@@ -341,9 +470,42 @@ async def chat_websocket(websocket: WebSocket, consultation_id: int, session: As
                         })
                     except Exception as e:
                         logger.warning(f"[SEND ERROR] {e}")
+
     except WebSocketDisconnect:
+        # ping_task.cancel()
         async with room_lock:
-            active_chat_rooms[consultation_id].remove(websocket)
-            logger.info(f"[DISCONNECTED] from room {consultation_id}")
+            # Remove disconnected client
+            active_chat_rooms[consultation_id] = [
+                c for c in active_chat_rooms[consultation_id] if c["user_id"] != user_id
+            ]
+            logger.info(f"[DISCONNECTED] user_id {user_id} from consultation {consultation_id}")
+
+            # Notify others that this user went offline
+            for c in active_chat_rooms[consultation_id]:
+                try:
+                    await c["websocket"].send_json({
+                        "type": "status",
+                        "status": "offline",
+                        "user_id": user_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+                except Exception as e:
+                    logger.warning(f"[STATUS SEND ERROR] {e}")
     except Exception as e:
-        logger.error(f"[ERROR] {e}")
+        logger.error(f"[UNEXPECTED ERROR] {e}")
+        # ping_task.cancel()
+        await websocket.close(code=1011)
+
+
+
+
+# PING_INTERVAL = 30  # seconds
+
+# async def send_ping_periodically(websocket: WebSocket, user_id: int, consultation_id: int):
+#     try:
+#         while websocket.client_state == WebSocketState.CONNECTED:
+#             await asyncio.sleep(PING_INTERVAL)
+#             await websocket.send_json({"type": "ping"})
+#             logger.debug(f"[PING] Sent ping to user {user_id} in room {consultation_id}")
+#     except Exception as e:
+#         logger.warning(f"[PING ERROR] Could not ping user {user_id} in room {consultation_id}: {e}")

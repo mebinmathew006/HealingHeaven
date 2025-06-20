@@ -511,7 +511,7 @@ function DoctorVideoCallPage() {
     // Navigate after slight delay to ensure cleanup is complete
     setTimeout(() => {
       navigate("/doctor_feedback_page", {
-        state: { consultationId: consultationId },
+        state: { consultationId: consultationId ,callDuration:callDuration},
       });
     }, 500); // 500ms is typically enough
   };

@@ -8,11 +8,11 @@ import {
   Minus,
 } from "lucide-react";
 
-import Sidebar from "../../components/DoctorSidebar";
 import { useSelector } from "react-redux";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import UserSidebar from "../../components/UserSidebar";
 
 const WalletPage = () => {
   const [loading, setLoading] = useState(false);
@@ -185,7 +185,7 @@ const WalletPage = () => {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div>
-        <Sidebar activeSection={activeSection} />
+        <UserSidebar activeSection={activeSection} />
       </div>
 
       {/* Main Content */}

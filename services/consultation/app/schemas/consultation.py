@@ -1,14 +1,14 @@
 # Pydantic schemas
 
 from pydantic import BaseModel, EmailStr, Field,validator
-from typing import Optional
+from typing import Optional,List
 from datetime import date, datetime
 
 
 class UpdateConsultationSchema(BaseModel):
     consultation_id: int
     message: str
-    
+    duration:str
     
 class CreateConsultationSchema(BaseModel):
     user_id: int
@@ -123,3 +123,33 @@ class MappingResponseUser(BaseModel):
     model_config = {
         "from_attributes": True
     }
+    
+class ConsultationResponseUser(BaseModel):
+    
+    id :int
+    analysis:Optional[str]
+    created_at :Optional[datetime]
+    status :Optional[str]
+    duration :Optional[str]
+    user: Optional[DoctorNameWithProfileImage]
+
+    model_config = {
+        "from_attributes": True
+    }
+class CompliantSchema(BaseModel):
+    id :int
+    consultation_id:int
+    type: str
+    subject: str
+    description: str
+    status: str
+    
+    model_config = {
+        "from_attributes": True
+    }
+    
+class PaginatedConsultationResponse(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: List[ConsultationResponseUser]
