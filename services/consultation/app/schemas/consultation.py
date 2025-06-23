@@ -1,6 +1,6 @@
 # Pydantic schemas
 
-from pydantic import BaseModel, EmailStr, Field,validator
+from pydantic import BaseModel, EmailStr , ConfigDict
 from typing import Optional,List
 from datetime import date, datetime
 
@@ -15,11 +15,30 @@ class CreateConsultationSchema(BaseModel):
     psychologist_id: int
     psychologist_fee: int
     
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email_address: EmailStr
+    mobile_number: str
+    role: str   
+    
+class UserProfileImage(BaseModel):
+    profile_image: Optional[str]
+    
+    model_config = ConfigDict(extra="ignore")
+class UserNameWithProfileImage(BaseModel):
+    name: str
+    user_profile: Optional[UserProfileImage] = None
+    model_config = ConfigDict(extra="ignore")
+    
 class CreateFeedbackSchema(BaseModel):
+    id :Optional[int]
+    created_at :Optional[datetime]
     consultation_id: int
     rating: int
     user_id: int
     message: str
+    user:Optional[UserNameWithProfileImage]
     
 class CreateNotificationSchema(BaseModel):
     title: str
@@ -74,19 +93,11 @@ class ChatResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
-class UserOut(BaseModel):
-    id: int
-    name: str
-    email_address: EmailStr
-    mobile_number: str
-    role: str
+
     
-class UserProfileImage(BaseModel):
-    profile_image: Optional[str]
+
     
-class UserNameWithProfileImage(BaseModel):
-    name: str
-    user_profile: Optional[UserProfileImage] = None
+
     
 class MappingResponse(BaseModel):
     id: int

@@ -20,7 +20,8 @@ const UserProfile = () => {
         `/users/get_user_details/${userId}`
       );
       setFormData(response.data);
-      setCurrentProfileImage(response.data.profile_image);
+      console.log(response.data)
+      // setCurrentProfileImage(response.data.profile_image);
     } catch (error) {
       console.log(error);
     }
@@ -49,7 +50,7 @@ const UserProfile = () => {
       );
 
       // Update profile image
-      setCurrentProfileImage(previewUrl);
+      // setCurrentProfileImage(previewUrl);
       toast.success("Profile image updated successfully!", {
         position: "bottom-center",
       });

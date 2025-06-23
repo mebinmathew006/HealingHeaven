@@ -29,7 +29,8 @@ class Feedback(Base):
     consultation_id = Column(Integer,ForeignKey('consultation.id', ondelete='CASCADE'),nullable=False)
     message = Column(Text,nullable=False)
     rating = Column(Integer,nullable=False) 
-
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    
     consultation = relationship('Consultation',back_populates='feedback',uselist=False)
 
 class Payments(Base):

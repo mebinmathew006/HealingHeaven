@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
 import DoctorSidebar from "../../components/DoctorSidebar";
 import Dashboard from "../Public/Dashboard";
-import AdminSidebar from "../../components/AdminSidebar";
 
 // Mock data for the chart
 const generateChartData = () => [
@@ -20,8 +19,8 @@ const generateChartData = () => [
   { month: "Dec", doctors: 4, patients: 5 },
 ];
 
-const AdminProfile = () => {
-  const [activeSection] = useState("admin_dashboard");
+const DoctorDashboard = () => {
+  const [activeSection] = useState("doctor_dashboard");
   const [earningsData, setEarningsData] = useState({
     totalEarnings: 140000,
     totalSessions: 70,
@@ -53,9 +52,7 @@ const AdminProfile = () => {
   if (loading) {
     return (
       <div className="flex h-screen bg-gray-100">
-        <div>
-          <AdminSidebar activeSection={activeSection} />
-        </div>
+        <DoctorSidebar activeSection={activeSection} />
         <div className="flex-1 bg-gray-50 overflow-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="animate-pulse">
@@ -75,7 +72,7 @@ const AdminProfile = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-        <DoctorSidebar activeSection={activeSection} />
+      <DoctorSidebar activeSection={activeSection} />
       <div>
         <Dashboard
           chartData={[
@@ -98,4 +95,4 @@ const AdminProfile = () => {
   );
 };
 
-export default AdminProfile;
+export default DoctorDashboard;

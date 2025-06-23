@@ -157,6 +157,15 @@ async def consultation_for_user(session: AsyncSession, user_id: int, skip: int, 
     )
     return result.scalars().all()
 
+async def consultation_for_doctor(session: AsyncSession, psychologist_id: int, skip: int, limit: int):
+    result = await session.execute(
+        select(Consultation)
+        .where(Consultation.psychologist_id == psychologist_id)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
 async def get_notifications_crud(session: AsyncSession,  skip: int, limit: int):
     result = await session.execute(
         select(Notification)
@@ -179,6 +188,12 @@ async def count_consultations(session: AsyncSession, user_id: int):
     )
     return result.scalar()
 
+async def count_consultations_by_doctor_crud(session: AsyncSession, psychologist_id: int):
+    result = await session.execute(
+        select(func.count()).select_from(Consultation).where(Consultation.psychologist_id == psychologist_id)
+    )
+    return result.scalar()
+
 async def get_psychologist_rating_crud(session: AsyncSession, psychologist_id: int):
     result = await session.execute(
         select(func.avg(Feedback.rating))
@@ -186,6 +201,15 @@ async def get_psychologist_rating_crud(session: AsyncSession, psychologist_id: i
         .where(Consultation.psychologist_id == psychologist_id)
     )
     return result.scalar()  # Returns None if no ratings found
+
+async def get_feedbacks_crud(session: AsyncSession, psychologist_id: int):
+    result = await session.execute(
+        select(Feedback)
+        .join(Consultation, Feedback.consultation_id == Consultation.id)
+        .where(Consultation.psychologist_id == psychologist_id)
+    )
+    return result.scalars().all()
+
 
 
 async def count_notifications(session: AsyncSession):

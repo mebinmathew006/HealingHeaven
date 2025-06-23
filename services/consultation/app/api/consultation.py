@@ -6,16 +6,16 @@ import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse
 from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
-from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema
+from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage
 from fastapi.logger import logger
 from datetime import datetime 
 # from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
-from crud.crud import get_psychologist_rating_crud
+from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
 from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
 from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
-from infra.external.user_service import get_user_details,get_doctor_details
+from infra.external.user_service import get_user_details,get_doctor_details,get_minimal_user_details
 from infra.external.payment_service import fetch_money_from_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict
@@ -27,6 +27,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from fastapi import Query
+from asyncio import gather
 
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', default=None)
@@ -199,20 +200,73 @@ async def get_consultation_for_user(
         offset = (page - 1) * limit
         consultations = await consultation_for_user(session, user_id, skip=offset, limit=limit)
 
-        enriched = []
-        for consult in consultations:
-            user_data = await get_doctor_details(consult.psychologist_id)
-            enriched.append(ConsultationResponseUser(
+        #  Parallel fetch user_data
+        user_details_tasks = [
+            get_doctor_details(consult.psychologist_id)
+            for consult in consultations
+        ]
+        user_details = await gather(*user_details_tasks)
+
+        #  Combine consultation with corresponding user data
+        enriched = [
+            ConsultationResponseUser(
                 id=consult.id,
                 analysis=consult.analysis,
                 created_at=consult.created_at,
                 status=consult.status,
                 duration=consult.duration,
-                user=user_data
-            ))
+                user=user_details[i]
+            )
+            for i, consult in enumerate(consultations)
+        ]
 
         next_url = f"/get_consultation_for_user/{user_id}?page={page + 1}&limit={limit}" if offset + limit < total else None
         prev_url = f"/get_consultation_for_user/{user_id}?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": enriched
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/doctor_get_consulations/{doctor_id}", response_model=PaginatedConsultationResponse)
+async def doctor_get_consulations_route(
+    doctor_id: int,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        total = await count_consultations_by_doctor_crud(session, doctor_id)
+        offset = (page - 1) * limit
+        consultations = await consultation_for_doctor(session, doctor_id, skip=offset, limit=limit)
+
+        #  Parallel fetch user_data
+        user_details_tasks = [
+            get_user_details(consult.user_id)
+            for consult in consultations
+        ]
+        user_details = await gather(*user_details_tasks)
+
+        #  Combine consultation with corresponding user data
+        enriched = [
+            ConsultationResponseUser(
+                id=consult.id,
+                analysis=consult.analysis,
+                created_at=consult.created_at,
+                status=consult.status,
+                duration=consult.duration,
+                user=user_details[i]
+            )
+            for i, consult in enumerate(consultations)
+        ]
+
+        next_url = f"/doctor_get_consulations/{doctor_id}?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/doctor_get_consulations/{doctor_id}?page={page - 1}&limit={limit}" if page > 1 else None
 
         return {
             "count": total,
@@ -284,12 +338,44 @@ async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema
 async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
     try:
         avg_rating = await get_psychologist_rating_crud(session, psychologist_id)
-        return round(avg_rating, 2) if avg_rating is not None else 0.0
+        return  avg_rating if avg_rating is not None else 0.0
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get('/get_feedbacks/{psychologist_id}', response_model=list[CreateFeedbackSchema])
+async def get_feedbacks_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        feedbacks = await get_feedbacks_crud(session, psychologist_id)
+        
+        # Get user details for all feedbacks
+        user_details = await gather(*(get_minimal_user_details(feedback.user_id) for feedback in feedbacks))
+        
+        enriched_feedbacks = []
+        for feedback, user_detail in zip(feedbacks, user_details):
+            # Ensure user_profile is properly structured
+            user_profile = None
+            if 'user_profile' in user_detail and user_detail['user_profile']:
+                user_profile = UserProfileImage(**user_detail['user_profile'])
+            
+            enriched_feedback = CreateFeedbackSchema(
+                id=feedback.id,
+                created_at=feedback.created_at,
+                consultation_id=feedback.consultation_id,
+                rating=feedback.rating,
+                user_id=feedback.user_id,
+                message=feedback.message,
+                user=UserNameWithProfileImage(
+                    name=user_detail['name'],
+                    user_profile=user_profile
+                )
+            )
+            enriched_feedbacks.append(enriched_feedback)
 
+        return enriched_feedbacks
+    except Exception as e:
+        logger.error(f"Error fetching feedbacks: {str(e)}", exc_info=True)  
+        raise HTTPException(status_code=500, detail="Failed to fetch feedbacks")
 
 
 # ***************************************VideocallSignaling***********************************************
@@ -408,14 +494,14 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         async with connection_lock:
             active_connections.pop(user_id, None)
             logger.info(f"[DISCONNECTED] User {user_id} removed. Remaining: {list(active_connections.keys())}")
+            
+    
+
+# # ***************************************Chat***********************************************
+# # In-memory storage (consider Redis for production)
 
 
-
-# ***************************************Chat***********************************************
-# In-memory storage (consider Redis for production)
-
-
-# Global variables for tracking active rooms and locks
+# # Global variables for tracking active rooms and locks
 active_chat_rooms: Dict[int, List[Dict]] = {}  # consultation_id -> list of clients
 room_lock = asyncio.Lock()
 
@@ -433,7 +519,7 @@ async def chat_websocket(
     try:
         init_data = await websocket.receive_json()
     except Exception as e:
-        logger.warning(f"[INIT ERROR] Failed to receive init message: {e}")
+        logger.warning(f"[INIT ERROR_CHAT] Failed to receive init message: {e}")
         await websocket.close(code=4001)
         return
 
@@ -463,7 +549,7 @@ async def chat_websocket(
 
         # Add new client
         active_chat_rooms[consultation_id].append(client)
-        logger.info(f"[JOINED] user_id {user_id} joined consultation {consultation_id}")
+        logger.info(f"[JOINED_CHAT] user_id {user_id} joined consultation {consultation_id}")
 
         # Notify others that this user is online
         for c in active_chat_rooms[consultation_id]:
@@ -477,7 +563,7 @@ async def chat_websocket(
                         "timestamp": datetime.utcnow().isoformat()
                     })
                 except Exception as e:
-                    logger.warning(f"[STATUS SEND ERROR] {e}")
+                    logger.warning(f"[STATUS SEND ERROR_CHAT] {e}")
 
         # Notify this user about others who are already online
         for c in active_chat_rooms[consultation_id]:
@@ -491,7 +577,7 @@ async def chat_websocket(
                         "timestamp": datetime.utcnow().isoformat()
                     })
                 except Exception as e:
-                    logger.warning(f"[SEND CURRENT USERS ERROR] {e}")
+                    logger.warning(f"[SEND CURRENT USERS ERROR_CHAT] {e}")
 
     # Message loop
     try:
@@ -508,7 +594,7 @@ async def chat_websocket(
             sender_type = data.get("sender_type")
 
             if not all([message, sender_id, sender_type]):
-                logger.warning("[VALIDATION ERROR] Missing message fields")
+                logger.warning("[VALIDATION ERROR_CHAT] Missing message fields")
                 continue
 
             # Save to DB
@@ -527,7 +613,7 @@ async def chat_websocket(
                             "created_at": datetime.utcnow().isoformat()
                         })
                     except Exception as e:
-                        logger.warning(f"[SEND ERROR] {e}")
+                        logger.warning(f"[SEND ERROR_CHAT] {e}")
 
     except WebSocketDisconnect:
         # ping_task.cancel()
@@ -536,7 +622,7 @@ async def chat_websocket(
             active_chat_rooms[consultation_id] = [
                 c for c in active_chat_rooms[consultation_id] if c["user_id"] != user_id
             ]
-            logger.info(f"[DISCONNECTED] user_id {user_id} from consultation {consultation_id}")
+            logger.info(f"[DISCONNECTED_CHAT] user_id {user_id} from consultation {consultation_id}")
 
             # Notify others that this user went offline
             for c in active_chat_rooms[consultation_id]:
@@ -544,26 +630,80 @@ async def chat_websocket(
                     await c["websocket"].send_json({
                         "type": "status",
                         "status": "offline",
-                        "user_id": user_id,
+                        "user_id": user_id, 
                         "timestamp": datetime.utcnow().isoformat()
                     })
                 except Exception as e:
-                    logger.warning(f"[STATUS SEND ERROR] {e}")
+                    logger.warning(f"[STATUS SEND ERROR_CHAT] {e}")
     except Exception as e:
-        logger.error(f"[UNEXPECTED ERROR] {e}")
+        logger.error(f"[UNEXPECTED ERROR_CHAT] {e}")
         # ping_task.cancel()
         await websocket.close(code=1011)
 
 
+# # ***************************************Notifications***********************************************
+
+# Global connection tracking
+active_connections: Dict[int, WebSocket] = {}  # user_id -> websocket
+connection_lock = asyncio.Lock()
+
+@router.websocket("/ws/notifications/{user_id}")
+async def unified_communication_websocket(
+    websocket: WebSocket,
+    user_id: int,
+    
+):
+    await websocket.accept()
+    logger.info(f"[CONNECTED] User {user_id}")
+
+    # Register connection
+    async with connection_lock:
+        active_connections[user_id] = websocket
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            message_type = data.get("type")
+            sender_type = data.get("sender_type")
+
+            if message_type == "notification":
+                await handle_notification(data, user_id)
+            elif message_type == "pong":
+                continue  # Keepalive response
+            else:
+                logger.warning(f"Unknown message type: {message_type}")
+
+    except WebSocketDisconnect:
+        logger.info(f"[DISCONNECTED] User {user_id}")
+    except Exception as e:
+        logger.error(f"[ERROR] {e}")
+    finally:
+        async with connection_lock:
+            if user_id in active_connections:
+                del active_connections[user_id]
 
 
-# PING_INTERVAL = 30  # seconds
 
-# async def send_ping_periodically(websocket: WebSocket, user_id: int, consultation_id: int):
-#     try:
-#         while websocket.client_state == WebSocketState.CONNECTED:
-#             await asyncio.sleep(PING_INTERVAL)
-#             await websocket.send_json({"type": "ping"})
-#             logger.debug(f"[PING] Sent ping to user {user_id} in room {consultation_id}")
-#     except Exception as e:
-#         logger.warning(f"[PING ERROR] Could not ping user {user_id} in room {consultation_id}: {e}")
+async def handle_notification(data: Dict, sender_id: int):
+    """Handle notifications"""
+    required_fields = ["receiver_id", "message", "notification_type"]
+    if not all(field in data for field in required_fields):
+        return
+
+    receiver_id = data["receiver_id"]
+    message = data["message"]
+    notification_type = data["notification_type"]
+
+    # Deliver to recipient if online
+    async with connection_lock:
+        if receiver_id in active_connections:
+            try:
+                await active_connections[receiver_id].send_json({
+                    "type": "notification",
+                    "sender_id": sender_id,
+                    "notification_type": notification_type,
+                    "message": message,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            except Exception as e:
+                logger.error(f"Failed to deliver notification to {receiver_id}: {e}")

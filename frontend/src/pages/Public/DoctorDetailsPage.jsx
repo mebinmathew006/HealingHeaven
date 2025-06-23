@@ -27,7 +27,6 @@ const DoctorDetailsPage = (props) => {
     const response = await axiosInstance.get(
       `users/get_psycholgist_details/${id}`
     );
-
     setDoctor(response.data);
   }
 
@@ -75,7 +74,7 @@ const DoctorDetailsPage = (props) => {
                       <div className="flex items-center gap-4 mb-4">
                         <div className="flex items-center gap-1">
                           <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                          <span className="font-semibold">{rating}</span>
+                          <span className="font-semibold">{parseFloat(rating).toFixed(1)}</span>
                           {/* <span className="text-gray-600">(120 reviews)</span> */}
                         </div>
                         <div className="flex items-center gap-1">

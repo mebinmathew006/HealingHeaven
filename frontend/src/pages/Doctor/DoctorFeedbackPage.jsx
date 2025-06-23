@@ -41,6 +41,7 @@ export default function DoctorFeedbackPage() {
           { ...formData, consultation_id: consultationId,duration:callDuration }
         );
         console.log("Feedback submitted:", response.data);
+        
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);

@@ -40,6 +40,9 @@ import UserViewConsultation from "../pages/User/UserViewConsultation";
 import UserComplaintView from "../pages/User/UserComplaintView";
 import UserViewNotification from "../pages/User/UserViewNotification";
 import AdminComplaint from "../pages/Admin/AdminComplaint";
+import DoctorViewFeedback from "../pages/Doctor/DoctorViewFeedback";
+import DoctorViewConsultation from "../pages/Doctor/DoctorViewConsultation";
+import DoctorDashboard from "../pages/Doctor/DoctorDashboard";
 
 const AppRoutes = () => {
   return (
@@ -81,6 +84,9 @@ const AppRoutes = () => {
         <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} />
         <Route path="/doctor_chat" element={<DoctorProtectedRoute><DoctorChat/></DoctorProtectedRoute>} />
         <Route path="/doctor_feedback_page" element={<DoctorProtectedRoute><DoctorFeedbackPage/></DoctorProtectedRoute>} />
+        <Route path="/doctor_view_feedback" element={<DoctorProtectedRoute><DoctorViewFeedback/></DoctorProtectedRoute>} />
+        <Route path="/doctor_view_consultations" element={<DoctorProtectedRoute><DoctorViewConsultation/></DoctorProtectedRoute>} />
+        <Route path="/doctor_dashboard" element={<DoctorProtectedRoute><DoctorDashboard/></DoctorProtectedRoute>} />
 
 
         {/* Admin */}

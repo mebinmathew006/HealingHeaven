@@ -50,18 +50,36 @@ async def get_psycholgist_by_id(session: AsyncSession, user_id: int):
     return result.scalars().first()
 
 
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
+
 async def create_user(session: AsyncSession, user: UserCreate):
-    db_user = User(
-        name=user.name,
-        email_address=user.email_address,
-        mobile_number=user.mobile_number,
-        password=hash_password(user.password),  # Ideally hashed!
-        role=user.role,
-    )
-    session.add(db_user)
-    await session.commit()
-    await session.refresh(db_user)
-    return db_user
+    try:
+        async with session.begin():  # Ensures transaction rollback on error
+            db_user = User(
+                name=user.name,
+                email_address=user.email_address,
+                mobile_number=user.mobile_number,
+                password=hash_password(user.password),
+                role=user.role,
+            )
+            session.add(db_user)
+            await session.flush()  # Assigns an ID to db_user
+
+            new_profile = UserProfile(
+                user_id=db_user.id,
+                date_of_birth=None,  # Use None instead of empty string for Date
+                gender=None,
+                profile_image=None
+            )
+            session.add(new_profile)
+
+        await session.refresh(db_user)  # Refresh after the commit
+        return db_user
+
+    except SQLAlchemyError as e:
+        # You can log the error here
+        raise HTTPException(status_code=500, detail="Database error during user creation.")
 
 
 async def update_user_status(session: AsyncSession,email:str):

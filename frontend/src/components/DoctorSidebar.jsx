@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { User, Settings, Bell, Shield, CreditCard, HelpCircle, LogOut, Wallet, Menu, X, ChartArea } from "lucide-react";
+import { User, LogOut, Menu, X, ChartArea, Star, Video, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
+import NotificationDropdown from "./NotificationDropdown"; // Adjust path as needed
 
 const DoctorSidebar = ({ activeSection }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -14,6 +15,9 @@ const DoctorSidebar = ({ activeSection }) => {
   };
 
   const handleSectionClick = (id) => {
+    // Don't navigate if it's the notifications item (handled by dropdown)
+    if (id === 'notifications') return;
+    
     navigate(`/${id}`);
     // Close mobile menu when item is clicked
     setIsMobileMenuOpen(false);
@@ -26,12 +30,12 @@ const DoctorSidebar = ({ activeSection }) => {
   const userDetails = useSelector((state) => state.userDetails);
   
   const menuItems = [
-    { id: 'user_profile', label: 'Profile', icon: User },
-    { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'doctor_dashboard', label: 'Dashboard', icon: Home },
+    { id: 'doctor_home_page', label: 'Profile', icon: User },
+    { id: 'notifications', label: 'Notifications', icon: null, component: 'notification' }, // Special component
     { id: 'doctor_chat', label: 'Chat', icon: ChartArea },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-    { id: 'help', label: 'Help & Support', icon: HelpCircle },
+    { id: 'doctor_view_feedback', label: 'Feedback', icon: Star },
+    { id: 'doctor_view_consultations', label: 'Consultations', icon: Video },
   ];
 
   return (
@@ -86,6 +90,22 @@ const DoctorSidebar = ({ activeSection }) => {
         <nav className="flex-1 p-3 lg:p-4 overflow-y-auto">
           <ul className="space-y-1 lg:space-y-2">
             {menuItems.map((item) => {
+              // Special handling for notification component
+              if (item.component === 'notification') {
+                return (
+                  <li key={item.id}>
+                    <NotificationDropdown 
+                      className={`${
+                        activeSection === item.id
+                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700 rounded-lg'
+                          : ''
+                      }`}
+                    />
+                  </li>
+                );
+              }
+
+              // Regular menu items
               const Icon = item.icon;
               return (
                 <li key={item.id}>

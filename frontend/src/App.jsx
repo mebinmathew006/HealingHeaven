@@ -1,24 +1,21 @@
-import React, { useState } from "react";
+import React from "react";
 import "./App.css";
-import { BrowserRouter, Route, Router } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./router/AppRoutes";
-import store, { persistor } from "./store/store";
-import { PersistGate } from "redux-persist/integration/react";
-import { Provider } from "react-redux";
 import { ToastContainer } from "react-toastify";
+import { NotificationProvider } from "./utils/NotificationContext";
+import { useSelector } from "react-redux";
 function App() {
-  const [count, setCount] = useState(0);
-
+const userId =useSelector((state)=>state.userDetails.id)
   return (
     <>
-      <Provider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
+      <NotificationProvider userId={userId}>
           <BrowserRouter>
             <ToastContainer />
             <AppRoutes />
           </BrowserRouter>
-        </PersistGate>
-      </Provider>
+  </NotificationProvider>
+
     </>
   );
 }

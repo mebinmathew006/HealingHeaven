@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 import DoctorSidebar from "../../components/DoctorSidebar";
 
 const DoctorProfile = () => {
-  const [activeSection, setActiveSection] = useState("user_profile");
+  const [activeSection] = useState("doctor_home_page");
   const [formData, setFormData] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const userId = useSelector((state) => state.userDetails.id);
@@ -200,7 +200,10 @@ const DoctorProfile = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
+      <div>
       <DoctorSidebar activeSection={activeSection} />
+
+      </div>
       <div className="flex-1 bg-gray-50 overflow-auto">
         <div className="max-w-4xl mx-auto p-6">
           <div className="space-y-8">

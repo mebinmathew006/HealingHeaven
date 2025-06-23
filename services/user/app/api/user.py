@@ -117,7 +117,9 @@ async def forgetpassword(
             print(otp)
             await redis_client.delete(f"otp:{email_schema.email}")
             await redis_client.set(f"otp:{email_schema.email}", otp, ex=300)
-            background_tasks.add_task(send_otp_email,email_schema.email, otp)
+            # background_tasks.add_task(send_otp_email,email_schema.email, otp)
+            # Use Celery instead of background task
+            send_otp_email.delay(email_schema.email, otp)
             return JSONResponse(content={"status": "success"}, status_code=200)
 
         raise HTTPException(
