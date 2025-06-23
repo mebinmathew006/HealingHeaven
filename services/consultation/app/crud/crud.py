@@ -1,11 +1,12 @@
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func,extract
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from schemas.consultation import CompliantSchema,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
 from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint
-
+from datetime import datetime
+import calendar
 
 async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
     try:
@@ -209,6 +210,121 @@ async def get_feedbacks_crud(session: AsyncSession, psychologist_id: int):
         .where(Consultation.psychologist_id == psychologist_id)
     )
     return result.scalars().all()
+
+
+async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: int):
+    # Total earnings from completed payments
+    earnings_query = await session.execute(
+        select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
+        .join(Consultation, Payments.consultation_id == Consultation.id)
+        .where(
+            Consultation.psychologist_id == psychologist_id,
+            Payments.payment_status == "paid"  
+        )
+    )
+    total_earnings = earnings_query.scalar()
+
+    # Total sessions for the psychologist
+    sessions_query = await session.execute(
+        select(func.count(Consultation.id))
+        .where(Consultation.psychologist_id == psychologist_id)
+    )
+    total_sessions = sessions_query.scalar()
+
+    # Total unique patients
+    patients_query = await session.execute(
+        select(func.count(func.distinct(Consultation.user_id)))
+        .where(Consultation.psychologist_id == psychologist_id)
+    )
+    total_patients = patients_query.scalar()
+
+    # Optional: Monthly earnings chart data (static or dynamic)
+    chart_query = await session.execute(
+        select(
+            extract('month', Payments.created_at).label('month'),
+            func.sum(Payments.psychologist_fee).label('earnings')
+        )
+        .join(Consultation, Payments.consultation_id == Consultation.id)
+        .where(
+            Consultation.psychologist_id == psychologist_id,
+            Payments.payment_status == "paid"
+        )
+        .group_by('month')
+        .order_by('month')
+    )
+    chart_data_raw = chart_query.all()
+
+    # Format chart data as month names
+    month_map = {i: calendar.month_abbr[i] for i in range(1, 13)}
+    chart_data = [
+        {
+            "month": month_map.get(int(month), "Unknown"),
+            "earnings": int(earning)
+        }
+        for month, earning in chart_data_raw
+    ]
+
+    return {
+        "totalEarnings": total_earnings,
+        "totalSessions": total_sessions,
+        "totalPatients": total_patients,
+        "chart_data": chart_data
+    }
+    
+    
+async def admin_dashboard_details_crud(session: AsyncSession):
+    # Total earnings from completed payments
+    earnings_query = await session.execute(
+        select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
+        .where(
+            Payments.payment_status == "paid"  
+        )
+    )
+    total_earnings = earnings_query.scalar()
+
+    # Total sessions for the psychologist
+    sessions_query = await session.execute(
+        select(func.count(Consultation.id))
+    )
+    total_sessions = sessions_query.scalar()
+
+    # Total unique patients
+    patients_query = await session.execute(
+        select(func.count(func.distinct(Consultation.user_id)))
+    )
+    total_patients = patients_query.scalar()
+
+    # Optional: Monthly earnings chart data (static or dynamic)
+    chart_query = await session.execute(
+        select(
+            extract('month', Payments.created_at).label('month'),
+            func.sum(Payments.psychologist_fee).label('earnings')
+        )
+        .join(Consultation, Payments.consultation_id == Consultation.id)
+        .where(
+            Payments.payment_status == "paid"
+        )
+        .group_by('month')
+        .order_by('month')
+    )
+    chart_data_raw = chart_query.all()
+
+    # Format chart data as month names
+    month_map = {i: calendar.month_abbr[i] for i in range(1, 13)}
+    chart_data = [
+        {
+            "month": month_map.get(int(month), "Unknown"),
+            "earnings": int(earning)
+        }
+        for month, earning in chart_data_raw
+    ]
+
+    return {
+        "totalEarnings": total_earnings,
+        "totalSessions": total_sessions,
+        "totalPatients": total_patients,
+        "chart_data": chart_data
+    }
 
 
 

@@ -40,6 +40,13 @@ class CreateFeedbackSchema(BaseModel):
     message: str
     user:Optional[UserNameWithProfileImage]
     
+class FeedbackCreationSchema(BaseModel):
+    consultation_id: int
+    rating: int
+    user_id: int
+    message: str
+    
+    
 class CreateNotificationSchema(BaseModel):
     title: str
     message: str

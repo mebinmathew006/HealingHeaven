@@ -3,6 +3,7 @@ import { Star, Send, MessageSquare, Bug, Lightbulb, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
+import Swal from "sweetalert2";
 
 export default function UserFeedbackPage() {
  const navigate = useNavigate()
@@ -43,8 +44,9 @@ export default function UserFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        const response = await axiosInstance.post('/consultations/add_feedback',{...formData,consultation_id:consultation_id,user_id:user_id})
         console.log("Feedback submitted:", formData);
+
+        const response = await axiosInstance.post('/consultations/add_feedback',{...formData,consultation_id:consultation_id,user_id:user_id})
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
@@ -53,6 +55,21 @@ export default function UserFeedbackPage() {
             message: "",
           });
         }, 3000);
+        await Swal.fire({
+                  title: "Added Feedback",
+                  text: "Thankyou for your time",
+                  icon: "success",
+                  timer: 2000,
+                  showConfirmButton: false,
+                  customClass: {
+                    popup: "rounded-2xl shadow-2xl",
+                    title: "text-xl font-semibold text-gray-900",
+                    htmlContainer: "text-gray-600",
+                    icon: "border-4 border-green-100 text-green-500",
+                  },
+                  buttonsStyling: false,
+                  background: "#ffffff",
+                });
         navigate("/user_profile");
       } catch (error) {}
     }

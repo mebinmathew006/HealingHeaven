@@ -3,6 +3,7 @@ import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
 import DoctorSidebar from "../../components/DoctorSidebar";
 import Dashboard from "../Public/Dashboard";
 import AdminSidebar from "../../components/AdminSidebar";
+import axiosInstance from "../../axiosconfig";
 
 // Mock data for the chart
 const generateChartData = () => [
@@ -23,23 +24,20 @@ const generateChartData = () => [
 const AdminProfile = () => {
   const [activeSection] = useState("admin_dashboard");
   const [earningsData, setEarningsData] = useState({
-    totalEarnings: 140000,
-    totalSessions: 70,
-    totalPatients: 21,
-    doctorsCount: 1245,
-    patientsCount: 1356,
-  });
+   });
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     // Simulate API call
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Replace with actual API calls
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setChartData(generateChartData());
+       const response = await axiosInstance.get(`/consultations/admin_dashboard_details`)
+       
+        setChartData(response.data.chart_data);
+        setEarningsData(response.data);
+        console.log(response.data)
       } catch (error) {
         console.error("Error fetching earnings data:", error);
       } finally {
@@ -78,20 +76,9 @@ const AdminProfile = () => {
         <DoctorSidebar activeSection={activeSection} />
       <div>
         <Dashboard
-          chartData={[
-            { month: "Jan", doctors: 2, patients: 3 },
-            { month: "Feb", doctors: 8, patients: 4 },
-            { month: "Mar", doctors: 6, patients: 5 },
-            { month: "Apr", doctors: 3, patients: 2 },
-            { month: "May", doctors: 1, patients: 1 },
-            { month: "Jun", doctors: 5, patients: 4 },
-            { month: "Jul", doctors: 4, patients: 3 },
-            { month: "Aug", doctors: 2, patients: 2 },
-            { month: "Sep", doctors: 7, patients: 6 },
-            { month: "Oct", doctors: 9, patients: 8 },
-            { month: "Nov", doctors: 5, patients: 7 },
-            { month: "Dec", doctors: 4, patients: 5 },
-          ]}
+           chartData={chartData}
+          earningsData={earningsData}
+          type = 'admin'
         />
       </div>
     </div>

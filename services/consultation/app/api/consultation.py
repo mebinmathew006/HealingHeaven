@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse
+from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse,FeedbackCreationSchema
 from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
 from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage
@@ -11,6 +11,7 @@ from fastapi.logger import logger
 from datetime import datetime 
 # from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
+from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud
 from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
 from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
@@ -59,7 +60,7 @@ async def register_complaint_route(data: CompliantSchema, session: AsyncSession 
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.post("/add_feedback")
-async def add_feedback(data: CreateFeedbackSchema, session: AsyncSession = Depends(get_session)):
+async def add_feedback(data: FeedbackCreationSchema, session: AsyncSession = Depends(get_session)):
     try:
         return await create_feedback(session, data)
     except Exception as e:
@@ -341,6 +342,24 @@ async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSess
         return  avg_rating if avg_rating is not None else 0.0
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.get('/doctor_dashboard_details/{psychologist_id}')
+async def doctor_dashboard_details_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        data = await doctor_dashboard_details_crud(session, psychologist_id)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get('/admin_dashboard_details')
+async def admin_dashboard_details_route(session: AsyncSession = Depends(get_session)):
+    try:
+        data = await admin_dashboard_details_crud(session)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get('/get_feedbacks/{psychologist_id}', response_model=list[CreateFeedbackSchema])

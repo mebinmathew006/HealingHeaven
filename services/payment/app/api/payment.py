@@ -65,7 +65,6 @@ async def fetch_money_from_wallet(
     fetch_money_schema: UserConsultationMoney,
     session: AsyncSession = Depends(get_session)
 ):
-    logger.info('ddddddddddddddddddddddddddddddddddddddddddddddddd')
     try:
         await money_from_wallet(session, fetch_money_schema.user_id, fetch_money_schema.psychologist_fee)
         return JSONResponse(
