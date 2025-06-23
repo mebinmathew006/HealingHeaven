@@ -8,7 +8,7 @@ from datetime import date, datetime
 class UpdateConsultationSchema(BaseModel):
     consultation_id: int
     message: str
-    duration:str
+    duration:int
     
 class CreateConsultationSchema(BaseModel):
     user_id: int

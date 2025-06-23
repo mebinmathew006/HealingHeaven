@@ -1,6 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import {Mic,Camera,Wallet,CreditCard,User,Lock,Shield,Video,X,ArrowRight,UserPlus,  Mail,Phone,
+import {
+  Mic,
+  Camera,
+  Wallet,
+  CreditCard,
+  User,
+  Lock,
+  Shield,
+  Video,
+  X,
+  ArrowRight,
+  UserPlus,
+  Mail,
+  Phone,
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
@@ -8,20 +21,15 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosconfig";
-import { createSocket } from "../utils/createSocket";
+import { useNotifications } from "../utils/NotificationContext";
+import { useNotificationSound } from "../utils/useNotificationSound";
 
-const VideoCallPermissionModal = ({
-  isOpen,
-  onClose,
-  onStartCall,
-  doctor 
-  
-}) => {
+const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
   const [permissions, setPermissions] = useState({
     charges: false,
     privacy: false,
   });
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [walletBalance, setWalletBalance] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState(1); // 1: permissions, 2: confirmation
@@ -35,67 +43,89 @@ const VideoCallPermissionModal = ({
   const userId = useSelector((state) => state.userDetails.id);
   const allPermissionsGranted = Object.values(permissions).every(Boolean);
 
-  
-const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
+  // Get notification state and functions
+  const { sendNotification } = useNotifications();
 
-const getWalletBalance = async ()=>{
-try {
-  if(userId){
-    const response = await axiosInstance.get(`/payments/get_wallet_balance/${userId}`)
-    setWalletBalance(response.data.balance)
-  }
-   
-} catch (error) {
-  
-}
-}
-const handleContinue = async () => {
+  // Enable notification sound
+  useNotificationSound();
+  const getWalletBalance = async () => {
+    try {
+      if (userId) {
+        const response = await axiosInstance.get(
+          `/payments/get_wallet_balance/${userId}`
+        );
+        setWalletBalance(response.data.balance);
+      }
+    } catch (error) {}
+  };
+  const handleContinue = async () => {
+    if (walletBalance - doctor.fees < 0) {
+      toast.error("first Add Money To Wallet", { position: "bottom-center" });
+      navigate("/wallet");
+      return;
+    }
 
-  if ((walletBalance - doctor.fees)<0) {
-    toast.error('first Add Money To Wallet',{position:'bottom-center'})
-    navigate('/wallet')
-    return
-  }
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      setIsProcessing(true);
+      const data = {
+        user_id: userId,
+        psychologist_id: doctor.id,
+        psychologist_fee: doctor.fees,
+      };
+      console.log(data);
+      try {
+        const response = await axiosInstance.post(
+          "/consultations/create_consultation",
+          data
+        );
+        const consultation_id = response.data.consultation_id;
 
+        toast.success("Video Call will Start Now", {
+          position: "bottom-center",
+        });
+        sendNotification(
+            doctor.id,
+            "You have a call from user",
+            "appointment"
+          );
+        const inte = setInterval(() => {
+          console.log("wait for sending notification");
+        }, 2000);
 
-  if (step === 1) {
-    setStep(2)
-  } else if (step === 2) {
-    setIsProcessing(true);
-  const data = {
-    user_id:userId,
-    psychologist_id:doctor.id,
-    psychologist_fee:doctor.fees
-  }
-  console.log(data)
-  try {
-    const response= await axiosInstance.post('/consultations/create_consultation',data)
-    const consultation_id=response.data.consultation_id
-    
-    toast.success('Video Call will Start Now',{position:'bottom-center'})
-    navigate('/videocall', {state: { doctorId: doctor.id,psychologist_fee:doctor.fees,consultation_id:consultation_id}})
-  } catch (error) {
-    toast.error('Unable to Start Now',{position:'bottom-center'})
-  }
+        setTimeout(() => {
+          clearInterval(inte);
+          navigate("/videocall", {
+          state: {
+            doctorId: doctor.id,
+            psychologist_fee: doctor.fees,
+            consultation_id: consultation_id,
+          },
+        });
+        }, 6000);
 
-  } 
-};
+        
+      } catch (error) {
+        toast.error("Unable to Start Now", { position: "bottom-center" });
+      }
+    }
+  };
 
+  // Check permissions on component mount
+  useEffect(() => {
+    getWalletBalance();
+  }, []);
 
-// Check permissions on component mount
-useEffect(() => {
-  getWalletBalance()
-}, []);
-
-const onHandleLoginRedirect = () => {
+  const onHandleLoginRedirect = () => {
     // setShowLoginModal(false);
     onClose();
-    navigate('/login');
+    navigate("/login");
   };
   const handleSignupRedirect = () => {
     setShowLoginModal(false);
     onClose();
-    navigate('/signup');
+    navigate("/signup");
   };
 
   const handleBack = () => {
@@ -220,8 +250,7 @@ const onHandleLoginRedirect = () => {
                   </p>
                   <p className="text-sm text-amber-700">
                     Your personal information and consultation details are
-                    protected and comply with medical
-                    privacy standards.
+                    protected and comply with medical privacy standards.
                   </p>
                 </div>
               </div>
@@ -239,11 +268,11 @@ const onHandleLoginRedirect = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-green-600" />
-                  Receive notifications regularly 
+                  Receive notifications regularly
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-purple-600" />
-                  Book follow-up appointments easily    
+                  Book follow-up appointments easily
                 </li>
               </ul>
             </div>
@@ -312,7 +341,7 @@ const onHandleLoginRedirect = () => {
               {/* Doctor Info */}
               <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg mb-6">
                 <img
-                  src={doctor.image ||  "/powerpoint-template-icons-b.jpg"}
+                  src={doctor.image || "/powerpoint-template-icons-b.jpg"}
                   alt={doctor.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />

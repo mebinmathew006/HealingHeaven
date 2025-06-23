@@ -1,6 +1,8 @@
 // hooks/useChat.js
 import { useState, useRef, useEffect, useCallback } from 'react';
 import axiosInstance from '../axiosconfig';
+import { useNotifications } from '../utils/NotificationContext';
+import { useNotificationSound } from '../utils/useNotificationSound';
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -18,7 +20,10 @@ export const useChat = (userId, userType) => {
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
   const activeConsultationIdRef = useRef(null); // Add ref to track current consultation ID
-
+  const { sendNotification } = useNotifications();
+  
+    // Enable notification sound
+    useNotificationSound();
   // Update ref whenever activeConsultationId changes
   useEffect(() => {
     activeConsultationIdRef.current = activeConsultationId;
@@ -217,6 +222,11 @@ export const useChat = (userId, userType) => {
     try {
       wsRef.current.send(JSON.stringify(messageData));
       console.log("[MESSAGE SENT]", messageData);
+      sendNotification(
+            activeChat,
+            "You have a new message ",
+            "message"
+          );
       setNewMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -232,7 +242,7 @@ export const useChat = (userId, userType) => {
       setIsLoadingMessages(true);
       setMessages([]);
 
-      // SET CONSULTATION ID FIRST - This is crucial!
+      // SET CONSULTATION ID 
       setActiveConsultationId(consultationId);
       setActiveChat(selectedUserId);
 

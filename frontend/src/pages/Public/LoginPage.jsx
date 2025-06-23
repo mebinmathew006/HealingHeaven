@@ -2,10 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import publicaxiosconfig from "../../Publicaxiosconfig";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
 import { toast } from "react-toastify";
-import { connectWebSocket } from "../../utils/socketManager";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -76,12 +75,10 @@ export default function LoginPage() {
       });
       // Handle successful login (e.g., save token, redirect)
       if (backendResponse.data.user.role == "doctor") {
-        dispatch(connectWebSocket(backendResponse.data.user.id));
         navigate("/doctor_dashboard");
       } else if (backendResponse.data.user.role == "admin") {
         navigate("/admin_home_page");
       } else {
-        dispatch(connectWebSocket(backendResponse.data.user.id));
         navigate("/user_home_page");
       }
     } catch (error) {
@@ -121,12 +118,10 @@ export default function LoginPage() {
         });
 
         if (userDetails.role == "doctor") {
-          dispatch(connectWebSocket(response.data.user.id));
           navigate("/doctor_dashboard");
         } else if (userDetails.role == "admin") {
           navigate("/admin_home_page");
         } else {
-          dispatch(connectWebSocket(response.data.user.id));
           navigate("/user_home_page");
         }
 

@@ -117,7 +117,7 @@ async def update_analysis_consultation(session: AsyncSession, data: UpdateConsul
     result = await session.execute(select(Consultation).where(Consultation.id == data.consultation_id))
     consultation = result.scalar_one_or_none()
     consultation.analysis = data.message
-    consultation.duration = data.duration
+    consultation.duration = f"{data.duration} min"
     consultation.status='completed'
     await session.commit()
     

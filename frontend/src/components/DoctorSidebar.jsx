@@ -1,23 +1,23 @@
 import React, { useState } from "react";
-import { User, LogOut, Menu, X, ChartArea, Star, Video, Home } from "lucide-react";
+import { User, Bell, LogOut, Menu, X, ChartArea, Star, Video, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
-import NotificationDropdown from "./NotificationDropdown"; // Adjust path as needed
+import { useNotifications } from "../utils/NotificationContext";
 
 const DoctorSidebar = ({ activeSection }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const logout = useLogout();
 
+  // Get notification count for badge display
+  const { unreadCount } = useNotifications();
+
   const handleLogout = () => {
     logout();
   };
 
   const handleSectionClick = (id) => {
-    // Don't navigate if it's the notifications item (handled by dropdown)
-    if (id === 'notifications') return;
-    
     navigate(`/${id}`);
     // Close mobile menu when item is clicked
     setIsMobileMenuOpen(false);
@@ -32,7 +32,7 @@ const DoctorSidebar = ({ activeSection }) => {
   const menuItems = [
     { id: 'doctor_dashboard', label: 'Dashboard', icon: Home },
     { id: 'doctor_home_page', label: 'Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: null, component: 'notification' }, // Special component
+    { id: 'doctor_view_notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { id: 'doctor_chat', label: 'Chat', icon: ChartArea },
     { id: 'doctor_view_feedback', label: 'Feedback', icon: Star },
     { id: 'doctor_view_consultations', label: 'Consultations', icon: Video },
@@ -90,37 +90,30 @@ const DoctorSidebar = ({ activeSection }) => {
         <nav className="flex-1 p-3 lg:p-4 overflow-y-auto">
           <ul className="space-y-1 lg:space-y-2">
             {menuItems.map((item) => {
-              // Special handling for notification component
-              if (item.component === 'notification') {
-                return (
-                  <li key={item.id}>
-                    <NotificationDropdown 
-                      className={`${
-                        activeSection === item.id
-                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700 rounded-lg'
-                          : ''
-                      }`}
-                    />
-                  </li>
-                );
-              }
-
-              // Regular menu items
               const Icon = item.icon;
               return (
                 <li key={item.id}>
                   <button
                     onClick={() => handleSectionClick(item.id)}
-                    className={`w-full flex items-center space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center justify-between px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg text-left transition-colors ${
                       activeSection === item.id
                         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                         : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                     }`}
                   >
-                    <Icon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
-                    <span className="font-medium text-sm lg:text-base truncate">
-                      {item.label}
-                    </span>
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
+                      <span className="font-medium text-sm lg:text-base truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    
+                    {/* Badge for notifications */}
+                    {item.badge && item.badge > 0 && (
+                      <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
                   </button>
                 </li>
               );

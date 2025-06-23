@@ -43,6 +43,7 @@ import AdminComplaint from "../pages/Admin/AdminComplaint";
 import DoctorViewFeedback from "../pages/Doctor/DoctorViewFeedback";
 import DoctorViewConsultation from "../pages/Doctor/DoctorViewConsultation";
 import DoctorDashboard from "../pages/Doctor/DoctorDashboard";
+import DoctorNotificationsPage from "../pages/Doctor/DoctorNotificationsPage";
 
 const AppRoutes = () => {
   return (
@@ -86,6 +87,7 @@ const AppRoutes = () => {
         <Route path="/doctor_feedback_page" element={<DoctorProtectedRoute><DoctorFeedbackPage/></DoctorProtectedRoute>} />
         <Route path="/doctor_view_feedback" element={<DoctorProtectedRoute><DoctorViewFeedback/></DoctorProtectedRoute>} />
         <Route path="/doctor_view_consultations" element={<DoctorProtectedRoute><DoctorViewConsultation/></DoctorProtectedRoute>} />
+        <Route path="/doctor_view_notifications" element={<DoctorProtectedRoute><DoctorNotificationsPage/></DoctorProtectedRoute>} />
         <Route path="/doctor_dashboard" element={<DoctorProtectedRoute><DoctorDashboard/></DoctorProtectedRoute>} />
 
 

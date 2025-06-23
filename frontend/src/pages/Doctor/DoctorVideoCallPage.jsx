@@ -12,10 +12,14 @@ import {
   MessageCircle,
   Users,
   Clock,
+  Bell,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
+import { useNotifications } from "../../utils/NotificationContext";
+import { useNotificationSound } from "../../utils/useNotificationSound";
 
 function DoctorVideoCallPage() {
   const [userId, setUserId] = useState(null);
@@ -26,7 +30,10 @@ function DoctorVideoCallPage() {
   const [callDuration, setCallDuration] = useState(0);
   const [remoteStream, setRemoteStream] = useState(null);
   const [consultationId, setConsultationId] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState("Waiting for patient");
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(
+    "Waiting for patient"
+  );
   const [isUsingFallbackVideo, setIsUsingFallbackVideo] = useState(false);
   const navigate = useNavigate();
   const wsRef = useRef(null);
@@ -39,6 +46,66 @@ function DoctorVideoCallPage() {
   const doctorId = useSelector((state) => state.userDetails.id);
   const signalingURL = `ws://localhost/consultations/ws/create_signaling/${doctorId}`;
   const type = "development";
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] =
+    useState(false);
+  const dropdownRef = useRef(null);
+  const notificationDropdownRef = useRef(null);
+
+  // Get notification state and functions
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    sendNotification,
+  } = useNotifications();
+
+
+ const formatTime = (timestamp) => {
+    const now = new Date();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
+  };
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+      if (
+        notificationDropdownRef.current &&
+        !notificationDropdownRef.current.contains(event.target)
+      ) {
+        setIsNotificationDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "message":
+        return "💬";
+      case "appointment":
+        return "📅";
+      case "reminder":
+        return "⏰";
+      case "system":
+        return "🔔";
+      default:
+        return "🔔";
+    }
+  };
 
   useEffect(() => {
     initializeWebRTC();
@@ -194,7 +261,15 @@ function DoctorVideoCallPage() {
       }
     });
   };
-
+const getPriorityStyles = (priority) => {
+    const styles = {
+      critical: 'border-l-red-500 bg-red-50',
+      high: 'border-l-orange-500 bg-orange-50',
+      medium: 'border-l-yellow-500 bg-yellow-50',
+      low: 'border-l-gray-500 bg-gray-50'
+    };
+    return styles[priority] || styles.low;
+  };
   const createVideoFileStream = async () => {
     return new Promise((resolve, reject) => {
       const video = document.createElement("video");
@@ -448,9 +523,9 @@ function DoctorVideoCallPage() {
 
         if (message.type === "call-end") {
           // cleanup();
-          setConnectionStatus("Call ended by other user");
+          setConnectionStatus("Call ended ");
           setIsConnected(false);
-          toast.info("Call ended by other user");
+          toast.info("Call ended ");
           endCall();
         }
       };
@@ -511,15 +586,15 @@ function DoctorVideoCallPage() {
     // Navigate after slight delay to ensure cleanup is complete
     setTimeout(() => {
       navigate("/doctor_feedback_page", {
-        state: { consultationId: consultationId ,callDuration:callDuration},
+        state: { consultationId: consultationId, callDuration: callDuration },
       });
     }, 500); // 500ms is typically enough
   };
 
-  return (
+   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 bg-black/20 backdrop-blur-sm border-b border-white/10">
+      <div className="flex items-center justify-between p-6 bg-black/20 backdrop-blur-sm border-b border-white/10 relative z-50">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div
@@ -528,7 +603,7 @@ function DoctorVideoCallPage() {
                   ? "bg-emerald-400 animate-pulse"
                   : "bg-amber-400 animate-pulse"
               }`}
-            ></div>
+            />
             <h1 className="text-white text-xl font-semibold">Doctor Console</h1>
           </div>
 
@@ -558,25 +633,156 @@ function DoctorVideoCallPage() {
           )}
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-3 py-2">
-            <Users size={16} className="text-white/70" />
-            <span className="text-white/70 text-sm">
-              Patient ID: {userId || "Waiting..."}
-            </span>
+        <div className="flex items-center space-x-3 relative z-50">
+          {/* Enhanced Notification Button */}
+          <div className="relative z-[9999]" ref={dropdownRef}>
+            <button
+              onClick={() => setIsNotificationDropdownOpen(!isNotificationDropdownOpen)}
+              className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white group"
+            >
+              <Bell size={20} className={unreadCount > 0 ? 'animate-pulse' : ''} />
+              
+              {/* Notification Badge */}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold animate-pulse">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Enhanced Notification Dropdown */}
+            {isNotificationDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] overflow-hidden">
+                {/* Header */}
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+                      <p className="text-sm text-gray-600">
+                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-sm text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={removeNotification}
+                          className="text-sm text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notifications List */}
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Bell size={24} className="text-gray-400" />
+                      </div>
+                      <p className="text-lg font-medium text-gray-600 mb-2">No notifications</p>
+                      <p className="text-sm">You're all caught up! New notifications will appear here.</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification, index) => (
+                      <div
+                        key={notification.id}
+                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all duration-200 ${
+                          !notification.read
+                            ? `border-l-4 ${getPriorityStyles(notification.priority)}`
+                            : 'hover:bg-gray-50'
+                        } ${index === notifications.length - 1 ? 'border-b-0' : ''}`}
+                        onClick={() => {
+                          if (!notification.read) {
+                            markAsRead(notification.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className={`text-sm font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {notification.title}
+                              </p>
+                              <div className="flex items-center space-x-2">
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeNotification(notification.id);
+                                  }}
+                                  className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-200 transition-colors"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-gray-500">
+                                {formatTime(notification.timestamp)}
+                              </span>
+                              {notification.priority === 'critical' && (
+                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+                                  Urgent
+                                </span>
+                              )}
+                              {notification.priority === 'high' && (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">
+                                  High
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Footer */}
+                {notifications.length > 0 && (
+                  <div className="p-3 bg-gray-50 border-t border-gray-200">
+                    <button
+                      className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium py-2 rounded-lg hover:bg-blue-50 transition-colors"
+                      onClick={() => setIsNotificationDropdownOpen(false)}
+                    >
+                      View all notifications →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <button className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
+          <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
             <MessageCircle size={20} />
           </button>
-          <button className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
+          <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
             <Settings size={20} />
           </button>
         </div>
       </div>
 
       {/* Main Video Area */}
-      <div className="flex-1 relative p-6">
+      <div className="flex-1 relative p-6 z-10">
         {/* Remote Video (Main) */}
         <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-800/50 backdrop-blur-sm border border-white/10 shadow-2xl">
           <video

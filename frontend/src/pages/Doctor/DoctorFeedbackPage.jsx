@@ -34,7 +34,7 @@ export default function DoctorFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        console.log({ ...formData, consultation_id: consultationId });
+        console.log({ ...formData, consultation_id: consultationId ,duration:callDuration},'kkkkkkkkkkkkkkk');
 
         const response = await axiosInstance.put(
           "/consultations/set_analysis_from_doctor",

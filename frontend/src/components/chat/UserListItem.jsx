@@ -11,7 +11,9 @@ const UserListItem = React.memo(({
   // For doctor chat, show user info. For user chat, show doctor info
 //   const displayUser = userType === 'doctor' ? user.user : user.doctor;
   const displayUser = user.user 
-  const userId = userType === 'doctor' ? user.user_id : user.user_id;
+ const userId = userType === 'doctor' ? user.user_id : user.psychologist_id;
+
+  console.log(userId,user,'jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj')
 //   const userId = userType === 'doctor' ? user.user_id : user.doctor_id;
   
   return (

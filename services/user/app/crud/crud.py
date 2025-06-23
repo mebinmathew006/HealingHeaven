@@ -65,14 +65,14 @@ async def create_user(session: AsyncSession, user: UserCreate):
             )
             session.add(db_user)
             await session.flush()  # Assigns an ID to db_user
-
-            new_profile = UserProfile(
-                user_id=db_user.id,
-                date_of_birth=None,  # Use None instead of empty string for Date
-                gender=None,
-                profile_image=None
-            )
-            session.add(new_profile)
+            if user.role == 'patient':
+                new_profile = UserProfile(
+                    user_id=db_user.id,
+                    date_of_birth=None,  # Use None instead of empty string for Date
+                    gender=None,
+                    profile_image=None
+                )
+                session.add(new_profile)
 
         await session.refresh(db_user)  # Refresh after the commit
         return db_user

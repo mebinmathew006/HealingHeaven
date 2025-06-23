@@ -9,12 +9,12 @@ import { useNotificationSound } from "../utils/useNotificationSound";
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   
   const userDetails = useSelector((state) => state.userDetails);
   const logout = useLogout();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
 
