@@ -87,6 +87,20 @@ services:
     ports:
       - "6379:6379" 
 
+
+  user-worker:
+    build: ./services/user
+    command: celery -A infra.celery_worker worker --loglevel=info
+    working_dir: /app 
+    depends_on:
+      - user-service
+      - redis
+    env_file:
+      - ./services/user/app/.env
+    volumes:
+      - ./services/user/app:/app
+    restart: always
+
   frontend:
       build:
         context: ./frontend

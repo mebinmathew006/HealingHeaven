@@ -100,7 +100,7 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
           state: {
             doctorId: doctor.id,
             psychologist_fee: doctor.fees,
-            consultation_id: consultation_id,
+            consultationId: consultation_id,
           },
         });
         }, 6000);

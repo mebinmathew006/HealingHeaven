@@ -165,6 +165,16 @@ class CompliantSchema(BaseModel):
     model_config = {
         "from_attributes": True
     }
+class CompliantSchemaa(BaseModel):
+    consultation_id:int
+    type: str
+    subject: str
+    description: str
+   
+    
+    model_config = {
+        "from_attributes": True
+    }
     
 class PaginatedConsultationResponse(BaseModel):
     count: int

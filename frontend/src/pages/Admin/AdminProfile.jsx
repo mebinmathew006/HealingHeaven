@@ -23,21 +23,22 @@ const generateChartData = () => [
 
 const AdminProfile = () => {
   const [activeSection] = useState("admin_dashboard");
-  const [earningsData, setEarningsData] = useState({
-   });
+  const [earningsData, setEarningsData] = useState({});
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+  useEffect(() => {
     // Simulate API call
     const fetchData = async () => {
       try {
         setLoading(true);
-       const response = await axiosInstance.get(`/consultations/admin_dashboard_details`)
-       
+        const response = await axiosInstance.get(
+          `/consultations/admin_dashboard_details`
+        );
+
         setChartData(response.data.chart_data);
         setEarningsData(response.data);
-        console.log(response.data)
+        console.log(response.data);
       } catch (error) {
         console.error("Error fetching earnings data:", error);
       } finally {
@@ -73,14 +74,12 @@ const AdminProfile = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-        <DoctorSidebar activeSection={activeSection} />
-      <div>
+      <AdminSidebar activeSection={activeSection} />
         <Dashboard
-           chartData={chartData}
+          chartData={chartData}
           earningsData={earningsData}
-          type = 'admin'
+          type="admin"
         />
-      </div>
     </div>
   );
 };

@@ -15,6 +15,7 @@ export default function DoctorFeedbackPage() {
   const consultationId = location?.state?.consultationId;
   const callDuration = location?.state?.callDuration;
   const userId = useSelector((state) => state.userDetails.id);
+  console.log(consultationId,callDuration,'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh')
   const navigate = useNavigate();
   const handleInputChange = (e) => {
     const { name, value } = e.target;

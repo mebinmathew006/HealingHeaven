@@ -4,7 +4,7 @@ from typing import List
 from dependencies.database import get_session
 import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse,FeedbackCreationSchema
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser 
+from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser ,CompliantSchemaa
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
 from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage
 from fastapi.logger import logger
@@ -51,7 +51,7 @@ async def create_consultation_route(data: CreateConsultationSchema, session: Asy
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.post("/register_complaint")
-async def register_complaint_route(data: CompliantSchema, session: AsyncSession = Depends(get_session)):
+async def register_complaint_route(data: CompliantSchemaa, session: AsyncSession = Depends(get_session)):
     try:
         complaint = await register_complaint_crud(session, data)
         return complaint
@@ -398,6 +398,140 @@ async def get_feedbacks_route(psychologist_id: int, session: AsyncSession = Depe
 
 
 # ***************************************VideocallSignaling***********************************************
+
+
+# # Store all active WebSocket connections: user_id -> websocket
+# active_connections: Dict[str, WebSocket] = {}
+
+# # Store rooms: doctor_id -> {"doctor": WebSocket, "user": WebSocket}
+# rooms: Dict[str, Dict[str, WebSocket]] = {}
+
+# # Lock for thread-safe connection handling
+# connection_lock = asyncio.Lock()
+
+# @router.websocket("/ws/create_signaling/{user_id}")
+# async def websocket_endpoint(websocket: WebSocket, user_id: str):
+#     await websocket.accept()
+
+#     async with connection_lock:
+#         active_connections[user_id] = websocket
+#         logger.info(f"[CONNECT] User {user_id} connected. Active connections: {list(active_connections.keys())}")
+
+#     try:
+#         while True:
+#             try:
+#                 data = await websocket.receive_json()
+#                 logger.info(f"[RECEIVED] From {user_id}: {data}")
+#             except WebSocketDisconnect:
+#                 logger.info(f"[DISCONNECT] User {user_id} disconnected.")
+#                 break
+#             except Exception as e:
+#                 logger.warning(f"[ERROR] Invalid message from {user_id}: {str(e)}")
+#                 continue
+
+#             msg_type = data.get("type")
+#             if not msg_type:
+#                 logger.warning(f"[ERROR] Missing message type from {user_id}")
+#                 continue
+
+#             if msg_type == "call-initiate":
+#                 doctor_id = str(data.get("targetId"))
+#                 sender_id = str(data.get("senderId"))
+
+#                 async with connection_lock:
+#                     room = rooms.get(doctor_id)
+
+#                     if room and room.get("user"):
+#                         await websocket.send_json({
+#                             "type": "call-rejected",
+#                             "reason": "Doctor is already in a call with another user"
+#                         })
+#                         logger.info(f"[BLOCKED] Doctor {doctor_id} is busy.")
+#                         continue
+
+#                     if not room:
+#                         rooms[doctor_id] = {"doctor": None, "user": None}
+
+#                     rooms[doctor_id]["user"] = websocket
+#                     logger.info(f"[ROOM] User {sender_id} joined room {doctor_id}")
+#                     continue
+
+#             elif msg_type == "call-answer":
+#                 doctor_id = str(data.get("senderId"))
+
+#                 async with connection_lock:
+#                     if doctor_id not in rooms:
+#                         rooms[doctor_id] = {"doctor": None, "user": None}
+
+#                     rooms[doctor_id]["doctor"] = websocket
+#                     logger.info(f"[ROOM] Doctor {doctor_id} joined room.")
+#                     continue
+
+#             elif msg_type == "call-end":
+#                 doctor_id = str(data.get("targetId"))
+#                 sender_role = data.get("sender")
+
+#                 async with connection_lock:
+#                     room = rooms.get(doctor_id)
+#                     if room:
+#                         try:
+#                             if room.get("doctor") and sender_role == "user":
+#                                 await room["doctor"].send_json({
+#                                     "type": "call-end",
+#                                     "senderId": data["senderId"],
+#                                     "sender": sender_role
+#                                 })
+#                             elif room.get("user") and sender_role == "doctor":
+#                                 await room["user"].send_json({
+#                                     "type": "call-end",
+#                                     "senderId": data["senderId"],
+#                                     "sender": sender_role
+#                                 })
+#                         except Exception as e:
+#                             logger.warning(f"[ERROR] Forwarding call-end failed: {e}")
+                        
+#                         del rooms[doctor_id]
+#                         logger.info(f"[ROOM CLOSED] Room for doctor {doctor_id} ended.")
+#                     continue
+
+#             # Forward all other messages (offer, answer, ICE, etc.)
+#             target_id = str(data.get("targetId"))
+#             if not target_id:
+#                 logger.warning(f"[ERROR] No targetId in message from {user_id}")
+#                 continue
+#             async with connection_lock:
+#                 target_connection = active_connections.get(target_id)
+#                 if not target_connection:
+#                     logger.warning(f"[ERROR] Target {target_id} not connected")
+#                     continue
+
+#                 try:
+#                     await target_connection.send_json(data)
+#                     logger.info(f"[FORWARD] {msg_type} from {user_id} to {target_id}")
+#                     await websocket.send_json({
+#                         "type": "message-ack",
+#                         "originalType": msg_type,
+#                         "status": "delivered",
+#                         "to": target_id
+#                     })
+#                 except Exception as e:
+#                     logger.error(f"[FORWARD FAILED] {msg_type} from {user_id} to {target_id}: {str(e)}")
+#                     active_connections.pop(target_id, None)
+
+#     except Exception as e:
+#         logger.error(f"[EXCEPTION] in websocket for user {user_id}: {e}")
+
+#     finally:
+#         async with connection_lock:
+#             active_connections.pop(user_id, None)
+
+#             # Remove user from any room
+#             for doctor_id, room in list(rooms.items()):
+#                 if room.get("doctor") == websocket or room.get("user") == websocket:
+#                     del rooms[doctor_id]
+#                     logger.info(f"[ROOM CLEANUP] Removed room {doctor_id} after {user_id} disconnect.")
+
+#         logger.info(f"[CLEANUP] User {user_id} disconnected. Remaining: {list(active_connections.keys())}")
 
 active_consultations: Dict[str, Dict] = {}
 # Store active connections

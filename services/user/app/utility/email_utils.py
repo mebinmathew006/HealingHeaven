@@ -5,6 +5,8 @@ from aiosmtplib import send
 from dotenv import load_dotenv
 from infra.celery_worker import celery_app
 load_dotenv()
+import smtplib
+from email.message import EmailMessage
 
 MAIL_FROM = os.getenv("MAIL_FROM")
 MAIL_SERVER = os.getenv("MAIL_SERVER")
@@ -30,11 +32,11 @@ async def send_welcome_email(to_email: str, user_name: str):
         start_tls=True,
     )
 
-import smtplib
-from email.message import EmailMessage
 
-@celery_app.task(name="tasks.send_otp_email_task")
+
+@celery_app.task(name="send_otp_email")
 def send_otp_email(to_email: str, otp: str):
+    print(f"[CELERY] Sending OTP to {to_email} with OTP {otp}")
     message = EmailMessage()
     message["From"] = f"Healing Heaven <{MAIL_FROM}>"
     message["To"] = to_email

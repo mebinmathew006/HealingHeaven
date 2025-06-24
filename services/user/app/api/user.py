@@ -18,6 +18,9 @@ from datetime import date
 from dependencies.get_current_user import get_current_user
 from infra.external.consultation_service import get_psycholgist_rating
 from asyncio import gather
+import logging
+
+logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["users"])
 
 
@@ -30,7 +33,7 @@ async def create_user(user: users.UserCreate,background_tasks: BackgroundTasks, 
     new_user = await crud.create_user(session, user)
     otp = otp_generate()  # simple 6-digit OTP
     await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
-    background_tasks.add_task(send_otp_email, user.email_address, otp)
+    send_otp_email.delay(user.email_address, otp)
     return new_user
 
 
@@ -56,8 +59,6 @@ async def update_psychologist_details(user_id: int, user_and_profile: users.Doct
     except Exception as e:
         logger.error(f"Error updating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
-   
-   
    
 
 @router.post('/email_otp_verify')
@@ -107,14 +108,12 @@ async def login(    login_schema: users.LoginSchema, session: AsyncSession = Dep
 
 @router.post('/forgetpassword')
 async def forgetpassword(
-    email_schema: users.ForgetPasswordSchema,background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_session)
+    email_schema: users.ForgetPasswordSchema,session: AsyncSession = Depends(get_session)
 ):
     try:
         db_user = await crud.get_user_by_email(session, email_schema.email)
         if db_user:
             otp = otp_generate()  # simple 6-digit OTP
-            print(otp)
             await redis_client.delete(f"otp:{email_schema.email}")
             await redis_client.set(f"otp:{email_schema.email}", otp, ex=300)
             # background_tasks.add_task(send_otp_email,email_schema.email, otp)

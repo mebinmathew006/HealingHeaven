@@ -3,15 +3,15 @@ import { User,Home, Hospital, Bell, LogOut, Video, HelpCircle } from "lucide-rea
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { destroyDetails } from "../store/UserDetailsSlice";
+import useLogout from "../utils/useLogout";
 
 const AdminSidebar = ({ activeSection, onSectionChange }) => {
   const userDetails = useSelector((state) => state.userDetails);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const logout = useLogout();
 
   const handleLogout = () => {
-    dispatch(destroyDetails());
-    navigate("/login"); 
+    logout();
   };
   const menuItems = [
     { id: "profile", label: "Dashboard", icon: Home, path: "/admin_home_page" },

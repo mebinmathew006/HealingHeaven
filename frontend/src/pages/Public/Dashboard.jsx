@@ -62,7 +62,7 @@ const Dashboard = ({ chartData, earningsData, type }) => {
   );
 
   return (
-    <div className="flex-1 bg-gray-50 overflow-auto">
+    <div className="flex-1 ms-2 me-2 mb-2 bg-gray-50 overflow-auto ">
       {/* Header */}
       <div className="mb-8"></div>
 
