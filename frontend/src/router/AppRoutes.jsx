@@ -49,11 +49,17 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Routes with MainLayout */}
-      <Route element={<MainLayout />}>
       {/* public */}
-        <Route path="/" element={<IndexPage />} />
-        <Route path="/login" element={<LoginPage />} />
+
+       <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+
+        <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
+        <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} />
+
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<IndexPage />} />
+       
         <Route path="/verify_otp" element={<OtpPage />} />
         <Route path="/verificationsucess" element={<SuccessPage />} />
         <Route path="/forgetpassword" element={<ForgotPassword />} />
@@ -71,7 +77,6 @@ const AppRoutes = () => {
         <Route path="/user_view_psychologist" element={<UserProtectedRoute><ViewPsychologists /></UserProtectedRoute>} />
         <Route path="/user_view_psychologist_details" element={<UserProtectedRoute><UserViewDoctorDetails /></UserProtectedRoute>} />
         <Route path="/wallet" element={<UserProtectedRoute><WalletPage/></UserProtectedRoute>} />
-        <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
         <Route path="/user_chat" element={<UserProtectedRoute><UserChat/></UserProtectedRoute>} />
         <Route path="/user_consultations" element={<UserProtectedRoute><UserViewConsultation/></UserProtectedRoute>} />
         <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
@@ -82,7 +87,6 @@ const AppRoutes = () => {
 
        {/* Doctor */}
         <Route path="/doctor_home_page" element={<DoctorProtectedRoute><DoctorProfile /></DoctorProtectedRoute>} />
-        <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} />
         <Route path="/doctor_chat" element={<DoctorProtectedRoute><DoctorChat/></DoctorProtectedRoute>} />
         <Route path="/doctor_feedback_page" element={<DoctorProtectedRoute><DoctorFeedbackPage/></DoctorProtectedRoute>} />
         <Route path="/doctor_view_feedback" element={<DoctorProtectedRoute><DoctorViewFeedback/></DoctorProtectedRoute>} />

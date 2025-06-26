@@ -41,6 +41,7 @@ function DoctorVideoCallPage() {
     isUsingFallbackVideo,
     localVideoRef,
     remoteVideoRef,
+    callRecord,
     toggleMute,
     toggleVideo,
     endCall,
@@ -62,8 +63,10 @@ function DoctorVideoCallPage() {
       isVideoOff={isVideoOff}
       toggleMute={toggleMute}
       toggleVideo={toggleVideo}
+      callRecord={callRecord}
       endCall={endCall}
       isMuted={isMuted}
+      isRecording={false}
       userType="doctor"
     >
       <NotificationDropdown

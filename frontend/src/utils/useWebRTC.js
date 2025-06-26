@@ -1,5 +1,5 @@
 // hooks/useWebRTC.js
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosconfig";
 
@@ -139,9 +139,126 @@ export const useWebRTC = ({
     }
   };
 
-  const callRecord = () => {
-    console.log('record started.......................')
+const callRecord =() => {
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const startRecording = async () => {
+    try {
+      // Combine both video and audio streams
+      const combinedStream = new MediaStream();
+      
+      // Add tracks from remote stream (other participant)
+      if (remoteStream) {
+        remoteStream.getTracks().forEach(track => {
+          combinedStream.addTrack(track);
+        });
+      }
+      
+      // Add tracks from local stream (if you want to include local video too)
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          combinedStream.addTrack(track);
+        });
+      }
+
+      // Check if we have any tracks to record
+      if (combinedStream.getTracks().length === 0) {
+        throw new Error("No media tracks available for recording");
+      }
+
+      // Create media recorder
+      mediaRecorderRef.current = new MediaRecorder(combinedStream, {
+        mimeType: 'video/webm;codecs=vp9,opus',
+        bitsPerSecond: 2500000 // 2.5 Mbps
+      });
+
+      // Handle data available event
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      // Handle recording stop
+      mediaRecorderRef.current.onstop = () => {
+        saveRecording();
+      };
+
+      // Start recording
+      recordedChunksRef.current = [];
+      mediaRecorderRef.current.start(1000); // Collect data every 1 second
+      setIsRecording(true);
+      
+      toast.success("Recording started", { position: "bottom-center" });
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      toast.error("Failed to start recording", { position: "bottom-center" });
+    }
   };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Stop all tracks to release resources
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const saveRecording = () => {
+    try {
+      const blob = new Blob(recordedChunksRef.current, {
+        type: 'video/webm'
+      });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const participantType = userType === 'doctor' ? 'doctor' : 'patient';
+      a.download = `video-call-${participantType}-${timestamp}.webm`;
+      
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success("Recording saved", { position: "bottom-center" });
+    } catch (error) {
+      console.error("Failed to save recording:", error);
+      toast.error("Failed to save recording", { position: "bottom-center" });
+    }
+  };
+
+  // Auto-stop recording when call ends
+  useEffect(() => {
+    return () => {
+      if (isRecording) {
+        stopRecording();
+      }
+    };
+  }, [isRecording]);
+
+  return {
+    startRecording,
+    stopRecording,
+    isRecording,
+    saveRecording
+  };
+}
+
+
 
   const toggleVideo = () => {
     if (localStream) {
@@ -235,8 +352,8 @@ export const useWebRTC = ({
         })
       );
     }
-
-    cleanup();
+    stopRecording()
+    cleanup();  
     setConnectionStatus("Call ended");
     setIsConnected(false);
 

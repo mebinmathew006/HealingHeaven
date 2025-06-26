@@ -9,11 +9,12 @@ function VideoCallMain({
   isVideoOff,
   isUsingFallbackVideo,
   userType,
+  
 }) {
   return (
-    <div className="flex-1 relative p-6 z-10">
+    <div className="flex-1 relative p-6 ms-90 z-10 max-w-200">
       {/* Remote Video (Main) */}
-      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-800/50 backdrop-blur-sm border border-white/10 shadow-2xl">
+      <div className="relative  rounded-2xl overflow-hidden bg-slate-800/50 backdrop-blur-sm border border-white/10 shadow-2xl">
         <video
           ref={remoteVideoRef}
           autoPlay

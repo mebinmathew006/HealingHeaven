@@ -1,5 +1,5 @@
 // pages/PatientVideoCallPage.js
-import React from "react";
+import React, { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { usePatientWebRTC } from "../../utils/usePatientWebRTC";
@@ -10,11 +10,11 @@ import NotificationDropdown from "../../components/NotificationDropdown";
 function UserVideoCallPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get doctor ID and consultation ID from route state or props
   const patientId = useSelector((state) => state.userDetails.id);
-  const { doctorId, psychologist_fee, consultationId } = location?.state|| {};
- 
+  const { doctorId, psychologist_fee, consultationId ,isRecordingtoggle} = location?.state || {};
+
   const {
     notifications,
     unreadCount,
@@ -23,11 +23,11 @@ function UserVideoCallPage() {
     removeNotification,
   } = useNotifications();
 
-  const handleCallEnd = ({ consultationId}) => {
+  const handleCallEnd = ({ consultationId }) => {
     setTimeout(() => {
-       navigate("/user_feedback_page", {
-      state: { consultation_id: consultationId },
-    });
+      navigate("/user_feedback_page", {
+        state: { consultation_id: consultationId },
+      });
     }, 500);
   };
 
@@ -51,7 +51,9 @@ function UserVideoCallPage() {
     doctorId,
     consultationId,
     onCallEnd: handleCallEnd,
+    isRecordingtoggle,
   });
+ 
 
   return (
     <VideoCallContainer
@@ -70,6 +72,7 @@ function UserVideoCallPage() {
       endCall={endCall}
       isMuted={isMuted}
       userType="patient"
+      isRecordingtoggle={isRecordingtoggle}
     >
       <NotificationDropdown
         notifications={notifications}
@@ -83,6 +86,3 @@ function UserVideoCallPage() {
 }
 
 export default UserVideoCallPage;
-
-
-

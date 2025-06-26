@@ -4,10 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from schemas.consultation import CompliantSchema,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
-from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint
+from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint,ChatAttachment
 from datetime import datetime
 import calendar
-
+from typing import Optional,List,Dict
+from fastapi import HTTPException
 async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
     try:
         async with session.begin():
@@ -136,10 +137,7 @@ async def get_all_notifications(session: AsyncSession):
     return result.scalars().all()
 
 async def get_all_mapping_for_chat(session: AsyncSession,doctorId:int):
-    result = await session.execute(
-        select(ConsultationMapping).where(ConsultationMapping.psychologist_id==doctorId)
-        
-    )
+    result = await session.execute(select(ConsultationMapping).where(ConsultationMapping.psychologist_id==doctorId))
     return result.scalars().all()
 
 async def get_all_mapping_for_chat_user(session: AsyncSession,user_id:int):
@@ -340,12 +338,70 @@ async def count_compliants(session: AsyncSession):
     )
     return result.scalar()
 
-async def get_chat_messages_using_cons_id(session: AsyncSession,consultation_id:int):
-    result = await session.execute(
-        select(Chat).where(Chat.consultation_map_id==consultation_id)
+async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id: int):
+    try:
+        # First verify consultation exists
+        consultation_exists = await session.execute(
+            select(ConsultationMapping).where(ConsultationMapping.id == consultation_id))
+        if not consultation_exists.scalar():
+            return []  # Return empty rather than error if consultation doesn't exist
+
+        # Fetch messages with attachments
+        result = await session.execute(
+            select(Chat)
+            .options(selectinload(Chat.attachments))
+            .where(Chat.consultation_map_id == consultation_id)
+            .order_by(Chat.created_at.asc())
+        )
         
-    )
-    return result.scalars().all()
+        messages = result.scalars().all()
+        
+        # Format response to match your frontend expectations
+        formatted_messages = []
+        for msg in messages:
+            # Process attachments - with null checks
+            attachments = []
+            for att in msg.attachments:
+                if not att.file_url:  # Skip invalid attachments
+                    continue
+                    
+                attachments.append({
+                    "id": att.id,
+                    "filename": att.filename,  # Using filename instead of original_filename
+                    "original_filename": att.original_filename,
+                    "file_url": att.file_url,
+                    "file_type": att.file_type,
+                    "file_size": att.file_size,
+                    "upload_status": att.upload_status
+                })
+
+            formatted_messages.append({
+                "id": msg.id,
+                "message": msg.message,
+                "sender": msg.sender,  # Only using sender since no sender_id in model
+                "created_at": msg.created_at.isoformat(),
+                "message_type": msg.message_type,
+                "has_attachments": msg.has_attachments,
+                "attachments": attachments,
+                # Add consultation_id if needed by frontend
+                "consultation_id": consultation_id  
+            })
+
+        return formatted_messages
+
+    except SQLAlchemyError as e:
+        print(f"Database error in get_chat_messages: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error occurred"
+        )
+    except Exception as e:
+        print(f"Unexpected error in get_chat_messages: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred"
+        )
+
 
 async def get_complaints_crud(session: AsyncSession,user_id:int):
     result = await session.execute(
@@ -362,15 +418,53 @@ async def get_doctor_consultations(session: AsyncSession,doctorId):
     )
     return result.scalars().all()
 
-async def adding_chat_messages(session: AsyncSession,message:str,consultation_id:int,sender_type:str):  
-    result =   Chat(
-                    message=message,
-                    consultation_map_id=consultation_id,
-                    sender=sender_type,
-                )
-    session.add(result)
-    await session.commit()
-    
+
+async def save_chat_message_with_attachments(session: AsyncSession,message: Optional[str],consultation_id: int,sender_type: str,attachments: List[Dict] = None,message_type: str = 'text') -> Dict:
+    """Save chat message with optional attachments in a single transaction"""
+    try:
+        chat = Chat(message=message,sender=sender_type,consultation_map_id=consultation_id,message_type=message_type,
+                    has_attachments=bool(attachments and len(attachments) > 0  ))
+        session.add(chat)
+        await session.flush()  # Flush to get the ID but don't commit yet
+        
+        # Add attachments if any
+        attachment_ids = []
+        if attachments:
+            print('yesssssssssssssssssssssssssssssssssssssssssssssss in atachmentsssssssssssssssssssssss')
+            for attachment_data in attachments:
+                if attachment_data.get('upload_status') == 'success':
+                    # Ensure all required fields are present with defaults
+                    original_filename = attachment_data.get('original_filename', 
+                                        attachment_data.get('filename', 'unknown'))
+                    file_path = attachment_data.get('file_path', '')
+                    
+                    attachment = ChatAttachment(
+                        chat_id=chat.id,
+                        filename=attachment_data['filename'],
+                        original_filename=original_filename,
+                        file_path=file_path,
+                        file_url=attachment_data['file_url'],
+                        file_type=attachment_data['file_type'],
+                        file_size=attachment_data['file_size'],
+                        upload_status=attachment_data['upload_status']
+                    )
+                    session.add(attachment)
+                    await session.flush()
+                    attachment_ids.append(attachment.id)
+        await session.commit()
+        return {
+            "chat_id": chat.id,
+            "attachment_ids": attachment_ids,
+            "created_at": chat.created_at.isoformat() if hasattr(chat, 'created_at') else datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Error saving chat message: {str(e)}", exc_info=True)
+        await session.rollback()
+        raise SQLAlchemyError(
+            status_code=500,
+            detail="Failed to save message and attachments"
+        )
 async def update_complaints_curd(session: AsyncSession, data :UpdateComplaintSchema,complaint_id:int):
     result = await session.execute(select(Complaint).where(Complaint.id == complaint_id))
     complaint = result.scalar_one_or_none()

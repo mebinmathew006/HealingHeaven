@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, Integer, String, Text, Date, Boolean, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Text, BigInteger, Boolean, ForeignKey, TIMESTAMP
 from sqlalchemy.sql import func
 Base = declarative_base()
 
@@ -60,12 +60,38 @@ class Chat(Base):
     __tablename__ = 'chat'
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    message = Column(Text, nullable=False)
+    message = Column(Text, nullable=True)  # Now nullable since message can be empty with files
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    sender = Column(Text,nullable=False)
+    sender = Column(Text, nullable=False)
     consultation_map_id = Column(Integer, ForeignKey('consultation_mapping.id', ondelete="CASCADE"))
     
+    # New fields for file support
+    message_type = Column(Text, default='text')  # 'text', 'media', 'file'
+    has_attachments = Column(Boolean, default=False)
+    
     consultation_mapping = relationship("ConsultationMapping", back_populates="chat_messages")
+    attachments = relationship("ChatAttachment", back_populates="chat_message", cascade="all, delete-orphan")
+
+
+class ChatAttachment(Base):
+    __tablename__ = 'chat_attachments'
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    chat_id = Column(Integer, ForeignKey('chat.id', ondelete="CASCADE"))
+    
+    # File information
+    filename = Column(Text, nullable=False)
+    original_filename = Column(Text, nullable=False)
+    file_path = Column(Text, nullable=False)
+    file_url = Column(Text, nullable=False)
+    file_type = Column(Text, nullable=False)  # MIME type
+    file_size = Column(BigInteger, nullable=False)  # Size in bytes
+    
+    # Upload information
+    uploaded_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    upload_status = Column(Text, default='success')  # 'success', 'failed', 'processing'
+    
+    chat_message = relationship("Chat", back_populates="attachments")
     
     
 class Notification(Base):

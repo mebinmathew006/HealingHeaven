@@ -1,8 +1,8 @@
 // hooks/useChat.js
 import { useState, useRef, useEffect, useCallback } from 'react';
-import axiosInstance from '../axiosconfig';
 import { useNotifications } from '../utils/NotificationContext';
 import { useNotificationSound } from '../utils/useNotificationSound';
+import axiosInstance from '../axiosconfig';
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -16,14 +16,16 @@ export const useChat = (userId, userType) => {
   const [connectionStatus, setConnectionStatus] = useState("select ...");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false); // New state for sending status
   
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const activeConsultationIdRef = useRef(null); // Add ref to track current consultation ID
+  const activeConsultationIdRef = useRef(null);
   const { sendNotification } = useNotifications();
   
-    // Enable notification sound
-    useNotificationSound();
+  // Enable notification sound
+  useNotificationSound();
+
   // Update ref whenever activeConsultationId changes
   useEffect(() => {
     activeConsultationIdRef.current = activeConsultationId;
@@ -43,9 +45,53 @@ export const useChat = (userId, userType) => {
       
       const response = await axiosInstance.get(endpoint);
       setUsers(response.data);
-      console.log(response.data)
+      console.log(response.data);
     } catch (error) {
       console.error("Error fetching users:", error);
+    }
+  }, [userId, userType]);
+
+  // Helper function to upload files
+  const uploadFiles = useCallback(async (files, consultationId) => {
+    if (!files || files.length === 0) return [];
+
+    try {
+      const uploadPromises = files.map(async (fileObj) => {
+        const formData = new FormData();
+        formData.append('file', fileObj.file);
+        formData.append('consultation_id', consultationId);
+        formData.append('sender_id', userId);
+        formData.append('sender_type', userType);
+
+        try {
+          const response = await axiosInstance.post('/consultations/upload_chat_file', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          return {
+            id: response.data.file_id,
+            filename: fileObj.name,
+            file_url: response.data.file_url,
+            file_type: fileObj.type,
+            file_size: fileObj.size,
+            upload_status: 'success'
+          };
+        } catch (error) {
+          console.error(`Failed to upload ${fileObj.name}:`, error);
+          return {
+            filename: fileObj.name,
+            upload_status: 'failed',
+            error: error.message
+          };
+        }
+      });
+
+      return await Promise.all(uploadPromises);
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      return [];
     }
   }, [userId, userType]);
 
@@ -93,12 +139,15 @@ export const useChat = (userId, userType) => {
         // Only add message if it's for the active consultation
         if (data.consultation_id === currentConsultationId) {
           const receivedMessage = {
-            id: data.id || `${data.sender_id}-${Date.now()}`, // Use server ID if available
+            id: data.id || `${data.sender_id}-${Date.now()}`,
             message: data.message,
             created_at: data.created_at || new Date().toISOString(),
             sender: data.sender_type,
             sender_id: data.sender_id,
-            consultation_id: data.consultation_id
+            consultation_id: data.consultation_id,
+            // Handle file attachments
+            attachments: data.attachments || [],
+            message_type: data.message_type || 'text'
           };
 
           console.log("[ADDING MESSAGE TO STATE]", receivedMessage);
@@ -197,10 +246,12 @@ export const useChat = (userId, userType) => {
     }
   }, [userId, userType, handleWebSocketMessage]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!newMessage.trim() || !wsRef.current || !activeConsultationId || !isConnected) {
+  // Updated handleSendMessage to support files
+  const handleSendMessage = useCallback(async (attachedFiles = []) => {
+    if ((!newMessage.trim() && attachedFiles.length === 0) || !wsRef.current || !activeConsultationId || !isConnected) {
       console.log("[SEND MESSAGE BLOCKED]", {
         hasMessage: !!newMessage.trim(),
+        hasFiles: attachedFiles.length > 0,
         hasWebSocket: !!wsRef.current,
         hasConsultationId: !!activeConsultationId,
         isConnected: isConnected
@@ -208,30 +259,53 @@ export const useChat = (userId, userType) => {
       return;
     }
 
-    const messageToSend = newMessage.trim();
-    const messageData = {
-      type: "message",
-      message: messageToSend,
-      consultation_id: activeConsultationId,
-      sender_id: userId,
-      sender_type: userType,
-      message_type: "chat",
-      created_at: new Date().toISOString()
-    };
+    setIsSendingMessage(true);
 
     try {
+      let uploadedFiles = [];
+      
+      // Upload files if any
+      if (attachedFiles.length > 0) {
+        console.log("[UPLOADING FILES]", attachedFiles);
+        uploadedFiles = await uploadFiles(attachedFiles, activeConsultationId);
+        console.log("[FILES UPLOADED]", uploadedFiles);
+      }
+
+      const messageToSend = newMessage.trim();
+      const messageData = {
+        type: "message",
+        message: messageToSend,
+        consultation_id: activeConsultationId,
+        sender_id: userId,
+        sender_type: userType,
+        message_type: attachedFiles.length > 0 ? "media" : "text",
+        attachments: uploadedFiles,
+        created_at: new Date().toISOString()
+      };
+
+      // Send message through WebSocket
       wsRef.current.send(JSON.stringify(messageData));
       console.log("[MESSAGE SENT]", messageData);
+      
+      // Send notification
       sendNotification(
-            activeChat,
-            "You have a new message ",
-            "message"
-          );
+        activeChat,
+        attachedFiles.length > 0 
+          ? `New message with ${attachedFiles.length} file(s)` 
+          : "You have a new message",
+        "message"
+      );
+      
+      // Clear input
       setNewMessage("");
+
     } catch (error) {
       console.error("Failed to send message:", error);
+      // You might want to show an error notification to the user here
+    } finally {
+      setIsSendingMessage(false);
     }
-  }, [newMessage, activeConsultationId, userId, userType, isConnected]);
+  }, [newMessage, activeConsultationId, userId, userType, isConnected, uploadFiles, activeChat, sendNotification]);
 
   const handleUserSelect = useCallback(async (selectedUserId, consultationId) => {
     console.log("[USER SELECTED]", { selectedUserId, consultationId });
@@ -310,13 +384,15 @@ export const useChat = (userId, userType) => {
     connectionStatus,
     isLoadingMessages,
     isTyping,
+    isSendingMessage, // New state
     messagesEndRef,
     
     // Actions
-    handleSendMessage,
+    handleSendMessage, // Now supports files
     handleUserSelect,
     
     // Utils
-    scrollToBottom
+    scrollToBottom,
+    uploadFiles // Expose for manual file uploads if needed
   };
 };

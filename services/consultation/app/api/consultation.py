@@ -11,10 +11,10 @@ from fastapi.logger import logger
 from datetime import datetime 
 # from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
-from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud
+from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments
 from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
-from crud.crud import adding_chat_messages,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
+from crud.crud import get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
 from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
 from infra.external.user_service import get_user_details,get_doctor_details,get_minimal_user_details
 from infra.external.payment_service import fetch_money_from_wallet
@@ -25,13 +25,22 @@ import logging
 import requests
 from requests.auth import HTTPBasicAuth
 import os
-from dotenv import load_dotenv
-load_dotenv()
+import re
 from fastapi import Query
 from asyncio import gather
-
+import aiofiles
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, UploadFile, File, Form, HTTPException,Request
+from fastapi.responses import FileResponse
+from pathlib import Path
+from typing import Optional
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', default=None)
+import uuid
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.ext.asyncio import AsyncSession
+from dotenv import load_dotenv
+load_dotenv()
 
 router = APIRouter(tags=["consultations"])
 
@@ -107,9 +116,9 @@ async def get_consultation(doctorId:int,
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        
+        logger.info('[constuation]  inside the fucnot')
         consultation = await get_all_mapping_for_chat(session,doctorId)
-    
+        
         if not consultation:
             raise HTTPException(status_code=404, detail="Consultation not found")
         enriched_consultations=[]
@@ -173,13 +182,18 @@ async def get_turn_credentials():
 
 
 
-@router.get('/get_chat_messages/{consultation_id}',response_model=List[ChatResponse])
-async def get_chat_messages(consultation_id:int,session : AsyncSession = Depends(get_session)):
+@router.get('/get_chat_messages/{consultation_id}')
+async def get_chat_messages(
+    consultation_id: int,
+    session: AsyncSession = Depends(get_session)
+):
     try:
-        messages = await get_chat_messages_using_cons_id(session,consultation_id)
+        messages = await get_chat_messages_using_cons_id(session, consultation_id)
         return messages
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching messages: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch messages")
+
     
 @router.get('/get_complaints/{user_id}',response_model=List[CompliantSchema])
 async def get_complaints_route(user_id:int,session : AsyncSession = Depends(get_session)):
@@ -652,13 +666,225 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 
 # # ***************************************Chat***********************************************
 # # In-memory storage (consider Redis for production)
+# chat_endpoints.py - Enhanced WebSocket and File Upload Endpoints
+# Configuration
 
 
-# # Global variables for tracking active rooms and locks
-active_chat_rooms: Dict[int, List[Dict]] = {}  # consultation_id -> list of clients
+
+
+# Constants and configurations
+UPLOAD_DIR = Path("uploads/chat_files")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_MESSAGE_SIZE = 10 * 1024  # 10KB
+VALID_SENDER_TYPES = {'patient', 'doctor', 'admin'}
+
+ALLOWED_EXTENSIONS = {
+    'image': ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'],
+    'video': ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'],
+    'audio': ['mp3', 'wav', 'ogg', 'aac', 'm4a'],
+    'document': ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'],
+    'other': ['zip', 'rar', '7z']
+}
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+# Global variables for tracking active rooms and locks
+active_chat_rooms: Dict[int, List[Dict]] = {}
 room_lock = asyncio.Lock()
 
 
+# Utility functions
+def sanitize_filename(filename: str) -> str:
+    """Sanitize filename to prevent path traversal"""
+    filename = re.sub(r'[^\w\-. ]', '_', filename)
+    filename = filename.strip()
+    return Path(filename).name
+
+def get_file_category(file_type: str) -> str:
+    """Determine file category based on MIME type"""
+    if file_type.startswith('image/'):
+        return 'image'
+    elif file_type.startswith('video/'):
+        return 'video'
+    elif file_type.startswith('audio/'):
+        return 'audio'
+    elif file_type in ['application/pdf', 'text/', 'application/msword', 'application/vnd.openxmlformats']:
+        return 'document'
+    else:
+        return 'other'
+
+async def scan_for_viruses(file_path: Path) -> bool:
+    """Mock virus scanning function - integrate with real scanner in production"""
+    try:
+        # In production: integrate with ClamAV or similar
+        return True
+    except Exception:
+        return False
+
+async def validate_file_type(file: UploadFile) -> bool:
+    """Validate file type matches its content"""
+    try:
+        # Read first 261 bytes for magic number detection
+        content = await file.read(261)
+        await file.seek(0)  # Rewind for actual saving
+        
+        # In production: use a proper file type detection library
+        return True
+    except Exception:
+        return False
+
+async def cleanup_failed_upload(file_path: Path):
+    """Clean up failed uploads"""
+    try:
+        if file_path.exists():
+            file_path.unlink()
+    except Exception as e:
+        logger.error(f"Failed to cleanup {file_path}: {e}")
+
+# Database operations
+# async def save_chat_message_with_attachments(
+#     session: AsyncSession,
+#     message: Optional[str],
+#     consultation_id: int,
+#     sender_type: str,
+#     attachments: List[Dict] = None,
+#     message_type: str = 'text'
+# ):
+#     """Save chat message with optional attachments to database"""
+#     try:
+#         # Create chat message
+#         chat_message = await adding_chat_messages(
+#             session,
+#             message,
+#             consultation_id,
+#             sender_type,
+#             message_type,
+#             bool(attachments and len(attachments) > 0)
+#         )
+        
+#         # Add attachments if any
+#         if attachments:
+#             for attachment_data in attachments:
+#                 if attachment_data.get('upload_status') == 'success':
+#                     # Ensure all required fields are present
+#                     required_fields = [
+#                         'filename', 'original_filename', 'file_path',
+#                         'file_url', 'file_type', 'file_size'
+#                     ]
+                    
+#                     # Provide defaults for missing fields
+#                     attachment_data.setdefault('original_filename', attachment_data.get('filename', 'unknown'))
+#                     attachment_data.setdefault('file_path', '')
+                    
+#                     await adding_chat_attachment(
+#                         session,
+#                         chat_message,
+#                         attachment_data['filename'],
+#                         attachment_data['original_filename'],
+#                         attachment_data.get('file_path', ''),
+#                         attachment_data['file_url'],
+#                         attachment_data['file_type'],
+#                         attachment_data['file_size'],
+#                         attachment_data['upload_status']
+#                     )
+    
+#         return chat_message
+        
+#     except Exception as e:
+#         logger.error(f"Error saving chat message: {e}", exc_info=True)
+#         raise HTTPException(status_code=500, detail="Failed to save message")
+
+# API endpoints
+@router.post("/upload_chat_file")
+@limiter.limit("5/minute")
+async def upload_chat_file(
+    request: Request,
+    file: UploadFile = File(...),
+    consultation_id: int = Form(...),
+    sender_id: int = Form(...),
+    sender_type: str = Form(...),
+    session: AsyncSession = Depends(get_session)
+):
+    """Upload file for chat message"""
+    file_path = None
+    try:
+        # Validate file size
+        if file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+        
+        # Validate sender type
+        if sender_type not in VALID_SENDER_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid sender type")
+        
+        # Sanitize filename
+        original_filename = sanitize_filename(file.filename)
+        if not original_filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        
+        # Validate file type
+        file_extension = original_filename.split('.')[-1].lower() if '.' in original_filename else ''
+        file_category = get_file_category(file.content_type)
+        
+        if file_category != 'other':
+            allowed_exts = ALLOWED_EXTENSIONS.get(file_category, [])
+            if file_extension not in allowed_exts:
+                raise HTTPException(status_code=400, detail="File type not allowed")
+        
+        # Validate file content matches type
+        if not await validate_file_type(file):
+            raise HTTPException(status_code=415, detail="File content doesn't match type")
+        
+        # Generate unique filename
+        unique_filename = f"{uuid.uuid4()}_{original_filename}"
+        file_path = UPLOAD_DIR / unique_filename
+        
+        # Save file
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+        
+        # Virus scan
+        if not await scan_for_viruses(file_path):
+            raise HTTPException(status_code=422, detail="File failed security scan")
+        
+        # Generate file URL
+        file_url = f"/api/chat/files/{unique_filename}"
+        
+        return {
+            "file_id": str(uuid.uuid4()),
+            "filename": unique_filename,
+            "original_filename": original_filename,
+            "file_path": str(file_path),
+            "file_url": file_url,
+            "file_type": file.content_type,
+            "file_size": file.size,
+            "upload_status": "success"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"File upload error: {e}", exc_info=True)
+        if file_path:
+            await cleanup_failed_upload(file_path)
+        raise HTTPException(status_code=500, detail="File upload failed")
+
+@router.get("/files/{filename}")
+async def get_chat_file(filename: str):
+    """Serve uploaded chat files"""
+    try:
+        sanitized = sanitize_filename(filename)
+        file_path = UPLOAD_DIR / sanitized
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return FileResponse(file_path)
+    except Exception as e:
+        logger.error(f"File serve error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to serve file")
 
 @router.websocket("/ws/chat/{consultation_id}")
 async def chat_websocket(
@@ -667,23 +893,29 @@ async def chat_websocket(
     session: AsyncSession = Depends(get_session)
 ):
     await websocket.accept()
+    await websocket.send_json({"type": "handshake", "status": "connected"})
 
     # Initial user identification
     try:
-        init_data = await websocket.receive_json()
-    except Exception as e:
+        init_data = await asyncio.wait_for(
+            websocket.receive_json(),
+            timeout=10.0
+        )
+        user_id = init_data.get("sender_id")
+        user_type = init_data.get("sender_type")
+
+        if not all([user_id, user_type]) or user_type not in VALID_SENDER_TYPES:
+            await websocket.close(code=4003)
+            return
+
+    except (asyncio.TimeoutError, WebSocketDisconnect) as e:
         logger.warning(f"[INIT ERROR_CHAT] Failed to receive init message: {e}")
         await websocket.close(code=4001)
         return
-
-    user_id = init_data.get("sender_id")
-    user_type = init_data.get("sender_type")
-
-    if not all([user_id, user_type]):
-        await websocket.close(code=4000)
+    except Exception as e:
+        logger.error(f"[INIT ERROR_CHAT] Unexpected error: {e}")
+        await websocket.close(code=4002)
         return
-
-    # ping_task = asyncio.create_task(send_ping_periodically(websocket, user_id, consultation_id))
 
     client = {
         "websocket": websocket,
@@ -702,19 +934,28 @@ async def chat_websocket(
 
         # Add new client
         active_chat_rooms[consultation_id].append(client)
-        logger.info(f"[JOINED_CHAT] user_id {user_id} joined consultation {consultation_id}")
+        logger.info(
+            f"User {user_id} ({user_type}) connected to consultation {consultation_id}",
+            extra={
+                "event": "websocket_connect",
+                "user_id": user_id,
+                "consultation_id": consultation_id
+            }
+        )
 
         # Notify others that this user is online
+        online_notification = {
+            "type": "status",
+            "status": "online",
+            "user_id": user_id,
+            "user_type": user_type,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
         for c in active_chat_rooms[consultation_id]:
             if c["user_id"] != user_id:
                 try:
-                    await c["websocket"].send_json({
-                        "type": "status",
-                        "status": "online",
-                        "user_id": user_id,
-                        "user_type": user_type,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
+                    await c["websocket"].send_json(online_notification)
                 except Exception as e:
                     logger.warning(f"[STATUS SEND ERROR_CHAT] {e}")
 
@@ -735,64 +976,115 @@ async def chat_websocket(
     # Message loop
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                data = await asyncio.wait_for(
+                    websocket.receive_json(),
+                    timeout=30.0
+                )
+                
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    continue
 
-            if data.get("type") == "pong":
-                continue  # pong received, ignore for now
+                logger.info(f"[RECEIVED] Room {consultation_id}: {data}")
 
-            logger.info(f"[RECEIVED] Room {consultation_id}: {data}")
+                message = data.get("message", "")
+                sender_id = data.get("sender_id")
+                sender_type = data.get("sender_type")
+                message_type = data.get("message_type", "text")
+                attachments = data.get("attachments", [])
 
-            message = data.get("message")
-            sender_id = data.get("sender_id")
-            sender_type = data.get("sender_type")
+                # Validate input
+                if not all([sender_id, sender_type]) or sender_type not in VALID_SENDER_TYPES:
+                    logger.warning("[VALIDATION ERROR_CHAT] Missing or invalid sender information")
+                    continue
 
-            if not all([message, sender_id, sender_type]):
-                logger.warning("[VALIDATION ERROR_CHAT] Missing message fields")
-                continue
+                if len(message) > MAX_MESSAGE_SIZE:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Message too large"
+                    })
+                    continue
 
-            # Save to DB
-            await adding_chat_messages(session, message, consultation_id, sender_type)
+                if not message and not attachments:
+                    logger.warning("[VALIDATION ERROR_CHAT] Empty message with no attachments")
+                    continue
 
-            # Broadcast to everyone
-            async with room_lock:
-                for client in active_chat_rooms[consultation_id]:
-                    try:
-                        await client["websocket"].send_json({
-                            "type": "message",
-                            "consultation_id": consultation_id,
-                            "sender_id": sender_id,
-                            "sender_type": sender_type,
-                            "message": message,
-                            "created_at": datetime.utcnow().isoformat()
-                        })
-                    except Exception as e:
-                        logger.warning(f"[SEND ERROR_CHAT] {e}")
+                # Save to DB with attachments
+                try:
+                    message_id = await save_chat_message_with_attachments(
+                        session, 
+                        message if message else None, 
+                        consultation_id, 
+                        sender_type,
+                        attachments,
+                        message_type
+                    )
+                except Exception as e:
+                    logger.error(f"[DB ERROR_CHAT] Failed to save message: {e}")
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Failed to save message"
+                    })
+                    continue
+
+                # Broadcast to everyone
+                async with room_lock:
+                    broadcast_data = {
+                        "type": "message",
+                        "id": message_id,
+                        "consultation_id": consultation_id,
+                        "sender_id": sender_id,
+                        "sender_type": sender_type,
+                        "message": message,
+                        "message_type": message_type,
+                        "attachments": attachments,
+                        "created_at": datetime.utcnow().isoformat()
+                    }
+                    
+                    for client in active_chat_rooms[consultation_id]:
+                        try:
+                            await client["websocket"].send_json(broadcast_data)
+                        except Exception as e:
+                            logger.warning(f"[SEND ERROR_CHAT] {e}")
+
+            except asyncio.TimeoutError:
+                # Send ping to check connection
+                try:
+                    await websocket.send_json({"type": "ping"})
+                except:
+                    break  # Connection is dead
 
     except WebSocketDisconnect:
-        # ping_task.cancel()
+        logger.info(f"[DISCONNECTED_CHAT] user_id {user_id} from consultation {consultation_id}")
+    except Exception as e:
+        logger.error(f"[UNEXPECTED ERROR_CHAT] {e}", exc_info=True)
+    finally:
         async with room_lock:
             # Remove disconnected client
-            active_chat_rooms[consultation_id] = [
-                c for c in active_chat_rooms[consultation_id] if c["user_id"] != user_id
-            ]
-            logger.info(f"[DISCONNECTED_CHAT] user_id {user_id} from consultation {consultation_id}")
+            if consultation_id in active_chat_rooms:
+                active_chat_rooms[consultation_id] = [
+                    c for c in active_chat_rooms[consultation_id] if c["user_id"] != user_id
+                ]
 
-            # Notify others that this user went offline
-            for c in active_chat_rooms[consultation_id]:
-                try:
-                    await c["websocket"].send_json({
-                        "type": "status",
-                        "status": "offline",
-                        "user_id": user_id, 
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
-                except Exception as e:
-                    logger.warning(f"[STATUS SEND ERROR_CHAT] {e}")
-    except Exception as e:
-        logger.error(f"[UNEXPECTED ERROR_CHAT] {e}")
-        # ping_task.cancel()
-        await websocket.close(code=1011)
+                # Notify others that this user went offline
+                offline_notification = {
+                    "type": "status",
+                    "status": "offline",
+                    "user_id": user_id, 
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                for c in active_chat_rooms[consultation_id]:
+                    try:
+                        await c["websocket"].send_json(offline_notification)
+                    except Exception as e:
+                        logger.warning(f"[STATUS SEND ERROR_CHAT] {e}")
 
+        try:
+            await websocket.close()
+        except:
+            pass
 
 # # ***************************************Notifications***********************************************
 

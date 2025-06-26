@@ -2,16 +2,21 @@
 import { useEffect } from "react";
 import { useWebRTC } from "./useWebrtc";
 
-export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEnd }) => {
+export const usePatientWebRTC = ({
+  patientId,
+  doctorId,
+  consultationId,
+  onCallEnd,
+  isRecordingtoggle,
+}) => {
   const signalingURL = `ws://localhost/consultations/ws/create_signaling/${patientId}`;
-  
+
   const webRTC = useWebRTC({
     userId: patientId,
-    userType: 'patient',
+    userType: "patient",
     signalingURL,
-    onCallEnd
+    onCallEnd,
   });
-
   const {
     wsRef,
     pcRef,
@@ -25,7 +30,9 @@ export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEn
     setIsConnected,
     setLocalStream,
     setRemoteStream,
+    callRecord,
   } = webRTC;
+  const { startRecording, stopRecording, isRecording } = callRecord();
 
   const initializeWebRTC = async () => {
     setConnectionStatus("Connecting...");
@@ -77,18 +84,18 @@ export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEn
       setConnectionStatus("Starting call...");
       setTargetUserId(doctorId);
       setConsultationId(consultationId);
-//   const fetchIceServers = async () => {
-//     try {
-//       const res = await axiosInstance.get("/consultations/turn-credentials");
-//       return res.data.iceServers;
-//     } catch (error) {
-//       console.error("Failed to fetch ICE servers:", error);
-//       return [
-//         { urls: "stun:stun.l.google.com:19302" },
-//         { urls: "stun:stun1.l.google.com:19302" },
-//       ];
-//     }
-//   };
+      //   const fetchIceServers = async () => {
+      //     try {
+      //       const res = await axiosInstance.get("/consultations/turn-credentials");
+      //       return res.data.iceServers;
+      //     } catch (error) {
+      //       console.error("Failed to fetch ICE servers:", error);
+      //       return [
+      //         { urls: "stun:stun.l.google.com:19302" },
+      //         { urls: "stun:stun1.l.google.com:19302" },
+      //       ];
+      //     }
+      //   };
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
@@ -123,8 +130,34 @@ export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEn
         setIsConnected(true);
         setConnectionStatus("Call connected");
         startCallDurationTimer();
-      };
 
+        // Start recording after ensuring both streams are ready
+        if (isRecordingtoggle) {
+          const startRecordingWithRetry = async (attempt = 0) => {
+            try {
+              if (attempt > 3) {
+                throw new Error("Max retries reached");
+              }
+
+              if (
+                localVideoRef.current?.videoWidth > 0 &&
+                remoteVideoRef.current?.videoWidth > 0
+              ) {
+                await startRecording();
+              } else {
+                setTimeout(() => startRecordingWithRetry(attempt + 1), 500);
+              }
+            } catch (error) {
+              console.error("Recording failed after retries:", error);
+            }
+          };
+
+          setTimeout(() => startRecordingWithRetry(), 1000);
+        }
+      };
+      if (isRecordingtoggle) {
+        setTimeout(() => startRecording(), 3000); // Small delay to ensure streams are ready
+      }
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           wsRef.current.send(
@@ -170,7 +203,9 @@ export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEn
 
   const handleCallAnswer = async (message) => {
     try {
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(message.answer));
+      await pcRef.current.setRemoteDescription(
+        new RTCSessionDescription(message.answer)
+      );
       console.log("✅ Set remote description from answer");
     } catch (error) {
       console.error("Error handling call answer:", error);
@@ -180,7 +215,9 @@ export const usePatientWebRTC = ({ patientId, doctorId, consultationId, onCallEn
 
   const handleIceCandidate = async (message) => {
     try {
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(message.candidate));
+      await pcRef.current.addIceCandidate(
+        new RTCIceCandidate(message.candidate)
+      );
       console.log("✅ Added ICE candidate");
     } catch (err) {
       console.error("[Patient] Failed to add ICE candidate:", err);
