@@ -44,7 +44,7 @@ import DoctorViewFeedback from "../pages/Doctor/DoctorViewFeedback";
 import DoctorViewConsultation from "../pages/Doctor/DoctorViewConsultation";
 import DoctorDashboard from "../pages/Doctor/DoctorDashboard";
 import DoctorNotificationsPage from "../pages/Doctor/DoctorNotificationsPage";
-import UserBookingFromChat from "../pages/User/userBookingFromChat";
+import UserBookingFromChat from "../pages/User/UserBookingFromChat";
 
 const AppRoutes = () => {
   return (
