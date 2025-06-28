@@ -1,0 +1,87 @@
+version: '3.9'
+
+services:
+  user-service:
+    build: ./services/user
+    restart: always
+    env_file:
+      - ./services/user/app/.env
+    depends_on:
+      - user-db
+      - redis
+
+  user-db:
+    image: postgres:17
+    restart: always
+    env_file:
+      - ./services/user/app/.env  
+    volumes:
+      - user_pgdata:/var/lib/postgresql/data
+
+  gateway:
+    image: nginx:alpine
+    container_name: api-gateway
+    restart: always
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - user-service
+      - consultation-service
+      - payment-service
+
+  payment-service:
+    build: ./services/payment
+    restart: always
+    env_file:
+      - ./services/payment/app/.env 
+    depends_on:
+      - payment-db
+
+  payment-db:
+    image: postgres:17
+    restart: always
+    env_file:
+      - ./services/payment/app/.env
+    volumes:
+      - payment_pgdata:/var/lib/postgresql/data
+
+  consultation-service:
+    build: ./services/consultation
+    restart: always
+    env_file:
+      - ./services/consultation/app/.env 
+    depends_on:
+      - consultation-db
+
+  consultation-db:
+    image: postgres:17
+    restart: always
+    env_file:
+      - ./services/consultation/app/.env
+    volumes:
+      - consultation_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: always
+
+  user-worker:
+    build: ./services/user
+    command: celery -A infra.celery_worker worker --loglevel=info
+    working_dir: /app 
+    depends_on:
+      - user-service
+      - redis
+    env_file:
+      - ./services/user/app/.env
+    restart: always
+
+volumes:
+  user_pgdata:
+  consultation_pgdata:
+  payment_pgdata:
