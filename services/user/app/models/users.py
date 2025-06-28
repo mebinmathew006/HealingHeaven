@@ -18,7 +18,7 @@ class User(Base):
     is_active = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=True,  onupdate=func.now())
     user_profile = relationship("UserProfile", back_populates="user", uselist=False)
     psychologist_profile = relationship("PsychologistProfile", back_populates="user", uselist=False)
     

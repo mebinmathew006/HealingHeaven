@@ -5,6 +5,7 @@ import publicaxiosconfig from "../../Publicaxiosconfig";
 import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
 import { toast } from "react-toastify";
+import axiosInstance from "../../axiosconfig";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -64,7 +65,7 @@ export default function LoginPage() {
 
   const handleCredentialResponse = async (response) => {
     try {
-      const backendResponse = await publicaxiosconfig.post("/google_login", {
+      const backendResponse = await axiosInstance.post("/users/google-login", {
         credential: response.credential, // Send the credential token to your backend
       });
 
@@ -75,7 +76,7 @@ export default function LoginPage() {
       });
       // Handle successful login (e.g., save token, redirect)
       if (backendResponse.data.user.role == "doctor") {
-        navigate("/doctor_dashboard");
+        navigate("/doctor_home_page");
       } else if (backendResponse.data.user.role == "admin") {
         navigate("/admin_home_page");
       } else {
@@ -118,7 +119,7 @@ export default function LoginPage() {
         });
 
         if (userDetails.role == "doctor") {
-          navigate("/doctor_dashboard");
+          navigate("/doctor_home_page");
         } else if (userDetails.role == "admin") {
           navigate("/admin_home_page");
         } else {

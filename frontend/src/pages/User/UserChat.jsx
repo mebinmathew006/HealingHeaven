@@ -1,5 +1,5 @@
 // components/DoctorChat.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +35,9 @@ export default function UserChat() {
     navigate(-1);
   };
 
+
+
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -65,6 +68,8 @@ export default function UserChat() {
           activeUser={activeUser}
           isOnline={isOnline}
           setSidebarOpen={setSidebarOpen}
+          handleSendMessage={handleSendMessage}
+          setNewMessage={setNewMessage}
           userType="user"
         />
 

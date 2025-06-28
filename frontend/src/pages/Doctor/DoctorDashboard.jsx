@@ -7,18 +7,13 @@ import axiosInstance from "../../axiosconfig";
 import { useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-
-
 const DoctorDashboard = () => {
-  const doctorId = useSelector((state)=>state.userDetails.id)
+  const doctorId = useSelector((state) => state.userDetails.id);
   const [activeSection] = useState("doctor_dashboard");
-  const [earningsData, setEarningsData] = useState({
-    totalEarnings: 140000,
-    totalSessions: 70,
-    totalPatients: 21,
-    doctorsCount: 1245,
-    patientsCount: 1356,
-  });
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+ 
+
+  const [earningsData, setEarningsData] = useState({ });
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,12 +22,37 @@ const DoctorDashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Replace with actual API calls
-       const response = await axiosInstance.get(`/consultations/doctor_dashboard_details/${doctorId}`)
-       
-        setChartData(response.data.chart_data);
-        setEarningsData({totalEarnings:response.data.totalEarnings, totalSessions:response.data.totalSessions,totalPatients:response.data.totalPatients});
-        console.log(response.data)
+        const response = await axiosInstance.get(
+          `/consultations/doctor_dashboard_details/${doctorId}/${selectedYear}`
+        );
+        const serverChartData = response.data.chart_data; // Array of { month, earnings }
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        const graphData = months.map((month) => {
+          const match = serverChartData.find((item) => item.month === month);
+          return match || { month, earnings: 0 };
+        });
+        console.log(graphData)
+        setChartData(graphData);
+        setEarningsData({
+          totalEarnings: response.data.totalEarnings,
+          totalSessions: response.data.totalSessions,
+          totalPatients: response.data.totalPatients,
+        });
+        console.log(response.data);
       } catch (error) {
         console.error("Error fetching earnings data:", error);
       } finally {
@@ -41,7 +61,7 @@ const DoctorDashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedYear]);
 
   if (loading) {
     return (
@@ -71,7 +91,8 @@ const DoctorDashboard = () => {
         <Dashboard
           chartData={chartData}
           earningsData={earningsData}
-          type = 'doctor'
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
         />
       </div>
     </div>

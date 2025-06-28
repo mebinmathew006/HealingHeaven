@@ -1,8 +1,10 @@
 // hooks/useChat.js
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNotifications } from '../utils/NotificationContext';
-import { useNotificationSound } from '../utils/useNotificationSound';
-import axiosInstance from '../axiosconfig';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useNotificationSound } from "../utils/useNotificationSound";
+import axiosInstance from "../axiosconfig";
+import { toast } from "react-toastify";
+import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -17,12 +19,12 @@ export const useChat = (userId, userType) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false); // New state for sending status
-  
+  const navigate = useNavigate();
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
   const activeConsultationIdRef = useRef(null);
-  const { sendNotification } = useNotifications();
-  
+  const currentSelectedUserid=useRef(null)
+
   // Enable notification sound
   useNotificationSound();
 
@@ -39,10 +41,11 @@ export const useChat = (userId, userType) => {
     if (!userId) return;
 
     try {
-      const endpoint = userType === 'doctor' 
-        ? `/consultations/get_consultation_mapping_for_chat/${userId}`
-        : `/consultations/get_consultation_mapping_for_user_chat/${userId}`;
-      
+      const endpoint =
+        userType === "doctor"
+          ? `/consultations/get_consultation_mapping_for_chat/${userId}`
+          : `/consultations/get_consultation_mapping_for_user_chat/${userId}`;
+
       const response = await axiosInstance.get(endpoint);
       setUsers(response.data);
       console.log(response.data);
@@ -51,303 +54,437 @@ export const useChat = (userId, userType) => {
     }
   }, [userId, userType]);
 
-  // Helper function to upload files
-  const uploadFiles = useCallback(async (files, consultationId) => {
-    if (!files || files.length === 0) return [];
-
-    try {
-      const uploadPromises = files.map(async (fileObj) => {
-        const formData = new FormData();
-        formData.append('file', fileObj.file);
-        formData.append('consultation_id', consultationId);
-        formData.append('sender_id', userId);
-        formData.append('sender_type', userType);
-
-        try {
-          const response = await axiosInstance.post('/consultations/upload_chat_file', formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-
-          return {
-            id: response.data.file_id,
-            filename: fileObj.name,
-            file_url: response.data.file_url,
-            file_type: fileObj.type,
-            file_size: fileObj.size,
-            upload_status: 'success'
-          };
-        } catch (error) {
-          console.error(`Failed to upload ${fileObj.name}:`, error);
-          return {
-            filename: fileObj.name,
-            upload_status: 'failed',
-            error: error.message
-          };
-        }
-      });
-
-      return await Promise.all(uploadPromises);
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      return [];
-    }
-  }, [userId, userType]);
-
-  const handleWebSocketMessage = useCallback((event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log("[RECEIVED MESSAGE]", data);
-      
-      // Handle status updates (online/offline)
-      if (data.type === "status") {
-        const { status, user_id } = data;
-        if (user_id !== userId) {
-          setIsOnline(status === "online");
-          
-          // Update user online status in users list
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
-              (userType === 'doctor' ? user.user_id : user.doctor_id) === user_id
-                ? { ...user, online: status === "online" }
-                : user
-            )
-          );
-        }
-      }
-
-      // Handle typing indicators
-      if (data.type === "typing") {
-        const { sender_id, is_typing } = data;
-        const currentConsultationId = activeConsultationIdRef.current;
-        if (sender_id !== userId && data.consultation_id === currentConsultationId) {
-          setIsTyping(is_typing);
-        }
-      }
-
-      // Handle regular messages - IMPROVED LOGIC
-      if (data.type === "message") {
-        const currentConsultationId = activeConsultationIdRef.current;
-        
-        console.log("[MESSAGE RECEIVED]", {
-          dataConsultationId: data.consultation_id,
-          currentConsultationId: currentConsultationId,
-          matches: data.consultation_id === currentConsultationId
-        });
-
-        // Only add message if it's for the active consultation
-        if (data.consultation_id === currentConsultationId) {
-          const receivedMessage = {
-            id: data.id || `${data.sender_id}-${Date.now()}`,
-            message: data.message,
-            created_at: data.created_at || new Date().toISOString(),
-            sender: data.sender_type,
-            sender_id: data.sender_id,
-            consultation_id: data.consultation_id,
-            // Handle file attachments
-            attachments: data.attachments || [],
-            message_type: data.message_type || 'text'
-          };
-
-          console.log("[ADDING MESSAGE TO STATE]", receivedMessage);
-
-          setMessages((prevMessages) => {
-            // Check for duplicate messages
-            const isDuplicate = prevMessages.some(
-              (msg) =>
-                (msg.id === receivedMessage.id) || // Same ID
-                (msg.message === receivedMessage.message &&
-                 msg.sender_id === receivedMessage.sender_id &&
-                 Math.abs(new Date(msg.created_at) - new Date(receivedMessage.created_at)) < 2000)
-            );
-
-            if (isDuplicate) {
-              console.log("[DUPLICATE MESSAGE DETECTED]", receivedMessage);
-              return prevMessages;
-            }
-
-            const newMessages = [...prevMessages, receivedMessage];
-            console.log("[MESSAGES UPDATED]", newMessages);
-            return newMessages;
-          });
-
-          // Auto-scroll to bottom when new message arrives
-          setTimeout(() => {
-            scrollToBottom();
-          }, 100);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", error);
-    }
-  }, [userId, userType, scrollToBottom]);
-
-  const initializeChat = useCallback(async (consultationId) => {
-    console.log("[INITIALIZING CHAT]", consultationId);
+  const sendVideoCallResponse =   async (message) => {
     
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setIsConnected(false);
-    setConnectionStatus("Connecting...");
-
-    try {
-      const ws = new WebSocket(
-        `ws://localhost/consultations/ws/chat/${consultationId}`
-      );
-      wsRef.current = ws;
-
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Connection timeout"));
-        }, 10000);
-
-        ws.onopen = () => {
-          console.log("[WEBSOCKET CONNECTED]");
-          clearTimeout(timeout);
-          setIsConnected(true);
-          setConnectionStatus("Connected");
-          
-          const initPayload = {
-            type: "join",
-            sender_id: userId,
-            sender_type: userType,
-            consultation_id: consultationId,
-          };
-          
-          console.log("[SENDING JOIN PAYLOAD]", initPayload);
-          ws.send(JSON.stringify(initPayload));
-          resolve();
+    
+      if (
+        wsRef.current &&
+        wsRef.current.readyState === WebSocket.OPEN &&
+        activeConsultationIdRef.current
+      ) {
+        const messageData = {
+          type: "message",
+          message: message,
+          consultation_id: activeConsultationIdRef.current,
+          sender_id: userId,
+          sender_type: userType,
+          message_type: "text",
+          attachments: [],
+          created_at: new Date().toISOString(),
         };
-
-        ws.onerror = (error) => {
-          console.error("[WEBSOCKET ERROR]", error);
-          clearTimeout(timeout);
-          setIsConnected(false);
-          setConnectionStatus("Connection failed");
-          reject(error);
-        };
-      });
-
-      ws.onclose = (event) => {
-        console.log("[WEBSOCKET CLOSED]", event);
-        setConnectionStatus("Disconnected");
-        setIsConnected(false);
-      };
-
-      ws.onmessage = handleWebSocketMessage;
-    } catch (error) {
-      console.error("Failed to initialize chat:", error);
-      setConnectionStatus("Connection failed");
-      setIsConnected(false);
+        wsRef.current.send(JSON.stringify(messageData));
+      }
     }
-  }, [userId, userType, handleWebSocketMessage]);
+  
 
-  // Updated handleSendMessage to support files
-  const handleSendMessage = useCallback(async (attachedFiles = []) => {
-    if ((!newMessage.trim() && attachedFiles.length === 0) || !wsRef.current || !activeConsultationId || !isConnected) {
-      console.log("[SEND MESSAGE BLOCKED]", {
-        hasMessage: !!newMessage.trim(),
-        hasFiles: attachedFiles.length > 0,
-        hasWebSocket: !!wsRef.current,
-        hasConsultationId: !!activeConsultationId,
-        isConnected: isConnected
-      });
+  const handleVideoCallRequest = useCallback(async () => {
+    const result = await Swal.fire({
+      title: "Videocall Request",
+      text: "Do you want to continue with videocall",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes",
+      cancelButtonText: "No",
+    });
+
+    if (!result.isConfirmed) {
+
+      await sendVideoCallResponse("Doctor Rejected video Call");
       return;
     }
 
-    setIsSendingMessage(true);
+    await sendVideoCallResponse("Doctor accepted video Call");
+    toast.success("Connecting...");
+    setTimeout(() => {
+      navigate("/doctor_video_call",);
+    }, 5000);
+  }, [sendVideoCallResponse, navigate]);
 
-    try {
-      let uploadedFiles = [];
-      
-      // Upload files if any
-      if (attachedFiles.length > 0) {
-        console.log("[UPLOADING FILES]", attachedFiles);
-        uploadedFiles = await uploadFiles(attachedFiles, activeConsultationId);
-        console.log("[FILES UPLOADED]", uploadedFiles);
+
+  const handleVideoCallRequestforUser = useCallback(async () => {
+   
+    toast.success("Connecting...",{position:'bottom-center'});
+    setTimeout(async () => {
+      await navigate('/user_booking',{state:{doctorId:currentSelectedUserid.current}})
+    }, 5000);
+  }, [ navigate]);
+  // Helper function to upload files
+  const uploadFiles = useCallback(
+    async (files, consultationId) => {
+      if (!files || files.length === 0) return [];
+
+      try {
+        const uploadPromises = files.map(async (fileObj) => {
+          // Validate file size before upload attempt
+          if (fileObj.size > 50 * 1024 * 1024) {
+            // 50MB
+            return {
+              filename: fileObj.name,
+              upload_status: "failed",
+              error: "File exceeds 50MB limit",
+              file_size: fileObj.size,
+            };
+          }
+
+          const formData = new FormData();
+          formData.append("file", fileObj.file);
+          formData.append("consultation_id", consultationId);
+          formData.append("sender_id", userId);
+          formData.append("sender_type", userType);
+
+          try {
+            const response = await axiosInstance.post(
+              "/consultations/upload_chat_file",
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+                timeout: 300000, // 5 minute timeout
+              }
+            );
+
+            return {
+              ...response.data,
+              upload_status: "success",
+              original_filename: fileObj.name,
+            };
+          } catch (error) {
+            let errorMsg = "Upload failed";
+            if (error.response) {
+              if (error.response.status === 413) {
+                errorMsg = "File too large (max 50MB)";
+              } else {
+                errorMsg =
+                  error.response.data?.detail || error.response.statusText;
+              }
+            } else {
+              errorMsg = error.message || "Network error";
+            }
+
+            return {
+              filename: fileObj.name,
+              upload_status: "failed",
+              error: errorMsg,
+              file_size: fileObj.size,
+            };
+          }
+        });
+
+        return await Promise.all(uploadPromises);
+      } catch (error) {
+        console.error("Error in upload process:", error);
+        return files.map((fileObj) => ({
+          filename: fileObj.name,
+          upload_status: "failed",
+          error: "Upload processing failed",
+          file_size: fileObj.size,
+        }));
+      }
+    },
+    [userId, userType]
+  );
+
+  const handleWebSocketMessage = useCallback(
+    async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("[RECEIVED MESSAGE]", data);
+        
+
+        if (
+          data.message == "Doctor accepted video Call" &&
+          userType == "user"
+        ) {
+          
+          toast.info("doctor approved Connecting...",{position:'bottom-center'});
+          handleVideoCallRequestforUser();
+          
+        }
+        if (
+          data.message == "Doctor Rejected video Call" &&
+          userType == "user"
+        ) {
+          toast.info("Doctor Rejected");
+        }
+
+        if (
+          data.message == "requested for a video call" &&
+          userType == "doctor"
+        ) {
+          handleVideoCallRequest(); // Just call the function
+        }
+
+        // Handle status updates (online/offline)
+        if (data.type === "status") {
+          const { status, user_id } = data;
+          if (user_id !== userId) {
+            setIsOnline(status === "online");
+
+            // Update user online status in users list
+            setUsers((prevUsers) =>
+              prevUsers.map((user) =>
+                (userType === "doctor" ? user.user_id : user.doctor_id) ===
+                user_id
+                  ? { ...user, online: status === "online" }
+                  : user
+              )
+            );
+          }
+        }
+
+        // Handle typing indicators
+        if (data.type === "typing") {
+          const { sender_id, is_typing } = data;
+          const currentConsultationId = activeConsultationIdRef.current;
+          if (
+            sender_id !== userId &&
+            data.consultation_id === currentConsultationId
+          ) {
+            setIsTyping(is_typing);
+          }
+        }
+
+        // Handle regular messages - IMPROVED LOGIC
+        if (data.type === "message") {
+          const currentConsultationId = activeConsultationIdRef.current;
+
+          console.log("[MESSAGE RECEIVED]", {
+            dataConsultationId: data.consultation_id,
+            currentConsultationId: currentConsultationId,
+            matches: data.consultation_id === currentConsultationId,
+          });
+
+          // Only add message if it's for the active consultation
+          if (data.consultation_id === currentConsultationId) {
+            const receivedMessage = {
+              id: data.id || `${data.sender_id}-${Date.now()}`,
+              message: data.message,
+              created_at: data.created_at || new Date().toISOString(),
+              sender: data.sender_type,
+              sender_id: data.sender_id,
+              consultation_id: data.consultation_id,
+              // Handle file attachments
+              attachments: data.attachments || [],
+              message_type: data.message_type || "text",
+            };
+
+            console.log("[ADDING MESSAGE TO STATE]", receivedMessage);
+
+            setMessages((prevMessages) => {
+              // Check for duplicate messages
+              const isDuplicate = prevMessages.some(
+                (msg) =>
+                  msg.id === receivedMessage.id || // Same ID
+                  (msg.message === receivedMessage.message &&
+                    msg.sender_id === receivedMessage.sender_id &&
+                    Math.abs(
+                      new Date(msg.created_at) -
+                        new Date(receivedMessage.created_at)
+                    ) < 2000)
+              );
+
+              if (isDuplicate) {
+                console.log("[DUPLICATE MESSAGE DETECTED]", receivedMessage);
+                return prevMessages;
+              }
+
+              const newMessages = [...prevMessages, receivedMessage];
+              console.log("[MESSAGES UPDATED]", newMessages);
+              return newMessages;
+            });
+
+            // Auto-scroll to bottom when new message arrives
+            setTimeout(() => {
+              scrollToBottom();
+            }, 100);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+      }
+    },
+    [userId, userType, scrollToBottom]
+  );
+
+  // Updated handleSendMessage to support files
+
+  const handleSendMessage = useCallback(
+    async (attachedFiles = []) => {
+      if (
+        (!newMessage.trim() && attachedFiles.length === 0) ||
+        !wsRef.current ||
+        !activeConsultationId ||
+        !isConnected
+      ) {
+        return;
       }
 
-      const messageToSend = newMessage.trim();
-      const messageData = {
-        type: "message",
-        message: messageToSend,
-        consultation_id: activeConsultationId,
-        sender_id: userId,
-        sender_type: userType,
-        message_type: attachedFiles.length > 0 ? "media" : "text",
-        attachments: uploadedFiles,
-        created_at: new Date().toISOString()
-      };
+      setIsSendingMessage(true);
 
-      // Send message through WebSocket
-      wsRef.current.send(JSON.stringify(messageData));
-      console.log("[MESSAGE SENT]", messageData);
-      
-      // Send notification
-      sendNotification(
-        activeChat,
-        attachedFiles.length > 0 
-          ? `New message with ${attachedFiles.length} file(s)` 
-          : "You have a new message",
-        "message"
-      );
-      
-      // Clear input
-      setNewMessage("");
+      try {
+        let uploadedFiles = [];
 
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      // You might want to show an error notification to the user here
-    } finally {
-      setIsSendingMessage(false);
-    }
-  }, [newMessage, activeConsultationId, userId, userType, isConnected, uploadFiles, activeChat, sendNotification]);
+        if (attachedFiles.length > 0) {
+          uploadedFiles = await uploadFiles(
+            attachedFiles,
+            activeConsultationId
+          );
 
-  const handleUserSelect = useCallback(async (selectedUserId, consultationId) => {
-    console.log("[USER SELECTED]", { selectedUserId, consultationId });
-    
-    if (activeConsultationId === consultationId) return;
+          // Show immediate feedback for failed uploads
+          const failedUploads = uploadedFiles.filter(
+            (f) => f.upload_status === "failed"
+          );
+          if (failedUploads.length > 0) {
+            showToast(
+              `${failedUploads.length} file(s) failed to upload: ${failedUploads
+                .map((f) => f.filename)
+                .join(", ")}`
+            );
+          }
+        }
 
-    try {
-      setIsLoadingMessages(true);
-      setMessages([]);
+        const messageData = {
+          type: "message",
+          message: newMessage.trim(),
+          consultation_id: activeConsultationId,
+          sender_id: userId,
+          sender_type: userType,
+          message_type: attachedFiles.length > 0 ? "media" : "text",
+          attachments: uploadedFiles,
+          created_at: new Date().toISOString(),
+        };
 
-      // SET CONSULTATION ID 
-      setActiveConsultationId(consultationId);
-      setActiveChat(selectedUserId);
+        wsRef.current.send(JSON.stringify(messageData));
+        setNewMessage("");
+      } catch (error) {
+        toast.error("Failed to send message. Please try again.");
+        console.error("Message send error:", error);
+      } finally {
+        setIsSendingMessage(false);
+      }
+    },
+    [
+      newMessage,
+      activeConsultationId,
+      userId,
+      userType,
+      isConnected,
+      uploadFiles,
+    ]
+  );
+  const initializeChat = useCallback(
+    async (consultationId) => {
+      console.log("[INITIALIZING CHAT]", consultationId);
 
-      const user = users.find((u) => 
-        userType === 'doctor' ? u.user_id === selectedUserId : u.doctor_id === selectedUserId
-      );
-      setActiveUser(user);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
 
-      // Initialize WebSocket connection
-      await initializeChat(consultationId);
+      setIsConnected(false);
+      setConnectionStatus("Connecting...");
 
-      // Fetch chat history
-      const response = await axiosInstance.get(
-        `/consultations/get_chat_messages/${consultationId}`
-      );
+      try {
+        const ws = new WebSocket(
+          `ws://localhost/consultations/ws/chat/${consultationId}`
+        );
+        wsRef.current = ws;
 
-      console.log("[CHAT HISTORY LOADED]", response.data);
-      setMessages(response.data || []);
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Connection timeout"));
+          }, 10000);
 
-      // Scroll to bottom after messages load
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+          ws.onopen = () => {
+            console.log("[WEBSOCKET CONNECTED]");
+            clearTimeout(timeout);
+            setIsConnected(true);
+            setConnectionStatus("Connected");
 
-    } catch (error) {
-      console.error("Error fetching chat messages:", error);
-      setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [activeConsultationId, users, initializeChat, userType, scrollToBottom]);
+            const initPayload = {
+              type: "join",
+              sender_id: userId,
+              sender_type: userType,
+              consultation_id: consultationId,
+            };
+
+            console.log("[SENDING JOIN PAYLOAD]", initPayload);
+            ws.send(JSON.stringify(initPayload));
+            resolve();
+          };
+
+          ws.onerror = (error) => {
+            console.error("[WEBSOCKET ERROR]", error);
+            clearTimeout(timeout);
+            setIsConnected(false);
+            setConnectionStatus("Connection failed");
+            reject(error);
+          };
+        });
+
+        ws.onclose = (event) => {
+          console.log("[WEBSOCKET CLOSED]", event);
+          setConnectionStatus("Disconnected");
+          setIsConnected(false);
+        };
+
+        ws.onmessage = handleWebSocketMessage;
+      } catch (error) {
+        console.error("Failed to initialize chat:", error);
+        setConnectionStatus("Connection failed");
+        setIsConnected(false);
+      }
+    },
+    [userId, userType, handleWebSocketMessage]
+  );
+
+  const handleUserSelect = useCallback(
+    async (selectedUserId, consultationId) => {
+      console.log("[USER SELECTED]", { selectedUserId, consultationId });
+
+      if (activeConsultationId === consultationId) return;
+
+      try {
+        setIsLoadingMessages(true);
+        setMessages([]);
+
+        // SET CONSULTATION ID
+        setActiveConsultationId(consultationId);
+        setActiveChat(selectedUserId);
+        currentSelectedUserid.current=selectedUserId
+
+        const user = users.find((u) =>
+          userType === "doctor"
+            ? u.user_id === selectedUserId
+            : u.psychologist_id === selectedUserId
+        );
+        setActiveUser(user);
+
+        // Initialize WebSocket connection
+        await initializeChat(consultationId);
+
+        // Fetch chat history
+        const response = await axiosInstance.get(
+          `/consultations/get_chat_messages/${consultationId}`
+        );
+
+        console.log("[CHAT HISTORY LOADED]", response.data);
+        setMessages(response.data || []);
+
+        // Scroll to bottom after messages load
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      } catch (error) {
+        console.error("Error fetching chat messages:", error);
+        setMessages([]);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [activeConsultationId, users, initializeChat, userType, scrollToBottom]
+  );
 
   // Cleanup WebSocket on unmount
   useEffect(() => {
@@ -386,13 +523,13 @@ export const useChat = (userId, userType) => {
     isTyping,
     isSendingMessage, // New state
     messagesEndRef,
-    
+
     // Actions
     handleSendMessage, // Now supports files
     handleUserSelect,
-    
+
     // Utils
     scrollToBottom,
-    uploadFiles // Expose for manual file uploads if needed
+    uploadFiles, // Expose for manual file uploads if needed
   };
 };

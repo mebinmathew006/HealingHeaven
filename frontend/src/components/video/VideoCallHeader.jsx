@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, Users } from "lucide-react";
+import { Clock, Users, Settings, RefreshCw } from "lucide-react";
 import NotificationDropdown from "../NotificationDropdown";
 
 function VideoCallHeader({
@@ -14,6 +14,13 @@ function VideoCallHeader({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  //  Use callback from parent component
+  const handleReconnect = () => {
+    
+      window.location.reload();
+    
   };
 
   return (
@@ -59,17 +66,14 @@ function VideoCallHeader({
       </div>
 
       <div className="flex items-center space-x-3 relative z-50">
-        {children || (
-          <>
-            <NotificationDropdown />
-            <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
-              <Users size={20} />
-            </button>
-            <button className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white">
-              <Settings size={20} />
-            </button>
-          </>
-        )}
+        <NotificationDropdown />
+        <button 
+          onClick={handleReconnect}
+          className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200 text-white/70 hover:text-white group"
+          title="Reconnect"
+        >
+          <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-300" />
+        </button>
       </div>
     </div>
   );

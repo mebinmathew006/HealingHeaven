@@ -298,7 +298,7 @@ const DoctorProfile = () => {
                       {isEditing ? (
                         <input
                           type="text"
-                          name="user.name"
+                          name="name"
                           value={formData.user.name}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -319,7 +319,7 @@ const DoctorProfile = () => {
                       {isEditing ? (
                         <input
                           type="tel"
-                          name="user.mobile_number"
+                          name="mobile_number"
                           value={formData.user.mobile_number}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

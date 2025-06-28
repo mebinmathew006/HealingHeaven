@@ -1,5 +1,5 @@
 from sqlalchemy.future import select
-from sqlalchemy import func,extract
+from sqlalchemy import func,extract,desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
@@ -156,13 +156,38 @@ async def consultation_for_user(session: AsyncSession, user_id: int, skip: int, 
     )
     return result.scalars().all()
 
-async def consultation_for_doctor(session: AsyncSession, psychologist_id: int, skip: int, limit: int):
-    result = await session.execute(
-        select(Consultation)
-        .where(Consultation.psychologist_id == psychologist_id)
-        .offset(skip)
-        .limit(limit)
-    )
+async def consultation_for_doctor(session: AsyncSession, psychologist_id: int, skip: int, limit: int, ordering: Optional[str] = None):
+    query = select(Consultation).where(Consultation.psychologist_id == psychologist_id)
+    
+    # Apply ordering if provided
+    if ordering:
+        field_name = ordering.lstrip('-')
+        is_descending = ordering.startswith('-')
+        
+        # Map field names to model attributes
+        field_mapping = {
+            'id': Consultation.id,
+            'created_at': Consultation.created_at,
+            'status': Consultation.status,
+            'duration': Consultation.duration,
+            'analysis': Consultation.analysis,
+        }
+        
+        if field_name in field_mapping:
+            field = field_mapping[field_name]
+            order_clause = desc(field) if is_descending else asc(field)
+            query = query.order_by(order_clause)
+        else:
+            # Default ordering if invalid field
+            query = query.order_by(desc(Consultation.created_at))
+    else:
+        # Default ordering by created_at descending
+        query = query.order_by(desc(Consultation.created_at))
+    
+    # Apply pagination
+    query = query.offset(skip).limit(limit)
+    
+    result = await session.execute(query)
     return result.scalars().all()
 
 async def get_notifications_crud(session: AsyncSession,  skip: int, limit: int):
@@ -210,33 +235,40 @@ async def get_feedbacks_crud(session: AsyncSession, psychologist_id: int):
     return result.scalars().all()
 
 
-async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: int):
-    # Total earnings from completed payments
+async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: int, selectedYear: int):
+    # Total earnings from completed payments for the selected year
     earnings_query = await session.execute(
         select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
         .join(Consultation, Payments.consultation_id == Consultation.id)
         .where(
             Consultation.psychologist_id == psychologist_id,
-            Payments.payment_status == "paid"  
+            Payments.payment_status == "paid",
+            extract('year', Payments.created_at) == selectedYear
         )
     )
     total_earnings = earnings_query.scalar()
 
-    # Total sessions for the psychologist
+    # Total sessions for the psychologist in the selected year
     sessions_query = await session.execute(
         select(func.count(Consultation.id))
-        .where(Consultation.psychologist_id == psychologist_id)
+        .where(
+            Consultation.psychologist_id == psychologist_id,
+            extract('year', Consultation.created_at) == selectedYear
+        )
     )
     total_sessions = sessions_query.scalar()
 
-    # Total unique patients
+    # Total unique patients in the selected year
     patients_query = await session.execute(
         select(func.count(func.distinct(Consultation.user_id)))
-        .where(Consultation.psychologist_id == psychologist_id)
+        .where(
+            Consultation.psychologist_id == psychologist_id,
+            extract('year', Consultation.created_at) == selectedYear
+        )
     )
     total_patients = patients_query.scalar()
 
-    # Optional: Monthly earnings chart data (static or dynamic)
+    # Monthly earnings chart data in the selected year
     chart_query = await session.execute(
         select(
             extract('month', Payments.created_at).label('month'),
@@ -245,7 +277,8 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
         .join(Consultation, Payments.consultation_id == Consultation.id)
         .where(
             Consultation.psychologist_id == psychologist_id,
-            Payments.payment_status == "paid"
+            Payments.payment_status == "paid",
+            extract('year', Payments.created_at) == selectedYear
         )
         .group_by('month')
         .order_by('month')
@@ -269,30 +302,36 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
         "chart_data": chart_data
     }
     
-    
-async def admin_dashboard_details_crud(session: AsyncSession):
-    # Total earnings from completed payments
+async def admin_dashboard_details_crud(session: AsyncSession, year: int):
+    # Total earnings from completed payments in the given year
     earnings_query = await session.execute(
         select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
         .where(
-            Payments.payment_status == "paid"  
+            Payments.payment_status == "paid",
+            extract('year', Payments.created_at) == year
         )
     )
     total_earnings = earnings_query.scalar()
 
-    # Total sessions for the psychologist
+    # Total sessions for the psychologist in the given year
     sessions_query = await session.execute(
         select(func.count(Consultation.id))
+        .where(
+            extract('year', Consultation.created_at) == year
+        )
     )
     total_sessions = sessions_query.scalar()
 
-    # Total unique patients
+    # Total unique patients in the given year
     patients_query = await session.execute(
         select(func.count(func.distinct(Consultation.user_id)))
+        .where(
+            extract('year', Consultation.created_at) == year
+        )
     )
     total_patients = patients_query.scalar()
 
-    # Optional: Monthly earnings chart data (static or dynamic)
+    # Monthly earnings chart data in the given year
     chart_query = await session.execute(
         select(
             extract('month', Payments.created_at).label('month'),
@@ -300,14 +339,15 @@ async def admin_dashboard_details_crud(session: AsyncSession):
         )
         .join(Consultation, Payments.consultation_id == Consultation.id)
         .where(
-            Payments.payment_status == "paid"
+            Payments.payment_status == "paid",
+            extract('year', Payments.created_at) == year
         )
         .group_by('month')
         .order_by('month')
     )
     chart_data_raw = chart_query.all()
 
-    # Format chart data as month names
+    # Format chart data with month names
     month_map = {i: calendar.month_abbr[i] for i in range(1, 13)}
     chart_data = [
         {
@@ -323,7 +363,6 @@ async def admin_dashboard_details_crud(session: AsyncSession):
         "totalPatients": total_patients,
         "chart_data": chart_data
     }
-
 
 
 async def count_notifications(session: AsyncSession):

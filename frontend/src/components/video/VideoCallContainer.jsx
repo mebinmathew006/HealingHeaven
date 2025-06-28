@@ -16,11 +16,13 @@ function VideoCallContainer({
   toggleMute,
   toggleVideo,
   endCall,
-  callRecord,
+  stopRecording='',
+  startRecording='',
+  isRecording=false,
   isMuted,
   userType = "doctor", // 'doctor' or 'patient'
   children,
-  isRecordingtoggle
+  isRecordingtoggle,
 }) {
   return (
     <div className=" bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex flex-col">
@@ -42,7 +44,6 @@ function VideoCallContainer({
         isVideoOff={isVideoOff}
         isUsingFallbackVideo={isUsingFallbackVideo}
         userType={userType}
-        
       />
 
       <VideoCallControls
@@ -52,9 +53,10 @@ function VideoCallContainer({
         isMuted={isMuted}
         isVideoOff={isVideoOff}
         userType={userType}
-        callRecord={callRecord}
+        stopRecording={stopRecording}
+      startRecording={startRecording}
+      isRecording={isRecording}
         isRecordingtoggle={isRecordingtoggle}
-
       />
     </div>
   );

@@ -4,7 +4,9 @@ from pydantic import BaseModel, EmailStr, Field,validator
 from typing import Optional
 from datetime import date, datetime
 
-
+class GoogleLoginSchema(BaseModel):
+    credential: str
+    
 class UserCreate(BaseModel):
     name: str
     email_address: EmailStr
@@ -129,7 +131,7 @@ class UserWithOptionalProfileOut(BaseModel):
     id: int
     name: str
     email_address: EmailStr
-    mobile_number: str
+    mobile_number:  Optional[str]
     role: str
     user_profile: Optional[UserProfileFields] = None
 
@@ -143,8 +145,10 @@ class UserProfileImage(BaseModel):
 class DoctorProfileDetails(BaseModel):
     profile_image: Optional[str]
     specialization: Optional[str]
+    fees: Optional[int]
     
 class UserNameWithProfileImage(BaseModel):
+    
     name: str
     user_profile: Optional[UserProfileImage] = None
 
@@ -153,6 +157,7 @@ class UserNameWithProfileImage(BaseModel):
     }
     
 class DoctorNameWithProfileImage(BaseModel):
+    id : int
     name: str
     psychologist_profile: Optional[DoctorProfileDetails] = None
 

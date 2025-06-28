@@ -22,13 +22,14 @@ function DoctorVideoCallPage() {
     removeNotification,
   } = useNotifications();
 
-  const handleCallEnd = ({ consultationId, callDuration }) => {
-    setTimeout(() => {
-      navigate("/doctor_feedback_page", {
-        state: { consultationId, callDuration },
-      });
-    }, 500);
-  };
+    const handleCallEnd = ({ consultationId, callDuration }) => {
+      console.log(consultationId,callDuration)
+      setTimeout(() => {
+        navigate("/doctor_feedback_page", {
+          state: { consultationId, callDuration},
+        });
+      }, 500);
+    };
 
   const {
     isMuted,
@@ -41,10 +42,10 @@ function DoctorVideoCallPage() {
     isUsingFallbackVideo,
     localVideoRef,
     remoteVideoRef,
-    callRecord,
     toggleMute,
     toggleVideo,
     endCall,
+    onReconnect,
   } = useDoctorWebRTC({
     doctorId,
     onCallEnd: handleCallEnd,
@@ -63,10 +64,10 @@ function DoctorVideoCallPage() {
       isVideoOff={isVideoOff}
       toggleMute={toggleMute}
       toggleVideo={toggleVideo}
-      callRecord={callRecord}
       endCall={endCall}
       isMuted={isMuted}
       isRecording={false}
+      onReconnect={onReconnect}
       userType="doctor"
     >
       <NotificationDropdown

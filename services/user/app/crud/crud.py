@@ -13,7 +13,14 @@ async def get_user_by_email(session: AsyncSession, email: str):
         result = await session.execute(select(User).where(User.email_address == email))
         return result.scalars().first()
     except Exception as e:
-        print(e,'ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd')
+        pass
+    
+async def get_user_email_by_id(session: AsyncSession, user_id: int):
+    try:
+        result = await session.execute(select(User.email_address).where(User.id == user_id))
+        return result.scalar_one_or_none()
+    except Exception as e:
+        pass
 
 async def get_user_by_id(session: AsyncSession, user_id: int):
     result = await session.execute(
@@ -55,7 +62,6 @@ async def get_psycholgist_by_id(session: AsyncSession, user_id: int):
 
 async def create_user(session: AsyncSession, user: UserCreate):
     try:
-        
         db_user = User(
             name=user.name,
             email_address=user.email_address,
@@ -82,6 +88,64 @@ async def create_user(session: AsyncSession, user: UserCreate):
     except SQLAlchemyError as e:
         print(e, 'Database error during user creation.')
         raise HTTPException(status_code=500, detail="Database error during user creation.")
+    
+    
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def create_google_user(session: AsyncSession, name: str, email: str, profile_url: str, password: int):
+    try:
+        # Check if user already exists first (to avoid duplicate key errors)
+        existing_user = await session.execute(
+            select(User).where(User.email_address == email)
+        )
+        if existing_user.scalar_one_or_none():
+            return existing_user
+
+        db_user = User(
+            name=name,
+            email_address=email,
+            mobile_number=None,
+            password=hash_password(str(password)),
+            role='patient',
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(db_user)
+        await session.flush()  # This will give us the user ID
+
+        new_profile = UserProfile(
+            user_id=db_user.id,
+            date_of_birth=None,
+            gender=None,
+            profile_image=profile_url
+        )
+        session.add(new_profile)
+        
+        # Commit both operations together
+        await session.commit()
+        
+        # Refresh to get the latest data
+        await session.refresh(db_user)
+        return db_user
+
+    except IntegrityError as e:
+        await session.rollback()
+        print(f"Integrity error during user creation: {e}")
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    
+    except SQLAlchemyError as e:
+        await session.rollback()
+        print(f"Database error during user creation: {e}")
+        raise HTTPException(status_code=500, detail="Database error during user creation.")
+    
+    except Exception as e:
+        await session.rollback()
+        print(f"Unexpected error during user creation: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error during user creation.")
+
+
+
 
 
 async def update_user_status(session: AsyncSession,email:str):

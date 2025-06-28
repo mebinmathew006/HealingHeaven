@@ -1,60 +1,108 @@
-import axios from 'axios';
-import store from './store/store';
-import { destroyDetails,setUserDetails } from './store/UserDetailsSlice'; // Adjust the path as needed
-import history from './History';
+import axios from "axios";
+import store from "./store/store";
+import {
+  destroyDetails,
+  setUserDetails,
+  updateAccessToken,
+} from "./store/UserDetailsSlice";
+import history from "./History";
 import { toast } from "react-toastify";
 
-const baseurl=import.meta.env.VITE_BASE_URL
+const baseurl = import.meta.env.VITE_BASE_URL;
 
 const axiosInstance = axios.create({
   baseURL: `${baseurl}`,
-  
+  withCredentials: true,
 });
 
-// Attach the access token from Redux to the headers of each request
+// Request interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
-    const state = store.getState(); 
-    const accessToken = state.userDetails.access_token; 
+    const state = store.getState();
+    const accessToken = state.userDetails.access_token;
 
     if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
+      config.headers["Authorization"] = `Bearer ${accessToken}`;
     }
     return config;
   },
-  (error) => Promise.reject(error) 
+
+  (error) => {
+    Promise.reject(error);
+  }
 );
 
-// Handle responses and refresh token logic
+// Response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => response, // Pass successful responses directly
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    // Check if the error is due to an expired access token
+
+    // Skip processing for auth-related endpoints
+    if (
+      originalRequest.url?.includes("/refresh_token") ||
+      originalRequest.url?.includes("/login")
+    ) {
+      return Promise.reject(error);
+    }
+
+    // Handle 401 errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      try {
-        // Attempt to refresh the access token using the refresh token stored in an HttpOnly cookie
-        const response = await axios.post(`${baseurl}/user/refresh_token`, {}, {
-          withCredentials: true, // Send cookies with the request
-        });
-        const userDetails=response.data.user
-        store.dispatch(setUserDetails(userDetails));
-        // Update the original request's Authorization header with the new token
-        originalRequest.headers['Authorization'] = `Bearer ${userDetails.access_token}`;  
 
-        // Retry the original request with the refreshed token
+      try {
+        // Refresh token request
+        const refreshResponse = await axios.post(
+          `${baseurl}/users/refresh_token`,
+          {},
+          { withCredentials: true }
+        );
+
+        // Extract new access token
+        const newAccessToken = refreshResponse.data?.access_token;
+
+        if (!newAccessToken) {
+          throw new Error("Missing access token in refresh response");
+        }
+
+        // Update ONLY the access token in Redux
+        store.dispatch(updateAccessToken(newAccessToken));
+
+        // Update request header and retry
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        toast.error("Session expired. Please log in again", {
-                position: "bottom-center",
-              });
-        // If refresh fails, clear Redux state and redirect to login
-        // store.dispatch(destroyDetails());
-        const response = await axios.post(`${baseurl}/users/userLogout`);
-        history.push('/login');
+        console.error("Token refresh failed:", refreshError);
+
+        // Full logout process
+        store.dispatch(destroyDetails());
+        try {
+          await axios.post(
+            `${baseurl}/users/logout`,
+            {},
+            { withCredentials: true }
+          );
+        } catch (e) {
+          console.error("Logout failed:", e);
+        }
+
+        // Notify user
+        toast.error("Your session has expired. Please log in again.", {
+          position: "bottom-center",
+          autoClose: 5000,
+        });
+
+        // Redirect to login
+        history.push("/login");
         return Promise.reject(refreshError);
       }
+    }
+
+    // Handle other errors
+    if (error.response?.status === 403) {
+      toast.error("You don't have permission for this action", {
+        position: "bottom-center",
+      });
     }
 
     return Promise.reject(error);

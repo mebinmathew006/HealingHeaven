@@ -6,6 +6,7 @@ import { usePatientWebRTC } from "../../utils/usePatientWebRTC";
 import { useNotifications } from "../../utils/NotificationContext";
 import VideoCallContainer from "../../components/video/VideoCallContainer";
 import NotificationDropdown from "../../components/NotificationDropdown";
+import Swal from "sweetalert2";
 
 function UserVideoCallPage() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ function UserVideoCallPage() {
 
   // Get doctor ID and consultation ID from route state or props
   const patientId = useSelector((state) => state.userDetails.id);
-  const { doctorId, psychologist_fee, consultationId ,isRecordingtoggle} = location?.state || {};
+  const { doctorId, psychologist_fee, consultationId, isRecordingtoggle } = location?.state || {};
 
   const {
     notifications,
@@ -23,11 +24,9 @@ function UserVideoCallPage() {
     removeNotification,
   } = useNotifications();
 
-  const handleCallEnd = ({ consultationId }) => {
+  const handleCallEnd = ( ) => {
     setTimeout(() => {
-      navigate("/user_feedback_page", {
-        state: { consultation_id: consultationId },
-      });
+      navigate("/user_consultations");
     }, 500);
   };
 
@@ -42,7 +41,9 @@ function UserVideoCallPage() {
     isUsingFallbackVideo,
     localVideoRef,
     remoteVideoRef,
-    callRecord,
+    startRecording,
+    stopRecording,
+    isRecording,
     toggleMute,
     toggleVideo,
     endCall,
@@ -53,7 +54,58 @@ function UserVideoCallPage() {
     onCallEnd: handleCallEnd,
     isRecordingtoggle,
   });
- 
+
+  useEffect(() => {
+    // 1. Handle browser tab/window closing (using standard beforeunload)
+    const handleBeforeUnload = (e) => {
+      if (isConnected || isRecording) {
+        e.preventDefault();
+        e.returnValue = 'You have an ongoing video call. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    // 2. Handle internal navigation attempts (using SweetAlert)
+    const handleInternalNavigation = (e) => {
+      // Skip if not a link click or if no href
+      if (!e.target.closest('a') || !e.target.closest('a').href) return;
+      
+      if (isConnected || isRecording) {
+        e.preventDefault();
+        const href = e.target.closest('a').href;
+        
+        Swal.fire({
+          title: "End Video Call?",
+          text: "You have an ongoing call. Do you want to end it?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Yes, End Call",
+          cancelButtonText: "No, Continue",
+          focusCancel: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Clean up call and recording
+            if (isRecording) stopRecording();
+            endCall();
+            
+            // Navigate after cleanup
+            setTimeout(() => {
+              window.location.href = href;
+            }, 100);
+          }
+        });
+      }
+    };
+
+    // Set up event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleInternalNavigation, true); // Use capture phase
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleInternalNavigation, true);
+    };
+  }, [isConnected, isRecording, endCall, stopRecording]);
 
   return (
     <VideoCallContainer
@@ -66,7 +118,9 @@ function UserVideoCallPage() {
       localVideoRef={localVideoRef}
       remoteVideoRef={remoteVideoRef}
       isVideoOff={isVideoOff}
-      callRecord={callRecord}
+      stopRecording={stopRecording}
+      startRecording={startRecording}
+      isRecording={isRecording}
       toggleMute={toggleMute}
       toggleVideo={toggleVideo}
       endCall={endCall}

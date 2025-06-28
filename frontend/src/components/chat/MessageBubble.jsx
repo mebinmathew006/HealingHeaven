@@ -7,7 +7,10 @@ const MessageBubble = React.memo(({
   activeUser, 
   formatMessageTime 
 }) => {
+  const BASE_URL_FOR_MEDIA = import.meta.env.VITE_BASE_URL
   // Function to render different file types
+
+  
   const renderAttachment = (attachment) => {
     const fileType = attachment.file_type.split('/')[0];
     const fileSizeMB = (attachment.file_size / (1024 * 1024)).toFixed(2);
@@ -16,29 +19,29 @@ const MessageBubble = React.memo(({
       case 'image':
         return (
           <img 
-            src={attachment.file_url} 
-            alt={attachment.original_filename}
+            src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} 
+            alt={`${BASE_URL_FOR_MEDIA}/${attachment.filename}`} 
             className="max-h-60 rounded-md object-contain"
           />
         );
       case 'video':
         return (
           <video controls className="max-h-60 rounded-md">
-            <source src={attachment.file_url} type={attachment.file_type} />
+            <source src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} type={attachment.file_type} />
             Your browser does not support the video tag.
           </video>
         );
       case 'audio':
         return (
-          <audio controls className="w-full">
-            <source src={attachment.file_url} type={attachment.file_type} />
+          <audio controls className="max-w-64">
+            <source src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} type={attachment.file_type} />
             Your browser does not support the audio element.
           </audio>
         );
       default:
         return (
           <a 
-            href={attachment.file_url} 
+            href={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`}
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center p-2 rounded hover:bg-gray-100"

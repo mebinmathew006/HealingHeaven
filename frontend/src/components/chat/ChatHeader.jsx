@@ -1,16 +1,30 @@
 // components/chat/ChatHeader.js
-import React from 'react';
-import { Menu } from 'lucide-react';
+import React from "react";
+import { Menu, Video, Phone } from "lucide-react";
+import { useNotifications } from "../../utils/NotificationContext";
 
-const ChatHeader = ({ 
-  activeUser, 
-  isOnline, 
+const ChatHeader = ({
+  activeUser,
+  isOnline,
   setSidebarOpen,
-  userType 
+  userType,
+  handleSendMessage,
+  setNewMessage,
 }) => {
   // Show different user info based on chat type
-  const displayUser = userType === 'doctor' ? activeUser?.user : activeUser?.user;
-  
+  const displayUser =
+    userType === "doctor" ? activeUser?.user : activeUser?.user;
+  const { sendNotification } = useNotifications();
+  const handleVideoCall = () => {
+    sendNotification(
+      activeUser.psychologist_id,
+      "User wants to connect with you",
+      "videocall"
+    );
+    setNewMessage("requested for a video call");
+    handleSendMessage(); // Calls with no attachments
+  };
+
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
       <div className="flex items-center space-x-3">
@@ -36,7 +50,7 @@ const ChatHeader = ({
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
               )}
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="font-semibold text-gray-900">
                 {displayUser?.name}
               </h1>
@@ -51,6 +65,20 @@ const ChatHeader = ({
           </>
         )}
       </div>
+
+      {activeUser && userType == "user" && (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleVideoCall}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-200 hover:bg-green-300 text-white"
+            }`}
+          >
+            <Video className="w-4 h-4" />
+            <span className="hidden sm:inline">Video Call</span>
+          </button>
+        </div>
+      )}
+      {/* Video Call Button */}
     </div>
   );
 };

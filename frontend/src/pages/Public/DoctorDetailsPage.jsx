@@ -14,7 +14,7 @@ import { useLocation } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
 import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
 
-const DoctorDetailsPage = (props) => {
+const DoctorDetailsPage = ({}) => {
   const [showModal, setShowModal] = useState(false);
   const [doctor, setDoctor] = useState({});
   const location = useLocation();

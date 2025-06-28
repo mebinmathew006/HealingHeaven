@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Bell, LogOut, Menu, X, ChartArea, Star, Video, Home } from "lucide-react";
+import { User, Bell, LogOut, Menu, X, ChartArea, Star, Video, Home, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
@@ -30,8 +30,8 @@ const DoctorSidebar = ({ activeSection }) => {
   const userDetails = useSelector((state) => state.userDetails);
   
   const menuItems = [
-    { id: 'doctor_dashboard', label: 'Dashboard', icon: Home },
-    { id: 'doctor_home_page', label: 'Profile', icon: User },
+    { id: 'doctor_home_page', label: 'Profile', icon: Home },
+    { id: 'doctor_revenue', label: 'Revenue', icon: DollarSign },
     { id: 'doctor_view_notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { id: 'doctor_chat', label: 'Chat', icon: ChartArea },
     { id: 'doctor_view_feedback', label: 'Feedback', icon: Star },

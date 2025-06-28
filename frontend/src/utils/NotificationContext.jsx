@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { toast } from 'react-toastify';
+// hooks/useNotifications.js
+import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 
 const NotificationContext = createContext();
 
-// Notification reducer remains the same
 const notificationReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
@@ -26,13 +25,6 @@ const notificationReducer = (state, action) => {
         notifications: state.notifications.map(notif => ({ ...notif, read: true })),
         unreadCount: 0
       };
-    case 'REMOVE_NOTIFICATION':
-      const notification = state.notifications.find(n => n.id === action.payload);
-      return {
-        ...state,
-        notifications: state.notifications.filter(n => n.id !== action.payload),
-        unreadCount: notification && !notification.read ? state.unreadCount - 1 : state.unreadCount
-      };
     case 'SET_CONNECTION_STATUS':
       return {
         ...state,
@@ -52,48 +44,94 @@ const notificationReducer = (state, action) => {
 const initialState = {
   notifications: [],
   unreadCount: 0,
-  connectionStatus: 'disconnected' // 'connected', 'connecting', 'disconnected'
+  connectionStatus: 'disconnected'
 };
 
 export const NotificationProvider = ({ children, userId }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const keepAliveIntervalRef = useRef(null);
   const reconnectAttempts = useRef(0);
+  const isConnecting = useRef(false);
+  const shouldReconnect = useRef(true);
 
-  const connectWebSocket = () => {
-    if (!userId) {
-      // No user ID, don't attempt to connect
+  const cleanup = useCallback(() => {
+    console.log('Cleaning up WebSocket connection');
+    
+    // Clear intervals and timeouts
+    if (keepAliveIntervalRef.current) {
+      clearInterval(keepAliveIntervalRef.current);
+      keepAliveIntervalRef.current = null;
+    }
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    // Close WebSocket if it exists and is open
+    if (wsRef.current) {
+      const ws = wsRef.current;
+      wsRef.current = null; // Clear reference first to prevent reconnection
+      
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close(1000, 'Component cleanup');
+      }
+    }
+    
+    isConnecting.current = false;
+  }, []);
+
+  const connect = useCallback(() => {
+    // Prevent multiple simultaneous connection attempts
+    if (isConnecting.current || !shouldReconnect.current || !userId) {
       return;
     }
 
-    // Clear any existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
+    // Don't reconnect if we already have an open connection
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
     }
 
+    isConnecting.current = true;
     dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connecting' });
     
+    console.log(`Attempting to connect WebSocket for user ${userId}`);
+    
     const wsUrl = `ws://localhost/consultations/ws/notifications/${userId}`;
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connected');
+    const newWs = new WebSocket(wsUrl);
+    
+    // Set up event handlers before assigning to ref
+    newWs.onopen = () => {
+      console.log('WebSocket connected successfully');
+      wsRef.current = newWs; // Only assign after successful connection
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
       reconnectAttempts.current = 0;
+      isConnecting.current = false;
+      
+      // Start keep-alive ping
+      keepAliveIntervalRef.current = setInterval(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 20000); // 20 seconds
     };
 
-    wsRef.current.onmessage = (event) => {
+    newWs.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
+        // Handle pong responses
+        if (data.type === 'pong') {
+          console.log('Received pong from server');
+          return;
+        }
+        
         if (data.type === 'notification') {
           const notification = {
-            id: Date.now() + Math.random(), // Generate unique ID
-            sender_id: data.sender_id,
-            notification_type: data.notification_type,
-            message: data.message,
-            timestamp: data.timestamp,
+            id: `${data.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
+            ...data,
             read: false
           };
           
@@ -108,101 +146,128 @@ export const NotificationProvider = ({ children, userId }) => {
           }
         }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('Error processing WebSocket message:', error);
       }
     };
 
-    wsRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
+    newWs.onclose = (event) => {
+      console.log(`WebSocket closed: code=${event.code}, reason="${event.reason}"`);
+      
+      // Clear references and intervals
+      if (wsRef.current === newWs) {
+        wsRef.current = null;
+      }
+      
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
+      
+      isConnecting.current = false;
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
       
-      // Only attempt to reconnect if we still have a userId
-      if (userId && reconnectAttempts.current < 5) {
-        const delay = Math.pow(2, reconnectAttempts.current) * 1000;
+      // Only attempt reconnection for unexpected closures
+      if (shouldReconnect.current && event.code !== 1000 && reconnectAttempts.current < 5) {
+        const delay = Math.min(
+          1000 * Math.pow(2, reconnectAttempts.current), // Exponential backoff
+          30000 // Max 30 seconds
+        );
+        
+        console.log(`Scheduling reconnection attempt ${reconnectAttempts.current + 1} in ${delay}ms`);
+        
         reconnectTimeoutRef.current = setTimeout(() => {
-          reconnectAttempts.current++;
-          connectWebSocket();
+          if (shouldReconnect.current) {
+            reconnectAttempts.current++;
+            connect();
+          }
         }, delay);
       }
     };
 
-    wsRef.current.onerror = (error) => {
+    newWs.onerror = (error) => {
       console.error('WebSocket error:', error);
+      isConnecting.current = false;
     };
-  };
 
-  const cleanupWebSocket = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    reconnectAttempts.current = 0;
-    dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
-  };
-
-  useEffect(() => {
-    // Request notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then().catch(err => {
-        console.error('Notification permission error:', err);
-      });
-    }
-
-    return () => {
-      cleanupWebSocket();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (userId) {
-      // User is logged in, connect to WebSocket
-      connectWebSocket();
-    } else {
-      // User logged out, clean up
-      cleanupWebSocket();
-      dispatch({ type: 'CLEAR_NOTIFICATIONS' });
-    }
-
-    return () => {
-      // Clean up on userId change
-      cleanupWebSocket();
-    };
   }, [userId]);
 
-  const sendNotification = (receiverId, message, notificationType) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
+  // Request notification permissions
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(console.error);
+    }
+  }, []);
+
+  // Handle network status changes
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network came back online');
+      if (state.connectionStatus === 'disconnected' && shouldReconnect.current) {
+        // Reset reconnection attempts when network comes back
+        reconnectAttempts.current = 0;
+        connect();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('Network went offline');
+      cleanup();
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [connect, cleanup, state.connectionStatus]);
+
+  // Main connection effect
+  useEffect(() => {
+    if (userId) {
+      shouldReconnect.current = true;
+      connect();
+    }
+
+    // Cleanup function
+    return () => {
+      console.log('NotificationProvider unmounting, cleaning up...');
+      shouldReconnect.current = false;
+      cleanup();
+    };
+  }, [userId, connect, cleanup]);
+
+  const sendNotification = useCallback((receiverId, message, notificationType) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      const payload = {
         type: 'notification',
         receiver_id: receiverId,
         message,
         notification_type: notificationType,
-        sender_type: 'user'
-      }));
+        timestamp: new Date().toISOString()
+      };
+      
+      wsRef.current.send(JSON.stringify(payload));
+      console.log('Notification sent:', payload);
+    } else {
+      console.warn('Cannot send notification: WebSocket not connected');
     }
-  };
+  }, []);
 
-  const markAsRead = (notificationId) => {
+  const markAsRead = useCallback((notificationId) => {
     dispatch({ type: 'MARK_AS_READ', payload: notificationId });
-  };
+  }, []);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     dispatch({ type: 'MARK_ALL_AS_READ' });
-  };
-
-  const removeNotification = (notificationId) => {
-    dispatch({ type: 'REMOVE_NOTIFICATION', payload: notificationId });
-  };
+  }, []);
 
   const value = {
     ...state,
     sendNotification,
     markAsRead,
-    markAllAsRead,
-    removeNotification
+    markAllAsRead
   };
 
   return (

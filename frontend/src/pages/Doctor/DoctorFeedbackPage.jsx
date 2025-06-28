@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Star, Send, MessageSquare, Bug, Lightbulb, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
@@ -12,10 +12,9 @@ export default function DoctorFeedbackPage() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const location = useLocation();
-  const consultationId = location?.state?.consultationId;
-  const callDuration = location?.state?.callDuration;
+  const consultationId =location?.state?.consultationId
+  const callDuration = location?.state?.callDuration
   const userId = useSelector((state) => state.userDetails.id);
-  console.log(consultationId,callDuration,'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh')
   const navigate = useNavigate();
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -35,11 +34,11 @@ export default function DoctorFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        console.log({ ...formData, consultation_id: consultationId ,duration:callDuration},'kkkkkkkkkkkkkkk');
+        console.log({ ...formData, consultation_id: consultationId.current ,duration:callDuration.current},'kkkkkkkkkkkkkkk');
 
         const response = await axiosInstance.put(
           "/consultations/set_analysis_from_doctor",
-          { ...formData, consultation_id: consultationId,duration:callDuration }
+          { ...formData, consultation_id: consultationId.current,duration:callDuration.current }
         );
         console.log("Feedback submitted:", response.data);
         
@@ -118,6 +117,18 @@ export default function DoctorFeedbackPage() {
           </div>
 
           <div className="p-8 space-y-8">
+{/* input */}
+<input 
+        type="text" 
+        name="consultation_id" 
+        value={consultationId || 'not'} 
+      />
+      <input 
+        type="text" 
+        name="duration" 
+        value={callDuration || 'not'} 
+      />
+            {/* jjjlkjlk */}
             {/* Message */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

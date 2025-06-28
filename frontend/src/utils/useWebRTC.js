@@ -1,13 +1,13 @@
-// hooks/useWebRTC.js
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosconfig";
 
-export const useWebRTC = ({ 
-  userId, 
-  userType, // 'doctor' or 'patient'
+export const useWebRTC = ({
+  userId,
+  userType,
   signalingURL,
-  onCallEnd 
+  onCallEnd,
+  isRecordingtoggle = false,
 }) => {
   const [targetUserId, setTargetUserId] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -18,9 +18,14 @@ export const useWebRTC = ({
   const [remoteStream, setRemoteStream] = useState(null);
   const [consultationId, setConsultationId] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState(
-    userType === 'doctor' ? "Waiting for patient" : "Connecting to doctor"
+    userType === "doctor" ? "Waiting for patient" : "Connecting to doctor"
   );
   const [isUsingFallbackVideo, setIsUsingFallbackVideo] = useState(false);
+  
+  // Recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedBlob, setRecordedBlob] = useState(null);
+  const [recordingError, setRecordingError] = useState(null);
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
@@ -29,8 +34,59 @@ export const useWebRTC = ({
   const callStartTime = useRef(null);
   const fallbackVideoElement = useRef(null);
   const callDurationInterval = useRef(null);
+  
+  // Recording refs
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const combinedStreamRef = useRef(null);
+  const canvasRef = useRef(null);
+  const recordingContextRef = useRef(null);
 
-  // Media handling functions
+  
+
+  const checkStreamActive = useCallback((stream) => {
+    return new Promise((resolve) => {
+      if (!stream) {
+        resolve(false);
+        return;
+      }
+
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+
+      if (!videoTrack && !audioTrack) {
+        resolve(false);
+        return;
+      }
+
+      const checkTracks = () => {
+        const videoReady = videoTrack ? videoTrack.readyState === "live" : true;
+        const audioReady = audioTrack ? audioTrack.readyState === "live" : true;
+        return videoReady && audioReady;
+      };
+
+      if (checkTracks()) {
+        resolve(true);
+        return;
+      }
+
+      const onActive = () => {
+        if (checkTracks()) {
+          if (videoTrack) videoTrack.removeEventListener("active", onActive);
+          if (audioTrack) audioTrack.removeEventListener("active", onActive);
+          resolve(true);
+        }
+      };
+
+      if (videoTrack) videoTrack.addEventListener("active", onActive);
+      if (audioTrack) audioTrack.addEventListener("active", onActive);
+
+      setTimeout(() => {
+        resolve(checkTracks());
+      }, 5000);
+    });
+  }, []);
+
   const createFallbackVideoStream = async () => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
@@ -72,7 +128,7 @@ export const useWebRTC = ({
 
       try {
         const stream = canvas.captureStream(30);
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = new (window.AudioContext || window.AudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
 
@@ -89,10 +145,8 @@ export const useWebRTC = ({
           stream.addTrack(audioTrack);
         }
 
-        console.log("✅ Created fallback canvas stream with audio");
         resolve(stream);
       } catch (error) {
-        console.error("Failed to create canvas stream:", error);
         reject(error);
       }
     });
@@ -104,30 +158,219 @@ export const useWebRTC = ({
         video: { width: 640, height: 480 },
         audio: true,
       });
-      console.log("✅ Got user media stream");
       setIsUsingFallbackVideo(false);
       return stream;
     } catch (error) {
-      console.warn("Camera/microphone not available:", error);
       toast.warning("Camera unavailable, using fallback video", {
         position: "bottom-center",
       });
-
       setIsUsingFallbackVideo(true);
 
-      try {
-        const fallbackStream = await createFallbackVideoStream();
-        console.log("✅ Created fallback stream");
-        return fallbackStream;
-      } catch (fallbackError) {
-        console.error("All media sources failed:", fallbackError);
-        toast.error("Unable to create any video stream", {
-          position: "bottom-center",
-        });
-        throw fallbackError;
-      }
+      const fallbackStream = await createFallbackVideoStream();
+      return fallbackStream;
     }
   };
+
+  // Create combined stream for recording (both local and remote video)
+ const createCombinedStream = useCallback(() => {
+  if (!localStream || !remoteStream) return null;
+
+  try {
+    const canvas = document.createElement("canvas");
+    // Use a single video frame size (e.g., 1280x720)
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext("2d");
+    
+    canvasRef.current = canvas;
+    recordingContextRef.current = ctx;
+
+    // Create video elements for drawing
+    const localVideo = document.createElement("video");
+    const remoteVideo = document.createElement("video");
+    
+    localVideo.srcObject = localStream;
+    remoteVideo.srcObject = remoteStream;
+    
+    localVideo.play();
+    remoteVideo.play();
+
+    // Draw both videos with one as PiP
+    const drawFrame = () => {
+      if (!isRecording) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw main video (remote) - full size
+      ctx.drawImage(remoteVideo, 0, 0, canvas.width, canvas.height);
+      
+      // Draw PiP video (local) - smaller in corner
+      const pipWidth = canvas.width / 3;
+      const pipHeight = (pipWidth * localVideo.videoHeight) / localVideo.videoWidth;
+      const pipX = canvas.width - pipWidth - 20; // 20px from right
+      const pipY = 20; // 20px from top
+      
+      // Draw rounded rectangle background for PiP
+      ctx.beginPath();
+      ctx.roundRect(pipX - 5, pipY - 5, pipWidth + 10, pipHeight + 10, 10);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fill();
+      
+      // Draw local video as PiP
+      ctx.drawImage(localVideo, pipX, pipY, pipWidth, pipHeight);
+      
+      // Add border to PiP
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(pipX, pipY, pipWidth, pipHeight);
+      
+      // Add labels
+      ctx.fillStyle = "white";
+      ctx.font = "16px Arial";
+      ctx.fillText("You", pipX + 10, pipY + 25);
+      ctx.fillText("Remote", 20, 40);
+      
+      requestAnimationFrame(drawFrame);
+    };
+
+    localVideo.onloadedmetadata = () => {
+      remoteVideo.onloadedmetadata = () => {
+        drawFrame();
+      };
+    };
+
+    // Get canvas stream
+    const canvasStream = canvas.captureStream(30);
+    
+    // Add audio tracks from both streams
+    const audioTracks = [
+      ...localStream.getAudioTracks(),
+      ...remoteStream.getAudioTracks()
+    ];
+    
+    // Create audio context to mix audio
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const destination = audioContext.createMediaStreamDestination();
+    
+    audioTracks.forEach(track => {
+      const source = audioContext.createMediaStreamSource(new MediaStream([track]));
+      source.connect(destination);
+    });
+    
+    // Add mixed audio to canvas stream
+    destination.stream.getAudioTracks().forEach(track => {
+      canvasStream.addTrack(track);
+    });
+    
+    combinedStreamRef.current = canvasStream;
+    return canvasStream;
+  } catch (error) {
+    console.error("Error creating combined stream:", error);
+    setRecordingError("Failed to create recording stream");
+    return null;
+  }
+}, [localStream, remoteStream, isRecording]);
+
+  // Start recording
+  const startRecording = useCallback(async () => {
+    try {
+      setRecordingError(null);
+      recordedChunksRef.current = [];
+      
+      // Create combined stream
+      const combinedStream = createCombinedStream();
+      if (!combinedStream) {
+        throw new Error("Failed to create combined stream");
+      }
+
+      // Check if MediaRecorder is supported
+      if (!MediaRecorder.isTypeSupported('video/webm')) {
+        throw new Error("WebM recording not supported");
+      }
+
+      const mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 2500000, // 2.5 Mbps
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+    
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        setRecordedBlob(blob);
+        
+        // Optional: Auto-download the recording
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `consultation-${consultationId}-${new Date().toISOString()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        toast.success("Recording saved successfully!", {
+          position: "bottom-center",
+        });
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event.error);
+        setRecordingError("Recording failed: " + event.error.message);
+        toast.error("Recording failed!", {
+          position: "bottom-center",
+        });
+      };
+
+      mediaRecorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      
+      toast.info("Recording started", {
+        position: "bottom-center",
+      });
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      setRecordingError("Failed to start recording: " + error.message);
+      toast.error("Failed to start recording!", {
+        position: "bottom-center",
+      });
+    }
+  }, [createCombinedStream, consultationId]);
+
+  // Stop recording
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Clean up combined stream
+      if (combinedStreamRef.current) {
+        combinedStreamRef.current.getTracks().forEach(track => track.stop());
+        combinedStreamRef.current = null;
+      }
+      
+      // toast.info("Recording stopped", {
+      //   position: "bottom-center",
+      // });
+    }
+  }, [isRecording]);
+
+  // Auto-start recording when both streams are available and recording is enabled
+  useEffect(() => {
+    if (isRecordingtoggle && localStream && remoteStream && isConnected && !isRecording) {
+      // Start recording automatically after a short delay
+      const timer = setTimeout(() => {
+        startRecording();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isRecordingtoggle, localStream, remoteStream, isConnected, isRecording, startRecording]);
 
   const toggleMute = () => {
     if (localStream) {
@@ -138,127 +381,6 @@ export const useWebRTC = ({
       }
     }
   };
-
-const callRecord =() => {
-  const mediaRecorderRef = useRef(null);
-  const recordedChunksRef = useRef([]);
-  const [isRecording, setIsRecording] = useState(false);
-
-  const startRecording = async () => {
-    try {
-      // Combine both video and audio streams
-      const combinedStream = new MediaStream();
-      
-      // Add tracks from remote stream (other participant)
-      if (remoteStream) {
-        remoteStream.getTracks().forEach(track => {
-          combinedStream.addTrack(track);
-        });
-      }
-      
-      // Add tracks from local stream (if you want to include local video too)
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          combinedStream.addTrack(track);
-        });
-      }
-
-      // Check if we have any tracks to record
-      if (combinedStream.getTracks().length === 0) {
-        throw new Error("No media tracks available for recording");
-      }
-
-      // Create media recorder
-      mediaRecorderRef.current = new MediaRecorder(combinedStream, {
-        mimeType: 'video/webm;codecs=vp9,opus',
-        bitsPerSecond: 2500000 // 2.5 Mbps
-      });
-
-      // Handle data available event
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      // Handle recording stop
-      mediaRecorderRef.current.onstop = () => {
-        saveRecording();
-      };
-
-      // Start recording
-      recordedChunksRef.current = [];
-      mediaRecorderRef.current.start(1000); // Collect data every 1 second
-      setIsRecording(true);
-      
-      toast.success("Recording started", { position: "bottom-center" });
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-      toast.error("Failed to start recording", { position: "bottom-center" });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      
-      // Stop all tracks to release resources
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-    }
-  };
-
-  const saveRecording = () => {
-    try {
-      const blob = new Blob(recordedChunksRef.current, {
-        type: 'video/webm'
-      });
-
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      
-      // Generate filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const participantType = userType === 'doctor' ? 'doctor' : 'patient';
-      a.download = `video-call-${participantType}-${timestamp}.webm`;
-      
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-      
-      toast.success("Recording saved", { position: "bottom-center" });
-    } catch (error) {
-      console.error("Failed to save recording:", error);
-      toast.error("Failed to save recording", { position: "bottom-center" });
-    }
-  };
-
-  // Auto-stop recording when call ends
-  useEffect(() => {
-    return () => {
-      if (isRecording) {
-        stopRecording();
-      }
-    };
-  }, [isRecording]);
-
-  return {
-    startRecording,
-    stopRecording,
-    isRecording,
-    saveRecording
-  };
-}
-
-
 
   const toggleVideo = () => {
     if (localStream) {
@@ -294,10 +416,47 @@ const callRecord =() => {
     }
   };
 
-  const cleanup = () => {
-    console.log("🧹 Cleaning up call resources...");
+  const endCall = () => {
 
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording();
+    }
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "call-end",
+          senderId: userId,
+          sender: userType,
+          targetId: targetUserId,
+          consultationId: consultationId,  // Explicitly include consultationId
+          duration: callDuration,
+          timestamp: Date.now()
+        })
+      );
+    }
+    cleanup();
+    setConnectionStatus("Call ended");
+    setIsConnected(false);
+
+    if (userType === "doctor") {
+      updateUserAvailability(userId, true).catch(console.error);
+      
+    }
+
+    if (onCallEnd ) {
+      onCallEnd({ consultationId, callDuration, recordedBlob });
+    }
+  };
+
+  const cleanup = () => {
     stopCallDurationTimer();
+    
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording();
+    }
 
     if (pcRef.current) {
       pcRef.current.ontrack = null;
@@ -325,6 +484,11 @@ const callRecord =() => {
       setRemoteStream(null);
     }
 
+    if (combinedStreamRef.current) {
+      combinedStreamRef.current.getTracks().forEach((track) => track.stop());
+      combinedStreamRef.current = null;
+    }
+
     if (fallbackVideoElement.current) {
       if (document.body.contains(fallbackVideoElement.current)) {
         document.body.removeChild(fallbackVideoElement.current);
@@ -332,38 +496,20 @@ const callRecord =() => {
       fallbackVideoElement.current = null;
     }
 
+    // Clean up recording references
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    canvasRef.current = null;
+    recordingContextRef.current = null;
+
     setCallDuration(0);
     setIsMuted(false);
     setIsVideoOff(false);
     setIsUsingFallbackVideo(false);
+    setIsRecording(false);
+    setRecordedBlob(null);
+    setRecordingError(null);
     callStartTime.current = null;
-  };
-
-  const endCall = () => {
-    console.log("📞 Ending the call...");
-
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: "call-end",
-          senderId: userId,
-          sender: userType,
-          targetId: targetUserId,
-        })
-      );
-    }
-    stopRecording()
-    cleanup();  
-    setConnectionStatus("Call ended");
-    setIsConnected(false);
-
-    if (userType === 'doctor') {
-      updateUserAvailability(userId, true).catch(console.error);
-    }
-
-    if (onCallEnd) {
-      onCallEnd({ consultationId, callDuration });
-    }
   };
 
   return {
@@ -379,12 +525,17 @@ const callRecord =() => {
     connectionStatus,
     isUsingFallbackVideo,
     
+    // Recording state
+    isRecording,
+    recordedBlob,
+    recordingError,
+
     // Refs
     localVideoRef,
     remoteVideoRef,
     wsRef,
     pcRef,
-    
+
     // Functions
     toggleMute,
     toggleVideo,
@@ -393,11 +544,14 @@ const callRecord =() => {
     getUserMediaWithFallback,
     startCallDurationTimer,
     updateUserAvailability,
-    callRecord,
-    
-    // Setters for internal use
+    checkStreamActive,
+    startRecording,
+    stopRecording,
+
+    // Setters
     setTargetUserId,
     setConsultationId,
+    setCallDuration,
     setConnectionStatus,
     setIsConnected,
     setLocalStream,

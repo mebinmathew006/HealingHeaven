@@ -22,6 +22,7 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
     updateUserAvailability,
     setTargetUserId,
     setConsultationId,
+    setCallDuration,
     setConnectionStatus,
     setIsConnected,
     setLocalStream,
@@ -60,7 +61,11 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
       }
 
       if (message.type === "call-end") {
-        handleCallEnd();
+
+        setConsultationId(message.consultationId)
+        setCallDuration(message.duration)
+    
+        handleCallEnd(message.consultationId,message.duration);
       }
     };
 
@@ -166,7 +171,8 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
     }
   };
 
-  const handleCallEnd = () => {
+  const handleCallEnd = (consultationId,duration) => {
+  
     setConnectionStatus("Call ended");
     setIsConnected(false);
     webRTC.endCall();

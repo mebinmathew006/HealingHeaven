@@ -5,12 +5,10 @@ import {
   Video,
   VideoOff,
   PhoneOff,
-  Monitor,
-  Settings,
-  Mic2Icon,
   Circle,
   StopCircle,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 function VideoCallControls({
   toggleMute,
@@ -19,14 +17,27 @@ function VideoCallControls({
   isMuted,
   isVideoOff,
   userType,
-  callRecord,
-  isRecordingtoggle,
+  consultationId,
+  stopRecording,
+  startRecording,
+  isRecording
 }) {
-  const { startRecording, stopRecording, isRecording } = callRecord();
+  
+
+  const handleEndCall = () => {
+    if (isRecording) {
+      stopRecording();
+    }
+    endCall();
+  };
+  const handleStopRecording = () => {
+    toast.info("Sorry you cant stop Recording", { position: "bottom-center" });
+  };
 
   return (
     <div className="p-6 bg-black/30 backdrop-blur-sm border-t border-white/10">
-      <div className="flex items-center justify-center space-x-4">
+      {/* Main Call Controls */}
+      <div className="flex items-center justify-center space-x-4 mb-4">
         {/* Mute Button */}
         <button
           onClick={toggleMute}
@@ -39,7 +50,7 @@ function VideoCallControls({
           {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
         </button>
 
-        {/* Video Button */}
+        {/* Video Toggle */}
         <button
           onClick={toggleVideo}
           className={`p-4 rounded-2xl transition-all duration-200 ${
@@ -51,32 +62,26 @@ function VideoCallControls({
           {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
         </button>
 
-        {/* End Call Button */}
+        {/* End Call */}
         <button
-          onClick={endCall}
+          onClick={handleEndCall}
           className="p-4 rounded-2xl bg-red-500 hover:bg-red-600 text-white transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-500/40"
         >
           <PhoneOff size={24} />
         </button>
 
-        {/* Record video Options */}
-        {userType == "patient" ? (
+        {/* Patient-Only Record Button (Toggle only) */}
+        {userType === "patient" && (
           <button
-            onClick={isRecordingtoggle ? '' : startRecording}
+            onClick={isRecording ? handleStopRecording : startRecording}
             className={`p-4 rounded-2xl transition-all duration-200 ${
-              isRecordingtoggle
+              isRecording
                 ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
                 : "bg-white/10 hover:bg-white/20 text-white"
             }`}
           >
-            {!isRecordingtoggle && (
-              <>
-                <Circle size={24} />
-              </>
-            )}
+            {isRecording ? <StopCircle size={24} /> : <Circle size={24} />}
           </button>
-        ) : (
-          <></>
         )}
       </div>
     </div>

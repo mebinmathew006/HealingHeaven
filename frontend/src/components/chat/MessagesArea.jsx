@@ -30,9 +30,7 @@ const MessagesArea = ({
     }
 
     return messages.map((message, index) => {
-      // const isCurrentUser = message.sender === userType;
-      const isCurrentUser = (message.sender_id === currentUserId && message.sender_type === userType);
-      console.log(activeUser)
+      const isCurrentUser = message.sender === userType;
       const senderName = isCurrentUser ? "You" : 
         (userType === 'doctor' ? 
           activeUser?.user?.name || activeUser?.user_name : 

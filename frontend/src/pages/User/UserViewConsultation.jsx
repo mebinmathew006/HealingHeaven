@@ -19,6 +19,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import ConsultationsList from "./ConsultationsList";
 import ConsultationDetail from "./ConsultationDetail";
 import Pagination from "../../components/Pagination"; // Import the reusable component
+import { consultationDetailsUser } from "../../services/consultationService";
 
 const UserViewConsultation = () => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
@@ -45,9 +46,10 @@ const UserViewConsultation = () => {
         setLoadingMore(true);
       }
       
-      const response = await axiosInstance.get(
-        `/consultations/get_consultation_for_user/${userId}?page=${page}&limit=${limit}`
-      );
+      const response = await consultationDetailsUser(userId,page,limit)
+      //  axiosInstance.get(
+      //   `/consultations/get_consultation_for_user/${userId}?page=${page}&limit=${limit}`
+      // );
       
       console.log("Consultation response:", response.data);
       

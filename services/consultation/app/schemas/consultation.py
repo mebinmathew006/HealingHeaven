@@ -123,10 +123,26 @@ class ConsultationRequest(BaseModel):
 class DoctorProfileDetails(BaseModel):
     profile_image: Optional[str]
     specialization: Optional[str]
+    fees: Optional[int]
+    
+class DoctorProfileDetailsConsultations(BaseModel):
+    profile_image: Optional[str]
+    specialization: Optional[str]
+   
         
 class DoctorNameWithProfileImage(BaseModel):
+    id : Optional[int]
     name: str
-    psychologist_profile: Optional[DoctorProfileDetails] = None
+    psychologist_profile: Optional[DoctorProfileDetailsConsultations] = None
+
+    model_config = {
+        "from_attributes": True
+    }
+    
+class DoctorNameWithProfileImageConsultations(BaseModel):
+    
+    name: str
+    psychologist_profile: Optional[DoctorProfileDetailsConsultations] = None
 
     model_config = {
         "from_attributes": True
@@ -149,7 +165,7 @@ class ConsultationResponseUser(BaseModel):
     created_at :Optional[datetime]
     status :Optional[str]
     duration :Optional[str]
-    user: Optional[DoctorNameWithProfileImage]
+    user: Optional[DoctorNameWithProfileImageConsultations]
 
     model_config = {
         "from_attributes": True

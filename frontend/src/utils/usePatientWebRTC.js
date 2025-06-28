@@ -1,13 +1,13 @@
-// hooks/usePatientWebRTC.js
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useWebRTC } from "./useWebrtc";
+import { toast } from "react-toastify";
 
 export const usePatientWebRTC = ({
   patientId,
   doctorId,
   consultationId,
   onCallEnd,
-  isRecordingtoggle,
+  isRecordingtoggle = false,
 }) => {
   const signalingURL = `ws://localhost/consultations/ws/create_signaling/${patientId}`;
 
@@ -16,7 +16,9 @@ export const usePatientWebRTC = ({
     userType: "patient",
     signalingURL,
     onCallEnd,
+    isRecordingtoggle, // Pass recording toggle to the base hook
   });
+
   const {
     wsRef,
     pcRef,
@@ -26,14 +28,22 @@ export const usePatientWebRTC = ({
     startCallDurationTimer,
     setTargetUserId,
     setConsultationId,
+    setCallDuration,
     setConnectionStatus,
     setIsConnected,
     setLocalStream,
     setRemoteStream,
-    callRecord,
+    // Recording functions
+    startRecording,
+    stopRecording,
+    isRecording,
+    recordedBlob,
+    recordingError,
   } = webRTC;
-  const { startRecording, stopRecording, isRecording } = callRecord();
 
+
+  
+  
   const initializeWebRTC = async () => {
     setConnectionStatus("Connecting...");
 
@@ -65,6 +75,8 @@ export const usePatientWebRTC = ({
       }
 
       if (message.type === "call-end") {
+        setConsultationId(message.consultationId)
+        setCallDuration(message.duration)
         handleCallEnd();
       }
     };
@@ -75,7 +87,6 @@ export const usePatientWebRTC = ({
       setIsConnected(false);
     };
 
-    // Patient initiates the call
     await initiateCall();
   };
 
@@ -84,18 +95,7 @@ export const usePatientWebRTC = ({
       setConnectionStatus("Starting call...");
       setTargetUserId(doctorId);
       setConsultationId(consultationId);
-      //   const fetchIceServers = async () => {
-      //     try {
-      //       const res = await axiosInstance.get("/consultations/turn-credentials");
-      //       return res.data.iceServers;
-      //     } catch (error) {
-      //       console.error("Failed to fetch ICE servers:", error);
-      //       return [
-      //         { urls: "stun:stun.l.google.com:19302" },
-      //         { urls: "stun:stun1.l.google.com:19302" },
-      //       ];
-      //     }
-      //   };
+
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
@@ -104,17 +104,16 @@ export const usePatientWebRTC = ({
       });
       pcRef.current = pc;
 
-      // Get media stream
       const stream = await getUserMediaWithFallback();
+      console.log("✅ Local stream set:", stream, "Tracks:", stream.getTracks());
       setLocalStream(stream);
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Add tracks to peer connection
       stream.getTracks().forEach((track) => {
-        console.log(`Adding ${track.kind} track to peer connection`);
+        console.log(`Adding ${track.kind} track to peer connection`, track);
         pc.addTrack(track, stream);
       });
 
@@ -126,38 +125,14 @@ export const usePatientWebRTC = ({
           remoteVideoRef.current.srcObject = remoteStream;
         }
 
+        console.log("🔄 Setting remote stream...");
         setRemoteStream(remoteStream);
         setIsConnected(true);
         setConnectionStatus("Call connected");
         startCallDurationTimer();
 
-        // Start recording after ensuring both streams are ready
-        if (isRecordingtoggle) {
-          const startRecordingWithRetry = async (attempt = 0) => {
-            try {
-              if (attempt > 3) {
-                throw new Error("Max retries reached");
-              }
-
-              if (
-                localVideoRef.current?.videoWidth > 0 &&
-                remoteVideoRef.current?.videoWidth > 0
-              ) {
-                await startRecording();
-              } else {
-                setTimeout(() => startRecordingWithRetry(attempt + 1), 500);
-              }
-            } catch (error) {
-              console.error("Recording failed after retries:", error);
-            }
-          };
-
-          setTimeout(() => startRecordingWithRetry(), 1000);
-        }
       };
-      if (isRecordingtoggle) {
-        setTimeout(() => startRecording(), 3000); // Small delay to ensure streams are ready
-      }
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           wsRef.current.send(
@@ -178,12 +153,10 @@ export const usePatientWebRTC = ({
         }
       };
 
-      // Create offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       console.log("✅ Created and set local description");
 
-      // Send call initiation
       wsRef.current.send(
         JSON.stringify({
           type: "call-initiate",
@@ -237,5 +210,14 @@ export const usePatientWebRTC = ({
     };
   }, []);
 
-  return webRTC;
+  // Return all webRTC properties plus recording-specific ones
+  return {
+    ...webRTC,
+    // Recording specific properties
+    startRecording,
+    stopRecording,
+    isRecording,
+    recordedBlob,
+    recordingError,
+  };
 };

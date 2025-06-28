@@ -5,39 +5,48 @@ import Dashboard from "../Public/Dashboard";
 import AdminSidebar from "../../components/AdminSidebar";
 import axiosInstance from "../../axiosconfig";
 
-// Mock data for the chart
-const generateChartData = () => [
-  { month: "Jan", doctors: 2, patients: 3 },
-  { month: "Feb", doctors: 8, patients: 4 },
-  { month: "Mar", doctors: 6, patients: 5 },
-  { month: "Apr", doctors: 3, patients: 2 },
-  { month: "May", doctors: 1, patients: 1 },
-  { month: "Jun", doctors: 5, patients: 4 },
-  { month: "Jul", doctors: 4, patients: 3 },
-  { month: "Aug", doctors: 2, patients: 2 },
-  { month: "Sep", doctors: 7, patients: 6 },
-  { month: "Oct", doctors: 9, patients: 8 },
-  { month: "Nov", doctors: 5, patients: 7 },
-  { month: "Dec", doctors: 4, patients: 5 },
-];
-
 const AdminProfile = () => {
   const [activeSection] = useState("admin_dashboard");
   const [earningsData, setEarningsData] = useState({});
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  console.log(selectedYear)
   useEffect(() => {
     // Simulate API call
     const fetchData = async () => {
       try {
         setLoading(true);
         const response = await axiosInstance.get(
-          `/consultations/admin_dashboard_details`
+          `/consultations/admin_dashboard_details/${selectedYear}`
         );
 
-        setChartData(response.data.chart_data);
-        setEarningsData(response.data);
+        const serverChartData = response.data.chart_data; // Array of { month, earnings }
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        const graphData = months.map((month) => {
+          const match = serverChartData.find((item) => item.month === month);
+          return match || { month, earnings: 0 };
+        });
+        setChartData(graphData);
+        setEarningsData({
+          totalEarnings: response.data.totalEarnings,
+          totalSessions: response.data.totalSessions,
+          totalPatients: response.data.totalPatients,
+        });
         console.log(response.data);
       } catch (error) {
         console.error("Error fetching earnings data:", error);
@@ -47,7 +56,7 @@ const AdminProfile = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedYear]);
 
   if (loading) {
     return (
@@ -75,11 +84,12 @@ const AdminProfile = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar activeSection={activeSection} />
-        <Dashboard
-          chartData={chartData}
-          earningsData={earningsData}
-          type="admin"
-        />
+      <Dashboard
+        chartData={chartData}
+        earningsData={earningsData}
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+      />
     </div>
   );
 };

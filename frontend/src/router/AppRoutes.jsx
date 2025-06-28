@@ -44,6 +44,7 @@ import DoctorViewFeedback from "../pages/Doctor/DoctorViewFeedback";
 import DoctorViewConsultation from "../pages/Doctor/DoctorViewConsultation";
 import DoctorDashboard from "../pages/Doctor/DoctorDashboard";
 import DoctorNotificationsPage from "../pages/Doctor/DoctorNotificationsPage";
+import UserBookingFromChat from "../pages/User/userBookingFromChat";
 
 const AppRoutes = () => {
   return (
@@ -82,6 +83,7 @@ const AppRoutes = () => {
         <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
         <Route path="/user_complaint" element={<UserProtectedRoute><UserComplaintView/></UserProtectedRoute>} />
         <Route path="/user_notifications" element={<UserProtectedRoute><UserViewNotification/></UserProtectedRoute>} />
+        <Route path="/user_booking" element={<UserProtectedRoute><UserBookingFromChat/></UserProtectedRoute>} />
       </Route>
 
 
@@ -92,7 +94,7 @@ const AppRoutes = () => {
         <Route path="/doctor_view_feedback" element={<DoctorProtectedRoute><DoctorViewFeedback/></DoctorProtectedRoute>} />
         <Route path="/doctor_view_consultations" element={<DoctorProtectedRoute><DoctorViewConsultation/></DoctorProtectedRoute>} />
         <Route path="/doctor_view_notifications" element={<DoctorProtectedRoute><DoctorNotificationsPage/></DoctorProtectedRoute>} />
-        <Route path="/doctor_dashboard" element={<DoctorProtectedRoute><DoctorDashboard/></DoctorProtectedRoute>} />
+        <Route path="/doctor_revenue" element={<DoctorProtectedRoute><DoctorDashboard/></DoctorProtectedRoute>} />
 
 
         {/* Admin */}
