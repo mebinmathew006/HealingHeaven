@@ -1,6 +1,6 @@
 // hooks/useDoctorWebRTC.js
 import { useEffect } from "react";
-import { useWebRTC } from "./useWebrtc";
+import { useWebRTC } from "./useWebRTC";
 
 export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
   const signalingURL = `ws://localhost/consultations/ws/create_signaling/${doctorId}`;

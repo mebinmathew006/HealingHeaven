@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { useWebRTC } from "./useWebrtc";
+import { useWebRTC } from "./useWebRTC";
 import { toast } from "react-toastify";
 
 export const usePatientWebRTC = ({
