@@ -63,9 +63,7 @@ async def add_money_to_wallet(
         
 @router.post("/fetch_money_from_wallet")
 async def fetch_money_from_wallet(
-    fetch_money_schema: UserConsultationMoney,
-    current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
-):
+    fetch_money_schema: UserConsultationMoney,session: AsyncSession = Depends(get_session)):
     try:
         await money_from_wallet(session, fetch_money_schema.user_id, fetch_money_schema.psychologist_fee)
         return JSONResponse(
