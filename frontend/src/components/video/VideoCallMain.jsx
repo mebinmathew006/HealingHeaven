@@ -44,9 +44,56 @@ function VideoCallMain({
       console.log("Setting remote stream to video element");
       const videoElement = remoteVideoRef.current;
       
-      // Check if already assigned
+      // Check if already assigned but still debug the tracks
       if (videoElement.srcObject === remoteStream) {
         console.log("Stream already assigned to video element");
+        
+        // Debug the tracks even if stream is assigned
+        const tracks = remoteStream.getTracks();
+        const videoTracks = remoteStream.getVideoTracks();
+        const audioTracks = remoteStream.getAudioTracks();
+        
+        console.log("🔍 TRACK ANALYSIS:", {
+          totalTracks: tracks.length,
+          videoTracks: videoTracks.length,
+          audioTracks: audioTracks.length
+        });
+        
+        videoTracks.forEach((track, i) => {
+          console.log(`Video Track ${i}:`, {
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState,
+            label: track.label,
+            kind: track.kind
+          });
+          
+          // Try to get settings if available
+          try {
+            const settings = track.getSettings();
+            console.log(`Video Track ${i} Settings:`, settings);
+          } catch (e) {
+            console.log(`Could not get settings for track ${i}:`, e);
+          }
+        });
+        
+        // Check video element state
+        console.log("Video Element State:", {
+          srcObject: !!videoElement.srcObject,
+          videoWidth: videoElement.videoWidth,
+          videoHeight: videoElement.videoHeight,
+          readyState: videoElement.readyState,
+          paused: videoElement.paused,
+          currentTime: videoElement.currentTime,
+          duration: videoElement.duration,
+          networkState: videoElement.networkState
+        });
+        
+        // Force play again
+        videoElement.play()
+          .then(() => console.log("✅ Re-play attempt successful"))
+          .catch(e => console.error("❌ Re-play attempt failed:", e));
+        
         return;
       }
       
