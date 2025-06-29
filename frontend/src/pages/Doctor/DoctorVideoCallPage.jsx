@@ -25,8 +25,8 @@ function DoctorVideoCallPage() {
     const handleCallEnd = ({ consultationId, callDuration }) => {
       console.log(consultationId,callDuration)
       setTimeout(() => {
-        navigate("/doctor_feedback_page", {
-          state: { consultationId, callDuration},
+        navigate("/doctor_view_consultations", {
+         
         });
       }, 500);
     };

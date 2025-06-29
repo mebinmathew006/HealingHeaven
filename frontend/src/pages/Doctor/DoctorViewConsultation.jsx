@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, FileText, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Calendar, Clock, User, FileText, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // Assuming these are your actual imports - replace as needed
 import Pagination from '../../components/Pagination';
@@ -8,6 +9,8 @@ import DoctorSidebar from '../../components/DoctorSidebar';
 import { useSelector } from 'react-redux';
 
 const DoctorViewConsultation = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [consultationData, setConsultationData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -99,6 +102,13 @@ const DoctorViewConsultation = () => {
     setCurrentPage(1); // Reset to first page when sorting changes
     setShowSortDropdown(false);
     fetchConsultations(1, newSortBy, newSortOrder);
+  };
+
+  // Navigate to add analysis page
+  const handleAddAnalysis = (consultationId, callDuration = 0) => {
+    navigate("/doctor_feedback_page", {
+      state: { consultationId, callDuration },
+    });
   };
 
   // Get sort icon
@@ -272,7 +282,7 @@ const DoctorViewConsultation = () => {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {consultationData?.results?.map((consultation) => (
+                {consultationData?.results?.map((consultation, index) => (
                   <div key={consultation.id} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
@@ -301,7 +311,7 @@ const DoctorViewConsultation = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="text-lg font-semibold text-gray-900">
-                              Consultation #{consultation.id}
+                              Consultation #{index + 1}
                             </h3>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(consultation.status)}`}>
                               {consultation.status || 'Unknown'}
@@ -325,8 +335,8 @@ const DoctorViewConsultation = () => {
                             )}
                           </div>
 
-                          {/* Analysis */}
-                          {consultation.analysis && (
+                          {/* Analysis Section */}
+                          {consultation.analysis ? (
                             <div className="bg-gray-50 rounded-lg p-4">
                               <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
                                 <FileText className="h-4 w-4 mr-1" />
@@ -335,6 +345,27 @@ const DoctorViewConsultation = () => {
                               <p className="text-sm text-gray-700 leading-relaxed">
                                 {consultation.analysis}
                               </p>
+                            </div>
+                          ) : (
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="text-sm font-medium text-blue-900 mb-1 flex items-center">
+                                    <FileText className="h-4 w-4 mr-1" />
+                                    Analysis Required
+                                  </h4>
+                                  <p className="text-sm text-blue-700">
+                                    Add your analysis for this consultation
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleAddAnalysis(consultation.id, consultation.duration || 0)}
+                                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  <span>Add Analysis</span>
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
