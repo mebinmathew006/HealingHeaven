@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Users, VideoOff } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Users, VideoOff, Circle, StopCircle, Download } from "lucide-react";
 
 function VideoCallMain({
   localStream,
@@ -9,7 +9,188 @@ function VideoCallMain({
   isVideoOff,
   isUsingFallbackVideo,
   userType,
+  // Recording props
+  onRecordingStart,
+  onRecordingStop,
+  onRecordingError,
 }) {
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  
+  // Recording refs
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const canvasRef = useRef(null);
+  const recordingIntervalRef = useRef(null);
+  const compositeStreamRef = useRef(null);
+
+  // Timer for recording duration
+  useEffect(() => {
+    if (isRecording) {
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      if (!isRecording && recordingDuration > 0) {
+        // Reset duration when stopping
+        setTimeout(() => setRecordingDuration(0), 1000);
+      }
+    }
+    
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
+  }, [isRecording, recordingDuration]);
+
+  // Format duration for display
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Create composite stream for recording (combines both videos)
+  const createCompositeStream = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1280;
+    canvas.height = 720;
+
+    const drawFrame = () => {
+      if (!isRecording) return;
+
+      // Clear canvas
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw remote video (main)
+      if (remoteVideoRef?.current && remoteStream) {
+        const remoteVideo = remoteVideoRef.current;
+        if (remoteVideo.videoWidth > 0) {
+          ctx.drawImage(remoteVideo, 0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      // Draw local video (PiP) - bottom right corner
+      if (localVideoRef?.current && localStream && !isVideoOff) {
+        const localVideo = localVideoRef.current;
+        if (localVideo.videoWidth > 0) {
+          const pipWidth = 320;
+          const pipHeight = 240;
+          const pipX = canvas.width - pipWidth - 20;
+          const pipY = canvas.height - pipHeight - 20;
+          
+          // Draw PiP border
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(pipX - 2, pipY - 2, pipWidth + 4, pipHeight + 4);
+          
+          ctx.drawImage(localVideo, pipX, pipY, pipWidth, pipHeight);
+        }
+      }
+
+      // Draw recording indicator
+      if (isRecording) {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(50, 50, 15, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px Arial';
+        ctx.fillText('REC', 70, 55);
+        ctx.fillText(formatDuration(recordingDuration), 70, 75);
+      }
+
+      requestAnimationFrame(drawFrame);
+    };
+
+    drawFrame();
+    return canvas.captureStream(30); // 30 FPS
+  };
+
+  // Start recording
+  const startRecording = async () => {
+    try {
+      // Create composite stream
+      const compositeStream = createCompositeStream();
+      if (!compositeStream) {
+        throw new Error('Failed to create composite stream');
+      }
+
+      compositeStreamRef.current = compositeStream;
+      recordedChunksRef.current = [];
+
+      // Setup MediaRecorder
+      const options = {
+        mimeType: 'video/webm;codecs=vp8,opus',
+        videoBitsPerSecond: 2500000,
+      };
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'video/webm';
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(compositeStream, options);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setRecordedVideoUrl(url);
+        onRecordingStop?.(blob, url);
+      };
+
+      mediaRecorderRef.current.start(1000);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      onRecordingStart?.();
+      
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      onRecordingError?.(error);
+    }
+  };
+
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Clean up composite stream
+      if (compositeStreamRef.current) {
+        compositeStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    }
+  };
+
+  // Download recording
+  const downloadRecording = () => {
+    if (recordedVideoUrl) {
+      const a = document.createElement('a');
+      a.href = recordedVideoUrl;
+      a.download = `video-call-${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   // Debug effect to monitor stream changes
   useEffect(() => {
     console.log("=== VideoCallMain Debug ===");
@@ -17,148 +198,84 @@ function VideoCallMain({
     console.log("Remote stream:", remoteStream);
     console.log("Local video ref:", localVideoRef?.current);
     console.log("Remote video ref:", remoteVideoRef?.current);
-    
-    if (remoteStream) {
-      console.log("Remote stream details:", {
-        active: remoteStream.active,
-        id: remoteStream.id,
-        tracks: remoteStream.getTracks().map(track => ({
-          kind: track.kind,
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState
-        }))
-      });
-    }
   }, [localStream, remoteStream]);
 
   // Effect to handle remote video assignment
   useEffect(() => {
-    console.log("Remote video useEffect triggered", {
-      hasRemoteStream: !!remoteStream,
-      hasVideoRef: !!remoteVideoRef?.current,
-      streamId: remoteStream?.id
-    });
-    
     if (remoteStream && remoteVideoRef?.current) {
-      console.log("Setting remote stream to video element");
       const videoElement = remoteVideoRef.current;
       
-      // Check if already assigned but still debug the tracks
-      if (videoElement.srcObject === remoteStream) {
-        console.log("Stream already assigned to video element");
+      if (videoElement.srcObject !== remoteStream) {
+        videoElement.srcObject = remoteStream;
         
-        // Debug the tracks even if stream is assigned
-        const tracks = remoteStream.getTracks();
-        const videoTracks = remoteStream.getVideoTracks();
-        const audioTracks = remoteStream.getAudioTracks();
-        
-        console.log("🔍 TRACK ANALYSIS:", {
-          totalTracks: tracks.length,
-          videoTracks: videoTracks.length,
-          audioTracks: audioTracks.length
-        });
-        
-        videoTracks.forEach((track, i) => {
-          console.log(`Video Track ${i}:`, {
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-            label: track.label,
-            kind: track.kind
+        videoElement.onloadedmetadata = () => {
+          videoElement.play().catch(e => {
+            console.error("Failed to play remote video:", e);
           });
-          
-          // Try to get settings if available
-          try {
-            const settings = track.getSettings();
-            console.log(`Video Track ${i} Settings:`, settings);
-          } catch (e) {
-            console.log(`Could not get settings for track ${i}:`, e);
-          }
-        });
-        
-        // Check video element state
-        console.log("Video Element State:", {
-          srcObject: !!videoElement.srcObject,
-          videoWidth: videoElement.videoWidth,
-          videoHeight: videoElement.videoHeight,
-          readyState: videoElement.readyState,
-          paused: videoElement.paused,
-          currentTime: videoElement.currentTime,
-          duration: videoElement.duration,
-          networkState: videoElement.networkState
-        });
-        
-        // Force play again
-        videoElement.play()
-          .then(() => console.log("✅ Re-play attempt successful"))
-          .catch(e => console.error("❌ Re-play attempt failed:", e));
-        
-        return;
+        };
       }
-      
-      // Set the stream
-      videoElement.srcObject = remoteStream;
-      console.log("✅ Stream assigned to video element", videoElement.srcObject);
-      
-      // Add event listeners for debugging
-      videoElement.onloadedmetadata = (e) => {
-        console.log("Remote video metadata loaded", {
-          videoWidth: videoElement.videoWidth,
-          videoHeight: videoElement.videoHeight,
-          duration: videoElement.duration,
-          readyState: videoElement.readyState
-        });
-      };
-      
-      videoElement.oncanplay = () => {
-        console.log("Remote video can play");
-        videoElement.play()
-          .then(() => console.log("✅ Remote video playing"))
-          .catch(e => console.error("❌ Failed to play remote video:", e));
-      };
-      
-      videoElement.onplaying = () => {
-        console.log("✅ Remote video is now playing");
-      };
-      
-      videoElement.onerror = (e) => {
-        console.error("❌ Remote video error:", e);
-      };
-      
-      videoElement.onloadstart = () => {
-        console.log("Remote video load started");
-      };
-      
-      // Force play attempt after a short delay
-      setTimeout(() => {
-        if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
-          videoElement.play()
-            .then(() => console.log("✅ Delayed play successful"))
-            .catch(e => console.error("❌ Delayed play failed:", e));
-        }
-      }, 100);
-    } else {
-      console.log("Remote video assignment skipped:", {
-        remoteStream: !!remoteStream,
-        videoRef: !!remoteVideoRef?.current
-      });
     }
   }, [remoteStream, remoteVideoRef]);
 
   // Effect to handle local video assignment
   useEffect(() => {
     if (localStream && localVideoRef?.current) {
-      console.log("Setting local stream to video element");
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => {
-        console.error("Failed to play local video:", e);
-      });
+      const videoElement = localVideoRef.current;
+      
+      if (videoElement.srcObject !== localStream) {
+        videoElement.srcObject = localStream;
+        videoElement.play().catch(e => {
+          console.error("Failed to play local video:", e);
+        });
+      }
     }
   }, [localStream, localVideoRef]);
 
   return (
     <div className="flex-1 relative p-6 ms-90 z-10 max-w-200">
+      {/* Hidden canvas for recording */}
+      <canvas
+        ref={canvasRef}
+        style={{ display: 'none' }}
+        width={1280}
+        height={720}
+      />
+
+      {/* Recording Controls */}
+      {userType === "patient" && (
+        <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-3 rounded-full transition-all duration-200 ${
+              isRecording
+                ? "bg-red-500 hover:bg-red-600 text-white shadow-lg animate-pulse"
+                : "bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+            }`}
+            title={isRecording ? "Stop recording" : "Start recording"}
+          >
+            {isRecording ? <StopCircle size={20} /> : <Circle size={20} />}
+          </button>
+          
+          {recordedVideoUrl && (
+            <button
+              onClick={downloadRecording}
+              className="p-3 rounded-full bg-green-500 hover:bg-green-600 text-white transition-all duration-200"
+              title="Download recording"
+            >
+              <Download size={20} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Recording Status */}
+      {isRecording && (
+        <div className="absolute top-4 left-4 z-20 bg-red-500 text-white px-3 py-2 rounded-lg flex items-center space-x-2">
+          <Circle className="w-3 h-3 fill-current animate-pulse" />
+          <span className="font-medium">REC {formatDuration(recordingDuration)}</span>
+        </div>
+      )}
+
       {/* Remote Video (Main) */}
       <div className="relative rounded-2xl overflow-hidden bg-slate-800/50 backdrop-blur-sm border border-white/10 shadow-2xl min-h-[400px]">
         <video
@@ -168,9 +285,8 @@ function VideoCallMain({
           className="w-full h-full object-cover"
           style={{ 
             minHeight: '400px',
-            backgroundColor: '#1e293b' // Fallback background
+            backgroundColor: '#1e293b'
           }}
-          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23334155'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='20' fill='%23cbd5e1' text-anchor='middle' dy='.3em'%3EWaiting for connection...%3C/text%3E%3C/svg%3E"
         />
         
         {/* Show waiting message when no remote stream */}
@@ -184,20 +300,6 @@ function VideoCallMain({
                 Waiting for {userType === "doctor" ? "patient" : "doctor"} to join...
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Debug info overlay - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="absolute top-2 right-2 bg-black/80 text-white text-xs p-2 rounded max-w-xs">
-            <div>Remote Stream: {remoteStream ? '✅' : '❌'}</div>
-            {remoteStream && (
-              <>
-                <div>Active: {remoteStream.active ? '✅' : '❌'}</div>
-                <div>Video Tracks: {remoteStream.getVideoTracks().length}</div>
-                <div>Audio Tracks: {remoteStream.getAudioTracks().length}</div>
-              </>
-            )}
           </div>
         )}
 
@@ -234,14 +336,25 @@ function VideoCallMain({
             {userType === "doctor" ? "Dr. You" : "You"} {isUsingFallbackVideo && "(Fallback)"}
           </p>
         </div>
-
-        {/* Debug info for local video - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs p-1 rounded">
-            Local: {localStream ? '✅' : '❌'}
-          </div>
-        )}
       </div>
+
+      {/* Recorded Video Preview */}
+      {recordedVideoUrl && (
+        <div className="absolute bottom-6 left-6 w-80 bg-black/80 backdrop-blur-sm rounded-xl p-4">
+          <h3 className="text-white text-sm font-medium mb-2">Recorded Video</h3>
+          <video
+            src={recordedVideoUrl}
+            controls
+            className="w-full h-32 object-cover rounded-lg"
+          />
+          <button
+            onClick={downloadRecording}
+            className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+          >
+            Download Recording
+          </button>
+        </div>
+      )}
     </div>
   );
 }
