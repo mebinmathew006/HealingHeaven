@@ -34,39 +34,67 @@ function VideoCallMain({
 
   // Effect to handle remote video assignment
   useEffect(() => {
+    console.log("Remote video useEffect triggered", {
+      hasRemoteStream: !!remoteStream,
+      hasVideoRef: !!remoteVideoRef?.current,
+      streamId: remoteStream?.id
+    });
+    
     if (remoteStream && remoteVideoRef?.current) {
       console.log("Setting remote stream to video element");
       const videoElement = remoteVideoRef.current;
       
+      // Check if already assigned
+      if (videoElement.srcObject === remoteStream) {
+        console.log("Stream already assigned to video element");
+        return;
+      }
+      
       // Set the stream
       videoElement.srcObject = remoteStream;
+      console.log("✅ Stream assigned to video element", videoElement.srcObject);
       
       // Add event listeners for debugging
-      videoElement.onloadedmetadata = () => {
+      videoElement.onloadedmetadata = (e) => {
         console.log("Remote video metadata loaded", {
           videoWidth: videoElement.videoWidth,
-          videoHeight: videoElement.videoHeight
+          videoHeight: videoElement.videoHeight,
+          duration: videoElement.duration,
+          readyState: videoElement.readyState
         });
       };
       
       videoElement.oncanplay = () => {
         console.log("Remote video can play");
-        videoElement.play().catch(e => {
-          console.error("Failed to play remote video:", e);
-        });
+        videoElement.play()
+          .then(() => console.log("✅ Remote video playing"))
+          .catch(e => console.error("❌ Failed to play remote video:", e));
       };
       
       videoElement.onplaying = () => {
-        console.log("Remote video is now playing");
+        console.log("✅ Remote video is now playing");
       };
       
       videoElement.onerror = (e) => {
-        console.error("Remote video error:", e);
+        console.error("❌ Remote video error:", e);
       };
       
-      // Force play attempt
-      videoElement.play().catch(e => {
-        console.error("Initial play attempt failed:", e);
+      videoElement.onloadstart = () => {
+        console.log("Remote video load started");
+      };
+      
+      // Force play attempt after a short delay
+      setTimeout(() => {
+        if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
+          videoElement.play()
+            .then(() => console.log("✅ Delayed play successful"))
+            .catch(e => console.error("❌ Delayed play failed:", e));
+        }
+      }, 100);
+    } else {
+      console.log("Remote video assignment skipped:", {
+        remoteStream: !!remoteStream,
+        videoRef: !!remoteVideoRef?.current
       });
     }
   }, [remoteStream, remoteVideoRef]);
