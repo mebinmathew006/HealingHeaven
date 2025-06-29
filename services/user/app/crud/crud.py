@@ -13,52 +13,72 @@ async def get_user_by_email(session: AsyncSession, email: str):
         result = await session.execute(select(User).where(User.email_address == email))
         return result.scalars().first()
     except Exception as e:
-        pass
+        await session.rollback()
     
 async def get_user_email_by_id(session: AsyncSession, user_id: int):
     try:
         result = await session.execute(select(User.email_address).where(User.id == user_id))
         return result.scalar_one_or_none()
     except Exception as e:
-        pass
+        await session.rollback()
 
 async def get_user_by_id(session: AsyncSession, user_id: int):
-    result = await session.execute(
-        select(UserProfile).options(joinedload(UserProfile.user))
-        .where(UserProfile.user_id == user_id)
-    )
-    return result.scalars().first()
+    try:
+        result = await session.execute(
+            select(UserProfile).options(joinedload(UserProfile.user))
+            .where(UserProfile.user_id == user_id)
+        )
+        return result.scalars().first()
+    except Exception as e:
+        await session.rollback()
+
 
 async def get_user_by_id_for_profile(session: AsyncSession, user_id: int):
-    result = await session.execute(
+    try:
+        result = await session.execute(
         select(User)
         .outerjoin(User.user_profile)  
         .options(contains_eager(User.user_profile))  
-        .where(User.id == user_id)
-    )
-    return result.scalars().first()
+        .where(User.id == user_id))
+        return result.scalars().first()
+    except Exception :
+        await session.rollback()
+   
 
 async def get_doctor_by_id_for_profile(session: AsyncSession, psychologist_id: int):
-    result = await session.execute(
+    try:
+        result = await session.execute(
         select(User)
         .outerjoin(User.psychologist_profile)  
         .options(contains_eager(User.psychologist_profile))  
         .where(User.id == psychologist_id)
-    )
-    return result.scalars().first()
+        )
+        return result.scalars().first()
+    except Exception :
+        await session.rollback()
+    
 
 async def get_user_details_by_id(session: AsyncSession, user_id: int):
-    result = await session.execute(
+    try:
+        result = await session.execute(
         select(User).where(User.id == user_id)
-    )
-    return result.scalars().first()
+        )
+        return result.scalars().first()
+    except Exception :
+        await session.rollback()
+    
 
 async def get_psycholgist_by_id(session: AsyncSession, user_id: int):
-    result = await session.execute(
+    try:
+        result = await session.execute(
         select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
         .where(PsychologistProfile.user_id == user_id)
-    )
-    return result.scalars().first()
+        )
+        return result.scalars().first()
+    except Exception :
+        await session.rollback()
+        
+    
 
 async def create_user(session: AsyncSession, user: UserCreate):
     try:
@@ -86,6 +106,7 @@ async def create_user(session: AsyncSession, user: UserCreate):
         return db_user
 
     except SQLAlchemyError as e:
+        await session.rollback()
         print(e, 'Database error during user creation.')
         raise HTTPException(status_code=500, detail="Database error during user creation.")
     
@@ -144,33 +165,53 @@ async def create_google_user(session: AsyncSession, name: str, email: str, profi
         print(f"Unexpected error during user creation: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error during user creation.")
 
-
-
-
-
 async def update_user_status(session: AsyncSession,email:str):
-    await session.execute( update(User).where(User.email_address == email).values(is_active=~User.is_active))
-    await session.commit()
+    try:
+        await session.execute( update(User).where(User.email_address == email).values(is_active=~User.is_active))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+   
     
 async def update_user_status_email(session: AsyncSession,email:str):
-    await session.execute( update(User).where(User.email_address == email).values(is_active=~User.is_active,is_verified=True))
-    await session.commit()
+    try:
+        await session.execute( update(User).where(User.email_address == email).values(is_active=~User.is_active,is_verified=True))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def toggle_user_status_by_id(session: AsyncSession,user_id:int):
-    await session.execute( update(User).where(User.id == user_id).values(is_active=~User.is_active))
-    await session.commit()
+    try:
+        await session.execute( update(User).where(User.id == user_id).values(is_active=~User.is_active))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def update_user_profile_image(session: AsyncSession,user_id:int,profile_url:str):
-    await session.execute( update(UserProfile).where(UserProfile.user_id == user_id).values(profile_image=profile_url))
-    await session.commit()
+    try:
+        await session.execute( update(UserProfile).where(UserProfile.user_id == user_id).values(profile_image=profile_url))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def update_user_psychologist_image(session: AsyncSession,user_id:int,profile_url:str):
-    await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(profile_image=profile_url))
-    await session.commit()
+    try:
+        await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(profile_image=profile_url))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def toggle_psychologist_status_by_id(session: AsyncSession,user_id:int):
-    await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=~PsychologistProfile.is_verified))
-    await session.commit()
+    try:
+        await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=~PsychologistProfile.is_verified))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def psychologist_availability_update(session: AsyncSession,user_id:int,isAvailable:bool):
     try:
@@ -182,71 +223,87 @@ async def psychologist_availability_update(session: AsyncSession,user_id:int,isA
         await session.rollback()
     
 async def update_user_password(session: AsyncSession,email:str,password :str):
-    await session.execute( update(User).where(User.email_address == email).values(password=hash_password(password)))
-    await session.commit()
+    try:
+        await session.execute( update(User).where(User.email_address == email).values(password=hash_password(password)))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+    
     
 async def get_all_psychologist_with_profile(session:AsyncSession):
-    result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
+    try:
+        result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
                                    .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.is_available.desc()) )
-    return result.scalars().all()
+        return result.scalars().all()
+    except Exception :
+        await session.rollback()
+    
 
 async def update_user_and_profile(session: AsyncSession, user_id: int, update_data: UserWithOptionalProfileOut):
-    user = await session.get(User, user_id)
-    if not user:
-        return None
+    try:
+        
+        user = await session.get(User, user_id)
+        if not user:
+            return None
 
-    # Update basic user fields
-    user.name = update_data.name
-    user.mobile_number = update_data.mobile_number
+        # Update basic user fields
+        user.name = update_data.name
+        user.mobile_number = update_data.mobile_number
 
-    # Fetch the profile
-    result = await session.execute(select(UserProfile).where(UserProfile.user_id == user_id))
-    profile = result.scalar_one_or_none()
+        # Fetch the profile
+        result = await session.execute(select(UserProfile).where(UserProfile.user_id == user_id))
+        profile = result.scalar_one_or_none()
 
-    if profile:
-        # Update existing profile
-        profile.date_of_birth = update_data.user_profile.date_of_birth
-        profile.gender = update_data.user_profile.gender
-        profile.profile_image = update_data.user_profile.profile_image
-    else:
-        # Create new profile if not exists
-        new_profile = UserProfile(
-            user_id=user_id,
-            date_of_birth=update_data.user_profile.date_of_birth,
-            gender=update_data.user_profile.gender,
-            profile_image=update_data.user_profile.profile_image
-        )
-        session.add(new_profile)
+        if profile:
+            # Update existing profile
+            profile.date_of_birth = update_data.user_profile.date_of_birth
+            profile.gender = update_data.user_profile.gender
+            profile.profile_image = update_data.user_profile.profile_image
+        else:
+            # Create new profile if not exists
+            new_profile = UserProfile(
+                user_id=user_id,
+                date_of_birth=update_data.user_profile.date_of_birth,
+                gender=update_data.user_profile.gender,
+                profile_image=update_data.user_profile.profile_image
+            )
+            session.add(new_profile)
 
-    await session.commit()
-    return user
-
+        await session.commit()
+        return user
+    except Exception :
+        await session.rollback()
+        
 
 async def update_psychologist_and_profile(session: AsyncSession, user_id: int, update_data: DoctorVerificationOut):
-    user = await session.get(User, user_id)
-    if not user:
-        return None
+    try:
+        user = await session.get(User, user_id)
+        if not user:
+            return None
 
-    # Update basic user fields
-    user.name = update_data.user.name
-    user.mobile_number = update_data.user.mobile_number
+        # Update basic user fields
+        user.name = update_data.user.name
+        user.mobile_number = update_data.user.mobile_number
 
-    # Fetch the profile
-    result = await session.execute(select(PsychologistProfile).where(PsychologistProfile.user_id == user_id))
-    profile = result.scalar_one_or_none()
+        # Fetch the profile
+        result = await session.execute(select(PsychologistProfile).where(PsychologistProfile.user_id == user_id))
+        profile = result.scalar_one_or_none()
 
-    if profile:
-        # Update existing profile
-        profile.date_of_birth = update_data.date_of_birth
-        profile.gender = update_data.gender
-        profile.about_me = update_data.about_me
-        profile.qualification = update_data.qualification
-        profile.experience = update_data.experience
-        profile.specialization = update_data.specialization
-        profile.fees = update_data.fees
+        if profile:
+            # Update existing profile
+            profile.date_of_birth = update_data.date_of_birth
+            profile.gender = update_data.gender
+            profile.about_me = update_data.about_me
+            profile.qualification = update_data.qualification
+            profile.experience = update_data.experience
+            profile.specialization = update_data.specialization
+            profile.fees = update_data.fees
+        
+        await session.commit()
+        return user
+    except Exception :
+        await session.rollback()
     
-    await session.commit()
-    return user
 
 
 async def doctor_profile_creation(
@@ -296,6 +353,7 @@ async def get_all_users(session: AsyncSession):
         result = await session.execute( select(User).where(User.role == 'patient'))
         return result.scalars().all()
     except SQLAlchemyError as e:
+        await session.rollback()
         print(f"Database error occurred: {e}")
     
 async def get_all_psychologist(session: AsyncSession):
@@ -303,5 +361,6 @@ async def get_all_psychologist(session: AsyncSession):
         result = await session.execute( select(User).where(User.role == 'doctor'))
         return result.scalars().all()
     except SQLAlchemyError as e:
+        await session.rollback()
         print(f"Database error occurred: {e}")
     
