@@ -9,7 +9,7 @@ app.include_router(user.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.healinghaven.live"],  # or ["*"] for dev
+    allow_origins=  ["*"] ,#["https://www.healinghaven.live"],  # or ["*"] for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
