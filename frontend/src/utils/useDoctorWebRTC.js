@@ -90,13 +90,13 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
         //   { urls: "stun:stun1.l.google.com:19302" },
         // ],
         iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }, // Optional extra STUN
-    {
-      urls: "turn:3.110.225.141:3478",
-      username: "user",
-      credential: "supersecret"
-    }
-  ]
+         
+          {
+            urls: "turn:3.110.225.141:3478",
+            username: "user",
+            credential: "supersecret",
+          },
+        ],
       });
       pcRef.current = pc;
 
