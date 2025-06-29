@@ -24,7 +24,7 @@ export const useChat = (userId, userType) => {
   const messagesEndRef = useRef(null);
   const activeConsultationIdRef = useRef(null);
   const currentSelectedUserid=useRef(null)
-
+  const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
   // Enable notification sound
   useNotificationSound();
 
@@ -387,7 +387,7 @@ export const useChat = (userId, userType) => {
 
       try {
         const ws = new WebSocket(
-          `ws://localhost/consultations/ws/chat/${consultationId}`
+          `${socketBaseUrl}/consultations/ws/chat/${consultationId}`
         );
         wsRef.current = ws;
 

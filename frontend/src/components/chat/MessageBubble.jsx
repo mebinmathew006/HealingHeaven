@@ -8,8 +8,6 @@ const MessageBubble = React.memo(({
   formatMessageTime 
 }) => {
   const BASE_URL_FOR_MEDIA = import.meta.env.VITE_BASE_URL
-  // Function to render different file types
-
   
   const renderAttachment = (attachment) => {
     const fileType = attachment.file_type.split('/')[0];
