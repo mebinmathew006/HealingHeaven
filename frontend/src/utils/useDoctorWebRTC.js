@@ -85,16 +85,24 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
       setConnectionStatus("Patient connecting...");
 
       const pc = new RTCPeerConnection({
+        // iceServers: [
+        //   { urls: "stun:stun.l.google.com:19302" },
+        //   { urls: "stun:stun1.l.google.com:19302" },
+        // ],
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
+          {
+            urls: "turn:relay.metered.ca:80",
+            username: "openai",
+            credential: "openai",
+          },
         ],
       });
       pcRef.current = pc;
 
       // Get media stream
       const stream = await getUserMediaWithFallback();
-      
+
       stream.getTracks().forEach((track) => {
         console.log(`Adding ${track.kind} track:`, track.getSettings());
         pc.addTrack(track, stream);
