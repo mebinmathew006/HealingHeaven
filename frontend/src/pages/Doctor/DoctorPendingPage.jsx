@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react'
 import { Clock, Shield, Mail } from 'lucide-react';
+import useLogout from '../../utils/useLogout';
 
 function DoctorPendingPage() {
  
@@ -64,12 +65,12 @@ function DoctorPendingPage() {
           <p className="text-sm text-gray-600 mb-2">
             Questions about your verification?
           </p>
-          <a 
-            // href="mailto:admin@healthcare.com" 
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+          <button
+            onClick={useLogout}
+            className="text-red-600 hover:text-red-700 text-sm font-medium"
           >
-            Contact Support
-          </a>
+            Logout
+          </button>
         </div>
       </div>
     </div>

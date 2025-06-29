@@ -356,7 +356,7 @@ async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema
 
 
 @router.get('/get_psycholgist_rating/{psychologist_id}')
-async def get_psychologist_rating_route(psychologist_id: int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
     try:
         avg_rating = await get_psychologist_rating_crud(session, psychologist_id)
         return  avg_rating if avg_rating is not None else 0.0
