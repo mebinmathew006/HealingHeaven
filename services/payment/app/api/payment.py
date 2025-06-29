@@ -26,8 +26,7 @@ from razorpay.errors import BadRequestError, ServerError
 
 @router.post("/create_razorpay_order")
 async def create_razorpay_orders(
-    rzrpay_schema: RazorpayOrder,current_user_id: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+    rzrpay_schema: RazorpayOrder,session: AsyncSession = Depends(get_session)
 ):
     try:
         razorpay_order = await create_razorpay_order(rzrpay_schema.totalAmount)
