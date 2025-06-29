@@ -5,12 +5,12 @@ import { useWebRTC } from "./useWebRTC";
 export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
   const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
   const signalingURL = `${socketBaseUrl}/consultations/ws/create_signaling/${doctorId}`;
-  
+
   const webRTC = useWebRTC({
     userId: doctorId,
-    userType: 'doctor',
+    userType: "doctor",
     signalingURL,
-    onCallEnd
+    onCallEnd,
   });
 
   const {
@@ -62,11 +62,10 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
       }
 
       if (message.type === "call-end") {
+        setConsultationId(message.consultationId);
+        setCallDuration(message.duration);
 
-        setConsultationId(message.consultationId)
-        setCallDuration(message.duration)
-    
-        handleCallEnd(message.consultationId,message.duration);
+        handleCallEnd(message.consultationId, message.duration);
       }
     };
 
@@ -95,6 +94,12 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
 
       // Get media stream
       const stream = await getUserMediaWithFallback();
+      
+      stream.getTracks().forEach((track) => {
+        console.log(`Adding ${track.kind} track:`, track.getSettings());
+        pc.addTrack(track, stream);
+      });
+
       setLocalStream(stream);
 
       if (localVideoRef.current) {
@@ -165,15 +170,16 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
 
   const handleIceCandidate = async (message) => {
     try {
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(message.candidate));
+      await pcRef.current.addIceCandidate(
+        new RTCIceCandidate(message.candidate)
+      );
       console.log("✅ Added ICE candidate");
     } catch (err) {
       console.error("[Doctor] Failed to add ICE candidate:", err);
     }
   };
 
-  const handleCallEnd = (consultationId,duration) => {
-  
+  const handleCallEnd = (consultationId, duration) => {
     setConnectionStatus("Call ended");
     setIsConnected(false);
     webRTC.endCall();

@@ -42,9 +42,6 @@ export const usePatientWebRTC = ({
     recordingError,
   } = webRTC;
 
-
-  
-  
   const initializeWebRTC = async () => {
     setConnectionStatus("Connecting...");
 
@@ -76,8 +73,8 @@ export const usePatientWebRTC = ({
       }
 
       if (message.type === "call-end") {
-        setConsultationId(message.consultationId)
-        setCallDuration(message.duration)
+        setConsultationId(message.consultationId);
+        setCallDuration(message.duration);
         handleCallEnd();
       }
     };
@@ -106,7 +103,12 @@ export const usePatientWebRTC = ({
       pcRef.current = pc;
 
       const stream = await getUserMediaWithFallback();
-      console.log("✅ Local stream set:", stream, "Tracks:", stream.getTracks());
+      console.log(
+        "✅ Local stream set:",
+        stream,
+        "Tracks:",
+        stream.getTracks()
+      );
       setLocalStream(stream);
 
       if (localVideoRef.current) {
@@ -122,6 +124,16 @@ export const usePatientWebRTC = ({
         console.log("✅ Remote stream received!", event.streams[0]);
         const remoteStream = event.streams[0];
 
+        remoteStream.getTracks().forEach((track, i) => {
+          console.log(`Received track ${i}:`, {
+            kind: track.kind,
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState,
+            settings: track.getSettings ? track.getSettings() : "N/A",
+          });
+        });
+        
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
         }
@@ -131,7 +143,6 @@ export const usePatientWebRTC = ({
         setIsConnected(true);
         setConnectionStatus("Call connected");
         startCallDurationTimer();
-
       };
 
       pc.onicecandidate = (event) => {
