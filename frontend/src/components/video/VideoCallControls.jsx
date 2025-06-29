@@ -9,6 +9,7 @@ import {
   StopCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { ReactMediaRecorder } from "react-media-recorder";
 
 function VideoCallControls({
   toggleMute,
@@ -84,6 +85,18 @@ function VideoCallControls({
           </button>
         )}
       </div>
+
+<ReactMediaRecorder
+  video
+  render={({ startRecording, stopRecording, mediaBlobUrl }) => (
+    <>
+      <button onClick={startRecording}>Start</button>
+      <button onClick={stopRecording}>Stop</button>
+      <video src={mediaBlobUrl} controls autoPlay />
+    </>
+  )}
+/>
+
     </div>
   );
 }
