@@ -85,12 +85,8 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
       setConnectionStatus("Patient connecting...");
 
       const pc = new RTCPeerConnection({
-        // iceServers: [
-        //   { urls: "stun:stun.l.google.com:19302" },
-        //   { urls: "stun:stun1.l.google.com:19302" },
-        // ],
         iceServers: [
-         
+          { urls: "stun:stun.l.google.com:19302" }, // Optional extra STUN
           {
             urls: "turn:3.110.225.141:3478",
             username: "user",
@@ -102,12 +98,6 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
 
       // Get media stream
       const stream = await getUserMediaWithFallback();
-
-      stream.getTracks().forEach((track) => {
-        console.log(`Adding ${track.kind} track:`, track.getSettings());
-        pc.addTrack(track, stream);
-      });
-
       setLocalStream(stream);
 
       if (localVideoRef.current) {

@@ -95,13 +95,8 @@ export const usePatientWebRTC = ({
       setConsultationId(consultationId);
 
       const pc = new RTCPeerConnection({
-        // iceServers: [
-        //   { urls: "stun:stun.l.google.com:19302" },
-        //   { urls: "stun:stun1.l.google.com:19302" },
-        // ],
-
         iceServers: [
-         
+          { urls: "stun:stun.l.google.com:19302" }, // Optional extra STUN
           {
             urls: "turn:3.110.225.141:3478",
             username: "user",
@@ -132,16 +127,6 @@ export const usePatientWebRTC = ({
       pc.ontrack = (event) => {
         console.log("✅ Remote stream received!", event.streams[0]);
         const remoteStream = event.streams[0];
-
-        remoteStream.getTracks().forEach((track, i) => {
-          console.log(`Received track ${i}:`, {
-            kind: track.kind,
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-            settings: track.getSettings ? track.getSettings() : "N/A",
-          });
-        });
 
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = remoteStream;
