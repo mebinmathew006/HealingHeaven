@@ -3,7 +3,8 @@ import { useEffect } from "react";
 import { useWebRTC } from "./useWebRTC";
 
 export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
-  const signalingURL = `ws://localhost/consultations/ws/create_signaling/${doctorId}`;
+  const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
+  const signalingURL = `${socketBaseUrl}/consultations/ws/create_signaling/${doctorId}`;
   
   const webRTC = useWebRTC({
     userId: doctorId,

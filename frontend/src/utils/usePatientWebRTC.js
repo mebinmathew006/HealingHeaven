@@ -9,7 +9,8 @@ export const usePatientWebRTC = ({
   onCallEnd,
   isRecordingtoggle = false,
 }) => {
-  const signalingURL = `ws://localhost/consultations/ws/create_signaling/${patientId}`;
+  const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
+  const signalingURL = `${socketBaseUrl}/consultations/ws/create_signaling/${patientId}`;
 
   const webRTC = useWebRTC({
     userId: patientId,

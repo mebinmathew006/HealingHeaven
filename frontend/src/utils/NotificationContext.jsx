@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 
 const NotificationContext = createContext();
-
+const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
 const notificationReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
@@ -99,7 +99,7 @@ export const NotificationProvider = ({ children, userId }) => {
     
     console.log(`Attempting to connect WebSocket for user ${userId}`);
     
-    const wsUrl = `ws://localhost/consultations/ws/notifications/${userId}`;
+    const wsUrl = `${socketBaseUrl}/consultations/ws/notifications/${userId}`;
     const newWs = new WebSocket(wsUrl);
     
     // Set up event handlers before assigning to ref
