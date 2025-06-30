@@ -233,7 +233,7 @@ async def update_user_password(session: AsyncSession,email:str,password :str):
 async def get_all_psychologist_with_profile(session:AsyncSession):
     try:
         result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
-                                   .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.is_available.desc()) )
+                                   .where(PsychologistProfile.is_verified == True).order_by(User.name.desc()) )
         return result.scalars().all()
     except Exception :
         await session.rollback()
