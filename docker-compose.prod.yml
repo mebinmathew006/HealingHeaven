@@ -28,6 +28,7 @@ services:
       - ./gateway/nginx.conf:/etc/nginx/conf.d/custom.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot
+      - ./services/consultation/app/static:/static:ro
     depends_on:
       - user-service
       - consultation-service

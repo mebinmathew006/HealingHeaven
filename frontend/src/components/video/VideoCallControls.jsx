@@ -85,16 +85,7 @@ function VideoCallControls({
         )}
       </div>
 
-<ReactMediaRecorder
-  video
-  render={({ startRecording, stopRecording, mediaBlobUrl }) => (
-    <>
-      <button onClick={startRecording}>Start</button>
-      <button onClick={stopRecording}>Stop</button>
-      <video src={mediaBlobUrl} controls autoPlay />
-    </>
-  )}
-/>
+
 
     </div>
   );

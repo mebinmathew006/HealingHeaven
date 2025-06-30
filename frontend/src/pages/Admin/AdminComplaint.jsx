@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Edit2, Save, X, Filter, Search } from "lucide-react";
+import { Edit2, Save, X, Filter, Search, Play, Eye, Loader2 } from "lucide-react";
 import AdminSidebar from "../../components/AdminSidebar";
 import axiosInstance from "../../axiosconfig";
 import Pagination from "../../components/Pagination";
+import { toast } from "react-toastify";
 
 const AdminComplaint = () => {
+  const baseurl = import.meta.env.VITE_BASE_URL;
   const [complaints, setComplaints] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editingStatus, setEditingStatus] = useState("");
@@ -12,6 +14,11 @@ const AdminComplaint = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("admin_complaints");
+  
+  // Video modal state
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [videoLoading, setVideoLoading] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,9 +43,11 @@ const AdminComplaint = () => {
       getConsultations(page, false);
     }
   };
+
   useEffect(() => {
     fetchComplaints();
   }, []);
+
   const fetchComplaints = async (page = 1, showLoadingSpinner = true) => {
     if (showLoadingSpinner) {
         setLoading(true);
@@ -49,13 +58,17 @@ const AdminComplaint = () => {
       const response = await axiosInstance.get(
         `/consultations/get_compliants?page=${page}&limit=${limit}`
       );
+      console.log(response.data.results)
       setComplaints(response.data.results);
       setLoading(false);
+      setLoadingMore(false);
     } catch (error) {
       console.log(error);
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
   const statusOptions = [
     "Pending",
     "In Progress",
@@ -70,6 +83,7 @@ const AdminComplaint = () => {
       Resolved: "bg-green-100 text-green-800",
       Closed: "bg-gray-100 text-gray-800",
       Rejected: "bg-purple-100 text-purple-800",
+      Pending: "bg-blue-100 text-blue-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -88,9 +102,10 @@ const AdminComplaint = () => {
       setEditingId(null);
       setEditingStatus("");
       fetchComplaints();
+      toast.success(" Updated complaint status",{position:'bottom-center'});
     } catch (error) {
       console.error("Error updating complaint status:", error);
-      alert("Failed to update complaint status");
+      toast.error("Failed to update complaint status",{position:'bottom-center'});
     }
   };
 
@@ -98,6 +113,35 @@ const AdminComplaint = () => {
     setEditingId(null);
     setEditingStatus("");
   };
+
+  // Video handling functions
+ const handleViewVideo = async (complaint) => {
+  if (!complaint.video) {
+    toast.info("No video available for this complaint", {position:'bottom-center'});
+    return;
+  }
+  
+  setVideoLoading(true);
+  setSelectedVideo({
+    id: complaint.id,
+    subject: complaint.subject,
+    video_url: `${baseurl}${complaint.video}`, // Construct full URL
+    type: complaint.type
+  });
+  setShowVideoModal(true);
+  setVideoLoading(false);
+};
+
+
+  const closeVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
+  };
+
+  // Check if complaint has video
+  const hasVideo = (complaint) => {
+  return complaint.video !== null && complaint.video !== undefined && complaint.video.trim() !== '';
+};
 
   const filteredComplaints = complaints.filter((complaint) => {
     const matchesSearch =
@@ -123,7 +167,6 @@ const AdminComplaint = () => {
     <div className="flex h-screen bg-gray-100">
       <AdminSidebar activeSection={activeSection} />
       <div className="p-6 bg-gray-50 min-h-screen w-full">
-        {/* <div className="min-h-screen bg-gray-50 p-6"> */}
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -205,6 +248,9 @@ const AdminComplaint = () => {
                       Description
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Video
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -229,6 +275,20 @@ const AdminComplaint = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 max-w-sm truncate">
                         {complaint.description}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {hasVideo(complaint) ? (
+                          <button
+                            onClick={() => handleViewVideo(complaint)}
+                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+                            title="View video"
+                          >
+                            <Play className="w-3 h-3 mr-1" />
+                            View Video
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">No video</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingId === complaint.id ? (
@@ -313,16 +373,92 @@ const AdminComplaint = () => {
             complaints
           </div>
         </div>
-      </div>
-      {/* Loading indicator for pagination */}
+
+        {/* Loading indicator for pagination */}
         {loadingMore && (
           <div className="flex justify-center mt-4">
             <div className="flex items-center text-sm text-gray-600">
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Loading more Complainat...
+              Loading more Complaints...
             </div>
           </div>
         )}
+      </div>
+
+      {/* Video Modal */}
+      {showVideoModal && selectedVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Complaint Video - #{selectedVideo.id}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedVideo.subject} | {selectedVideo.type}
+                </p>
+              </div>
+              <button
+                onClick={closeVideoModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4">
+              {videoLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="flex items-center text-gray-600">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                    Loading video...
+                  </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <video
+                    controls
+                    className="w-full max-h-[60vh] rounded-lg"
+                    preload="metadata"
+                    onError={(e) => {
+                      console.error("Video load error:", e);
+                      // toast.error("Error loading video. Please check if the video file exists and is accessible.");
+                    }}
+                  >
+                    <source src={selectedVideo.video_url} type="video/mp4" />
+                    <source src={selectedVideo.video_url} type="video/webm" />
+                    <source src={selectedVideo.video_url} type="video/ogg" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 pb-4">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={closeVideoModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+                {selectedVideo.video_url && (
+                  <a
+                    href={selectedVideo.video_url}
+                    download
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Download Video
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

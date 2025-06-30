@@ -13,7 +13,7 @@ import NotificationDropdown from "../../components/NotificationDropdown";
 function DoctorVideoCallPage() {
   const navigate = useNavigate();
   const doctorId = useSelector((state) => state.userDetails.id);
-  
+
   const {
     notifications,
     unreadCount,
@@ -22,16 +22,18 @@ function DoctorVideoCallPage() {
     removeNotification,
   } = useNotifications();
 
-    const handleCallEnd = ({ consultationId, callDuration }) => {
-      console.log(consultationId,callDuration)
-      setTimeout(() => {
-        navigate("/doctor_view_consultations", {
-         
-        });
-      }, 500);
-    };
+  const handleCallEnd = ({ consultationId, callDuration }) => {
+    console.log(consultationId, callDuration);
+    setTimeout(() => {
+      navigate("/doctor_view_consultations", {});
+    }, 500);
+  };
 
   const {
+    recordingDuration,
+    recordingError,
+    recordingMethod,
+    setRecordingMethod,
     isMuted,
     isVideoOff,
     isConnected,
@@ -69,6 +71,10 @@ function DoctorVideoCallPage() {
       isRecording={false}
       onReconnect={onReconnect}
       userType="doctor"
+      recordingDuration={recordingDuration}
+      recordingError={recordingError}
+      recordingMethod={recordingMethod}
+      setRecordingMethod={setRecordingMethod}
     >
       <NotificationDropdown
         notifications={notifications}

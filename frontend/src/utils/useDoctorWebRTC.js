@@ -86,7 +86,7 @@ export const useDoctorWebRTC = ({ doctorId, onCallEnd }) => {
 
       const pc = new RTCPeerConnection({
         iceServers: [
-          
+          { urls: "stun:stun.l.google.com:19302" }, // Optional extra STUN
           {
             urls: "turn:3.110.225.141:3478",
             username: "user",

@@ -80,24 +80,20 @@ async def create_feedback(session: AsyncSession, data: CreateFeedbackSchema):
         # Log error or raise appropriate exception
         raise e
     
-async def register_complaint_crud(session: AsyncSession, data: CompliantSchema):
-    try:
-        # Create consultation
-        complaint = Complaint(
-            consultation_id=data.consultation_id,
-            type=data.type,
-            subject=data.subject,
-            description=data.description,
-            status='pending'
-        )
-        session.add(complaint)
-        await session.commit()        
+async def register_complaint_crud(session: AsyncSession, data: dict):
+    complaint = Complaint(
+        consultation_id=data["consultation_id"],
+        type=data["type"],
+        subject=data["subject"],
+        description=data["description"],
+        status="pending",
+        video=data.get("video_url")  
+    )
+    session.add(complaint)
+    await session.commit()
+    await session.refresh(complaint)
+    return complaint
 
-    except SQLAlchemyError as e:
-        await session.rollback()
-        # Log error or raise appropriate exception
-        raise e
-    
 async def create_notification(session: AsyncSession, data: CreateNotificationSchema):
     try:
         # Create consultation

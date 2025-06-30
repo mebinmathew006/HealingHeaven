@@ -222,7 +222,7 @@ async def verify_password_otp(otp_schema:users.ForgetPasswordOTPSchema,session: 
     
     
 @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
-async def view_psychologist(current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def view_psychologist(session: AsyncSession = Depends(get_session)):
     try:
         data = await crud.get_all_psychologist_with_profile(session)
         if not data:

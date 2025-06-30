@@ -31,6 +31,10 @@ function UserVideoCallPage() {
   };
 
   const {
+     recordingDuration,
+  recordingError,
+  recordingMethod,
+  setRecordingMethod,
     isMuted,
     isVideoOff,
     isConnected,
@@ -127,6 +131,10 @@ function UserVideoCallPage() {
       isMuted={isMuted}
       userType="patient"
       isRecordingtoggle={isRecordingtoggle}
+      recordingDuration={recordingDuration}
+      recordingError={recordingError}
+      recordingMethod={recordingMethod}
+      setRecordingMethod={setRecordingMethod}
     >
       <NotificationDropdown
         notifications={notifications}

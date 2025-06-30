@@ -43,6 +43,7 @@ from dependencies.get_current_user import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 load_dotenv()
+from uuid import uuid4
 
 router = APIRouter(tags=["consultations"])
 
@@ -62,13 +63,45 @@ async def create_consultation_route(data: CreateConsultationSchema,current_user_
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.post("/register_complaint")
-async def register_complaint_route(data: CompliantSchemaa,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def register_complaint_route(
+    consultation_id: int = Form(...),
+    type: str = Form(...),
+    subject: str = Form(...),
+    description: str = Form(...),
+    video: Optional[UploadFile] = File(None),  # ✅ Optional here
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
     try:
+        video_url = None
+
+        # ✅ Save video only if provided
+        if video:
+            file_ext = os.path.splitext(video.filename)[-1]
+            filename = f"{uuid4().hex}{file_ext}"
+            save_path = f"static/complaints/{filename}"
+            
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+            with open(save_path, "wb") as f:
+                f.write(await video.read())
+
+            video_url = f"/static/complaints/{filename}"
+
+        data = {
+            "consultation_id": consultation_id,
+            "type": type,
+            "subject": subject,
+            "description": description,
+            "video_url": video_url  # ✅ This can be None
+        }
+
         complaint = await register_complaint_crud(session, data)
         return complaint
+
     except Exception as e:
-        logger.info(f"Error creating user: {e}")
-        raise HTTPException(status_code=400, detail="Failed to update user")
+        logger.error(f"Error creating complaint: {e}")
+        raise HTTPException(status_code=400, detail="Failed to create complaint")
     
 @router.post("/add_feedback")
 async def add_feedback(data: FeedbackCreationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):

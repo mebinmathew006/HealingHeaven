@@ -91,7 +91,7 @@ async def get_wallet_details_with_transactions(user_id : int ,current_user_id: s
     
     
 @router.get("/get_wallet_balance/{user_id}", response_model=WalletBalanceOut)
-async def get_wallet_balance(user_id: int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def get_wallet_balance(user_id: int, session: AsyncSession = Depends(get_session)):
     try:
         wallet = await get_wallet_balance_by_id(session, user_id)
         if not wallet:
@@ -100,14 +100,6 @@ async def get_wallet_balance(user_id: int,current_user_id: str = Depends(get_cur
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error while fetching wallet balance.")
     
-# @router.get("/get_wallet_balance/{user_id}", response_model=WalletBalanceOut)
-# async def get_wallet_balance(user_id: int, session: AsyncSession = Depends(get_session)):
-#     try:
-#         wallet = await get_wallet_balance_by_id(session, user_id)
-#         if not wallet:
-#             raise HTTPException(status_code=404, detail="Wallet not found.")
-#         return wallet
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail="Internal server error while fetching wallet balance.")
+
     
     

@@ -177,6 +177,7 @@ class CompliantSchema(BaseModel):
     subject: str
     description: str
     status: Optional[str]
+    video: Optional[str]
     
     model_config = {
         "from_attributes": True
