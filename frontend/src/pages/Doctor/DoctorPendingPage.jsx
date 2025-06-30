@@ -4,7 +4,7 @@ import { Clock, Shield, Mail } from 'lucide-react';
 import useLogout from '../../utils/useLogout';
 
 function DoctorPendingPage() {
- 
+ const logout = useLogout();
     
     return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -66,7 +66,7 @@ function DoctorPendingPage() {
             Questions about your verification?
           </p>
           <button
-            onClick={useLogout}
+            onClick={logout}
             className="text-red-600 hover:text-red-700 text-sm font-medium"
           >
             Logout

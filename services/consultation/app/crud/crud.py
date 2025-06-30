@@ -147,6 +147,7 @@ async def consultation_for_user(session: AsyncSession, user_id: int, skip: int, 
     result = await session.execute(
         select(Consultation)
         .where(Consultation.user_id == user_id)
+        .order_by(desc(Consultation.created_at))  
         .offset(skip)
         .limit(limit)
     )

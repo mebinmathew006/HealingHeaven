@@ -120,7 +120,7 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
       onClose();
       
       // Show success message
-      toast.success('Complaint submitted successfully!');
+      toast.success('Complaint submitted successfully!',{position:'bottom-center'});
       
     } catch (error) {
       console.error("Error submitting complaint:", error);
@@ -128,13 +128,13 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
       // More detailed error handling
       if (error.response) {
         console.error("Server responded with error:", error.response.data);
-        toast.error(`Error submitting complaint: ${error.response.data.message || 'Please try again.'}`);
+        toast.error(`Error submitting complaint: ${error.response.data.message || 'Please try again.'}`,{position:'bottom-center'});
       } else if (error.request) {
         console.error("Network error:", error.request);
-        toast.error('Network error. Please check your connection and try again.');
+        toast.error('Network error. Please check your connection and try again.',{position:'bottom-center'});
       } else {
         console.error("Error:", error.message);
-        toast.error('Error submitting complaint. Please try again.');
+        toast.error('Error submitting complaint. Please try again.',{position:'bottom-center'});
       }
     } finally {
       setIsSubmitting(false);
