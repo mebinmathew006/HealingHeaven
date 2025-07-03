@@ -115,8 +115,14 @@ async def update_analysis_consultation(session: AsyncSession, data: UpdateConsul
     result = await session.execute(select(Consultation).where(Consultation.id == data.consultation_id))
     consultation = result.scalar_one_or_none()
     consultation.analysis = data.message
-    consultation.duration = f"{data.duration} min"
+    consultation.duration = "0 min"
     consultation.status='completed'
+    await session.commit()
+    
+async def update_consultation_status(session: AsyncSession, status:str,consultation_id:int):
+    result = await session.execute(select(Consultation).where(Consultation.id == consultation_id))
+    consultation = result.scalar_one_or_none()
+    consultation.status=status
     await session.commit()
     
 async def get_all_consultation(session: AsyncSession):
@@ -466,7 +472,6 @@ async def save_chat_message_with_attachments(session: AsyncSession,message: Opti
         # Add attachments if any
         attachment_ids = []
         if attachments:
-            print('yesssssssssssssssssssssssssssssssssssssssssssssss in atachmentsssssssssssssssssssssss')
             for attachment_data in attachments:
                 if attachment_data.get('upload_status') == 'success':
                     # Ensure all required fields are present with defaults

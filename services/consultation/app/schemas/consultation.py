@@ -213,3 +213,9 @@ class CompliantPaginatedResponse(BaseModel):
     
 class UpdateComplaintSchema(BaseModel):
     editingStatus:str
+    
+class TokenRequest(BaseModel):
+    room_id: str
+    user_id: str
+    expire_seconds: Optional[int] = 3600  # Default 1 hour expiry
+    

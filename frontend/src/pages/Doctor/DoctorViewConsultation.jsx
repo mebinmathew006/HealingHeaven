@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, User, FileText, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import {
+  Calendar,
+  Clock,
+  User,
+  FileText,
+  ChevronDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  Video,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Assuming these are your actual imports - replace as needed
-import Pagination from '../../components/Pagination';
-import axiosInstance from '../../axiosconfig';
-import DoctorSidebar from '../../components/DoctorSidebar';
-import { useSelector } from 'react-redux';
+import Pagination from "../../components/Pagination";
+import axiosInstance from "../../axiosconfig";
+import DoctorSidebar from "../../components/DoctorSidebar";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 
 const DoctorViewConsultation = () => {
   const navigate = useNavigate();
-  
+
   // State management
   const [consultationData, setConsultationData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,39 +30,58 @@ const DoctorViewConsultation = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection] = useState("doctor_view_consultations");
   const [error, setError] = useState(null);
-  
+
   // Sorting state
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  
+
   // Mock doctor ID - replace with your actual Redux selector
   const doctorId = useSelector((state) => state.userDetails.id);
 
   // Pagination state derived from API response
   const totalCount = consultationData?.count || 0;
-  const limit = 10; 
+  const limit = 10;
   const hasNext = !!consultationData?.next;
   const hasPrevious = !!consultationData?.previous;
 
   // Sort options
   const sortOptions = [
-    { value: 'created_at', label: 'Date Created', apiField: 'created_at' },
-    { value: 'status', label: 'Status', apiField: 'status' },
-    
+    { value: "created_at", label: "Date Created", apiField: "created_at" },
+    { value: "status", label: "Status", apiField: "status" },
+
     // { value: 'id', label: 'Consultation ID', apiField: 'id' }
   ];
+const handleRejoinConsultation = async (consultation) => {
+    try {
+      // Navigate to videocall page with required state
 
+      navigate("/videocall_doctor", {
+        state: {
+          
+          consultationId: consultation.id,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+      toast.error("Sorry unable to start !!");
+    }
+  };
   // API call function with sorting
-  const fetchConsultations = async (page = 1, sort = sortBy, order = sortOrder) => {
+  const fetchConsultations = async (
+    page = 1,
+    sort = sortBy,
+    order = sortOrder
+  ) => {
     try {
       setLoadingMore(page !== 1);
       setLoading(page === 1);
-      
+
       // Get the API field name for sorting
-      const sortOption = sortOptions.find(option => option.value === sort);
-      const orderingParam = order === 'desc' ? `-${sortOption.apiField}` : sortOption.apiField;
-      
+      const sortOption = sortOptions.find((option) => option.value === sort);
+      const orderingParam =
+        order === "desc" ? `-${sortOption.apiField}` : sortOption.apiField;
+
       // Replace this with your actual API endpoint
       const response = await axiosInstance.get(
         `/consultations/doctor_get_consulations/${doctorId}?page=${page}&limit=${limit}&ordering=${orderingParam}`
@@ -58,8 +89,8 @@ const DoctorViewConsultation = () => {
       setConsultationData(response.data);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch consultations');
-      console.error('Error fetching consultations:', err);
+      setError("Failed to fetch consultations");
+      console.error("Error fetching consultations:", err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -90,13 +121,13 @@ const DoctorViewConsultation = () => {
 
   // Sorting handlers
   const handleSortChange = (newSortBy) => {
-    let newSortOrder = 'desc';
-    
+    let newSortOrder = "desc";
+
     // If clicking the same sort field, toggle the order
     if (newSortBy === sortBy) {
-      newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+      newSortOrder = sortOrder === "desc" ? "asc" : "desc";
     }
-    
+
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
     setCurrentPage(1); // Reset to first page when sorting changes
@@ -116,34 +147,36 @@ const DoctorViewConsultation = () => {
     if (sortBy !== field) {
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
-    return sortOrder === 'desc' ? 
-      <ArrowDown className="h-4 w-4 text-blue-600" /> : 
-      <ArrowUp className="h-4 w-4 text-blue-600" />;
+    return sortOrder === "desc" ? (
+      <ArrowDown className="h-4 w-4 text-blue-600" />
+    ) : (
+      <ArrowUp className="h-4 w-4 text-blue-600" />
+    );
   };
 
   // Format date helper
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // Get status color
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -155,14 +188,14 @@ const DoctorViewConsultation = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showSortDropdown && !event.target.closest('.sort-dropdown')) {
+      if (showSortDropdown && !event.target.closest(".sort-dropdown")) {
         setShowSortDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showSortDropdown]);
 
@@ -182,7 +215,7 @@ const DoctorViewConsultation = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 text-lg">{error}</p>
-          <button 
+          <button
             onClick={() => fetchConsultations(currentPage, sortBy, sortOrder)}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -193,7 +226,9 @@ const DoctorViewConsultation = () => {
     );
   }
 
-  const currentSortOption = sortOptions.find(option => option.value === sortBy);
+  const currentSortOption = sortOptions.find(
+    (option) => option.value === sortBy
+  );
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -204,15 +239,21 @@ const DoctorViewConsultation = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Consultation History</h1>
-            <p className="mt-2 text-gray-600">View and manage your consultation records</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Consultation History
+            </h1>
+            <p className="mt-2 text-gray-600">
+              View and manage your consultation records
+            </p>
           </div>
 
           {/* Sort Controls */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-gray-700">Sort by:</span>
-              
+              <span className="text-sm font-medium text-gray-700">
+                Sort by:
+              </span>
+
               {/* Mobile Dropdown */}
               <div className="relative sort-dropdown sm:hidden">
                 <button
@@ -225,7 +266,7 @@ const DoctorViewConsultation = () => {
                     <ChevronDown className="h-4 w-4" />
                   </div>
                 </button>
-                
+
                 {showSortDropdown && (
                   <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-300 rounded-lg shadow-lg">
                     {sortOptions.map((option) => (
@@ -233,7 +274,9 @@ const DoctorViewConsultation = () => {
                         key={option.value}
                         onClick={() => handleSortChange(option.value)}
                         className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
-                          sortBy === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          sortBy === option.value
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-gray-700"
                         }`}
                       >
                         <span>{option.label}</span>
@@ -252,8 +295,8 @@ const DoctorViewConsultation = () => {
                     onClick={() => handleSortChange(option.value)}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       sortBy === option.value
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     }`}
                   >
                     <span>{option.label}</span>
@@ -267,7 +310,9 @@ const DoctorViewConsultation = () => {
             <div className="text-sm text-gray-500">
               {totalCount > 0 && (
                 <span>
-                  Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalCount)} of {totalCount} consultations
+                  Showing {(currentPage - 1) * limit + 1} to{" "}
+                  {Math.min(currentPage * limit, totalCount)} of {totalCount}{" "}
+                  consultations
                 </span>
               )}
             </div>
@@ -283,25 +328,37 @@ const DoctorViewConsultation = () => {
             ) : (
               <div className="divide-y divide-gray-200">
                 {consultationData?.results?.map((consultation, index) => (
-                  <div key={consultation.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div
+                    key={consultation.id}
+                    className="p-6 hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
                         {/* Doctor Profile Image */}
                         <div className="flex-shrink-0">
-                          {consultation.user?.psychologist_profile?.profile_image ? (
+                          {consultation.user?.psychologist_profile
+                            ?.profile_image ? (
                             <img
-                              src={consultation.user.psychologist_profile.profile_image}
-                              alt={consultation.user?.name || 'Doctor'}
+                              src={
+                                consultation.user.psychologist_profile
+                                  .profile_image
+                              }
+                              alt={consultation.user?.name || "Doctor"}
                               className="h-12 w-12 rounded-full object-cover"
                               onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
                               }}
                             />
                           ) : null}
-                          <div 
+                          <div
                             className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center"
-                            style={{ display: consultation.user?.psychologist_profile?.profile_image ? 'none' : 'flex' }}
+                            style={{
+                              display: consultation.user?.psychologist_profile
+                                ?.profile_image
+                                ? "none"
+                                : "flex",
+                            }}
                           >
                             <User className="h-6 w-6 text-gray-400" />
                           </div>
@@ -313,27 +370,41 @@ const DoctorViewConsultation = () => {
                             <h3 className="text-lg font-semibold text-gray-900">
                               Consultation #{index + 1}
                             </h3>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(consultation.status)}`}>
-                              {consultation.status || 'Unknown'}
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                                consultation.status
+                              )}`}
+                            >
+                              {consultation.status || "Unknown"}
                             </span>
                           </div>
 
                           <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                             <div className="flex items-center">
                               <User className="h-4 w-4 mr-1" />
-                              {consultation.user?.name || 'Unknown Doctor'}
+                              {consultation.user?.name || "Unknown Doctor"}
                             </div>
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-1" />
                               {formatDate(consultation.created_at)}
                             </div>
-                            {consultation.duration && (
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                {consultation.duration}
-                              </div>
-                            )}
+                             {/* Rejoin button for pending consultations */}
+                          {consultation.status === "Pending" && (
+                            <button
+                              onClick={() =>
+                                handleRejoinConsultation(consultation)
+                              }
+                              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+                            >
+                              <Video className="w-4 h-4" />
+                              <span className="text-sm font-medium">
+                                Rejoin
+                              </span>
+                            </button>
+                          )}
                           </div>
+
+                         
 
                           {/* Analysis Section */}
                           {consultation.analysis ? (
@@ -359,7 +430,12 @@ const DoctorViewConsultation = () => {
                                   </p>
                                 </div>
                                 <button
-                                  onClick={() => handleAddAnalysis(consultation.id, consultation.duration || 0)}
+                                  onClick={() =>
+                                    handleAddAnalysis(
+                                      consultation.id,
+                                      consultation.duration || 0
+                                    )
+                                  }
                                   className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                                 >
                                   <Plus className="h-4 w-4" />

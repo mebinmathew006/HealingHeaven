@@ -67,7 +67,7 @@ export default function DoctorFeedbackPage() {
         await axiosInstance.patch(
           `/users/update_availability/${userId}/${false}`
         );
-        navigate("/doctor_home_page", { state: { sample: "" } });
+        navigate("/doctor_view_consultations");
       } catch (error) {}
     }
   };

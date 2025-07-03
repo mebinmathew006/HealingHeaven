@@ -29,12 +29,10 @@ export default function ConsultationsList({
       // Navigate to videocall page with required state
       console.log(consultation);
 
-      navigate("/videocall", {
+      navigate("/videocall_user", {
         state: {
           doctorId: consultation.user.id,
-          psychologist_fee: consultation.user.psychologist_profile.fees,
           consultationId: consultation.id,
-          isRecordingtoggle: true,
         },
       });
     } catch (error) {

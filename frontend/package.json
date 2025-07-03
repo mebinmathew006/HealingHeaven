@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",
+    "@zegocloud/zego-uikit-prebuilt": "^2.15.0",
     "axios": "^1.9.0",
     "history": "^5.3.0",
     "init": "^0.1.2",
@@ -24,7 +25,9 @@
     "recharts": "^2.15.4",
     "recordrtc": "^5.6.2",
     "redux-persist": "^6.0.0",
-    "sweetalert2": "^11.22.0"
+    "sweetalert2": "^11.22.0",
+    "tls-sig-api-v2": "^1.0.2",
+    "trtc-js-sdk": "^4.15.22"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

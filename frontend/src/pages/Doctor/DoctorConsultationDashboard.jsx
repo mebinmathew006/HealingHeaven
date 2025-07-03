@@ -34,11 +34,10 @@ const DoctorConsultationDashboard = () => {
   const userId = useSelector((state) => state.userDetails.id);
   const navigate = useNavigate();
   const remoteUserIdRef=16
-  console.log(userId,'kkkkkkkkkkkkkkkkkk');
+ 
   const [isModalOpen,setIsModalOpen]=useState(false);
  const handleStartCall = ()=>{
-  console.log('dddddddddddddd');
-  
+ 
  }
 
 
@@ -54,38 +53,7 @@ const {
   error
 } = useWebRTCDoctor({ socket });
   // Mock patient data
-  const [patients] = useState([
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      avatar: "SJ",
-      status: "waiting",
-      waitTime: "5 min",
-      lastMessage: "Hi doctor, I have been experiencing headaches...",
-      isOnline: true,
-      requestingCall: false,
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      avatar: "MC",
-      status: "in-chat",
-      waitTime: "12 min",
-      lastMessage: "Thank you for the prescription",
-      isOnline: true,
-      requestingCall: true,
-    },
-    {
-      id: 3,
-      name: "Emma Davis",
-      avatar: "ED",
-      status: "waiting",
-      waitTime: "3 min",
-      lastMessage: "When would be the best time for the video call?",
-      isOnline: false,
-      requestingCall: false,
-    },
-  ]);
+  const [patients] = useState();
 useEffect(() => {
   if (connectionState === "connecting") {
     toast.info("Incoming video call...", { position: "bottom-center" });

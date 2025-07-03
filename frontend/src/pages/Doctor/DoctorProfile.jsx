@@ -131,7 +131,7 @@ const DoctorProfile = () => {
               buttonsStyling: false,
               background: '#ffffff',
             });
-       navigate('/doctor_video_call')
+      //  navigate('/videocall_doctor')
       //  navigate('/doctor_waiting_area')
 
       }

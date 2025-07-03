@@ -19,3 +19,32 @@ export const addFeedback = async (formData,consultation_id,user_id)=>{
         );
       return response
 }
+
+export const createVideoSig = async (roomId,userId)=>{
+   const response = await axiosInstance.post(
+          "/consultations/generate-token",
+          {
+           room_id: roomId,
+          user_id: userId
+          }
+        );
+      return response
+}
+export const postRecording = async (formData)=>{
+   const response = await axiosInstance.post(
+          "/consultations/recordings",
+          formData,
+          {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      }
+        );
+      return response
+}
+export const updateStatusConsultation = async (status,consultations_id)=>{
+   const response = await axiosInstance.put(
+          `/consultations/update_consultation_status/${status}/${consultations_id}`
+        );
+      return response
+}

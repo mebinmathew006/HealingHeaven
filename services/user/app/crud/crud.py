@@ -5,8 +5,8 @@ from models.users import User,PsychologistProfile,UserProfile
 from schemas.users import UserCreate,UserWithOptionalProfileOut,DoctorVerificationOut
 from utility.security import hash_password
 from sqlalchemy.orm import joinedload,contains_eager
-from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 async def get_user_by_email(session: AsyncSession, email: str):
     try:
@@ -111,8 +111,7 @@ async def create_user(session: AsyncSession, user: UserCreate):
         raise HTTPException(status_code=500, detail="Database error during user creation.")
     
     
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 async def create_google_user(session: AsyncSession, name: str, email: str, profile_url: str, password: int):
     try:
@@ -233,8 +232,8 @@ async def update_user_password(session: AsyncSession,email:str,password :str):
 async def get_all_psychologist_with_profile(session:AsyncSession):
     try:
         result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
-                                   .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.user.name) )
-        return result.scalars().all()   
+                                   .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.is_available.desc()) )
+        return result.scalars().all()
     except Exception :
         await session.rollback()
     

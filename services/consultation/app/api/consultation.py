@@ -6,11 +6,11 @@ import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse,FeedbackCreationSchema
 from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser ,CompliantSchemaa
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
-from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage
+from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage,TokenRequest
 from fastapi.logger import logger
 from datetime import datetime 
 # from starlette.websockets import WebSocketState  # ✅ correct
-from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications
+from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications,update_consultation_status
 from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments
 from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
@@ -30,7 +30,7 @@ from fastapi import Query
 from asyncio import gather
 import aiofiles
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, UploadFile, File, Form, HTTPException,Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse,JSONResponse
 from pathlib import Path
 from typing import Optional
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
@@ -45,13 +45,197 @@ from dotenv import load_dotenv
 load_dotenv()
 from uuid import uuid4
 
+from utils.zego_server_assistant import generate_token04, TokenInfo
+
 router = APIRouter(tags=["consultations"])
 
 
 logger = logging.getLogger("uvicorn.error")
 
+ZEGO_APP_ID = int(os.getenv("ZEGO_APP_ID"))
+ZEGO_SERVER_SECRET = os.getenv("ZEGO_SERVER_SECRET")
 
 
+# Configuration
+RECORDINGS_DIR = "recordings"
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
+# In-memory storage for tracking recording parts (use DB in production)
+recording_sessions = {}
+
+@router.post("/recordings")
+async def upload_recording(
+    file: UploadFile = File(...),
+    roomId: str = Form(...),
+    userId: str = Form(...),
+    isFinal: str = Form(...)
+):
+    try:
+        is_final = isFinal.lower() == 'true'
+        session_id = f"{roomId}_{userId}"
+
+        # Print received information for debugging
+        print(f"\nReceived {'FINAL' if is_final else 'chunk'} recording from {userId} in room {roomId}")
+        print(f"File size: {file.size} bytes")
+        print(f"Content type: {file.content_type}")
+
+        # Ensure the file is a video
+        if not file.content_type.startswith('video/'):
+            raise HTTPException(status_code=400, detail="Only video files are accepted")
+
+        # Read the file content
+        contents = await file.read()
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Empty file received")
+
+        # Create session directory if it doesn't exist
+        session_dir = os.path.join(RECORDINGS_DIR, session_id)
+        os.makedirs(session_dir, exist_ok=True)
+
+        # Save the chunk
+        chunk_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex}.webm"
+        chunk_path = os.path.join(session_dir, chunk_filename)
+        
+        with open(chunk_path, 'wb') as f:
+            f.write(contents)
+
+        # Update session tracking
+        if session_id not in recording_sessions:
+            recording_sessions[session_id] = {
+                'chunks': [],
+                'created_at': datetime.now()
+            }
+        
+        recording_sessions[session_id]['chunks'].append(chunk_path)
+        recording_sessions[session_id]['last_updated'] = datetime.now()
+
+        # If this is the final chunk, combine all parts
+        if is_final:
+            final_filename = f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
+            final_path = os.path.join(RECORDINGS_DIR, final_filename)
+            
+            print(f"\nCombining {len(recording_sessions[session_id]['chunks'])} chunks into final recording...")
+
+            # Combine all chunks into one file (simple concatenation works for WebM)
+            with open(final_path, 'wb') as final_file:
+                for chunk in recording_sessions[session_id]['chunks']:
+                    with open(chunk, 'rb') as chunk_file:
+                        final_file.write(chunk_file.read())
+                    # Remove the chunk file
+                    os.remove(chunk)
+            
+            # Clean up session directory
+            try:
+                os.rmdir(session_dir)
+            except OSError:
+                pass  # Directory not empty or already deleted
+
+            # Remove session from tracking
+            del recording_sessions[session_id]
+
+            # Generate URL for the final recording
+            final_url = f"/recordings/{final_filename}"
+            
+            print(f"Final recording saved: {final_path}")
+            print(f"Final size: {os.path.getsize(final_path)} bytes")
+
+            return JSONResponse({
+                "status": "success",
+                "message": "Recording completed",
+                "finalUrl": final_url,
+                "fileSize": os.path.getsize(final_path)
+            })
+
+        return JSONResponse({
+            "status": "success",
+            "message": "Chunk uploaded",
+            "chunkSize": len(contents),
+            "totalChunks": len(recording_sessions[session_id]['chunks'])
+        })
+
+    except Exception as e:
+        print(f"\nError processing recording: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/recordings/{filename}")
+async def get_recording(filename: str):
+    try:
+        file_path = os.path.join(RECORDINGS_DIR, filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Recording not found")
+
+        # In production, you might want to:
+        # 1. Add authentication
+        # 2. Set proper content headers
+        # 3. Implement range requests for large files
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            file_path,
+            media_type="video/webm",
+            filename=filename
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Cleanup old sessions (run periodically)
+def cleanup_old_sessions(hours_old=24):
+    now = datetime.now()
+    for session_id, session_data in list(recording_sessions.items()):
+        if (now - session_data['last_updated']).total_seconds() > hours_old * 3600:
+            print(f"Cleaning up old session: {session_id}")
+            try:
+                session_dir = os.path.join(RECORDINGS_DIR, session_id)
+                for chunk in session_data['chunks']:
+                    if os.path.exists(chunk):
+                        os.remove(chunk)
+                if os.path.exists(session_dir):
+                    os.rmdir(session_dir)
+                del recording_sessions[session_id]
+            except Exception as e:
+                print(f"Error cleaning up session {session_id}: {e}")
+
+# You might want to call this periodically (e.g., using a BackgroundTask or scheduler)
+
+def generate_zego_token(user_id: str, room_id: str) -> dict:
+    """Generate a ZEGOCLOUD token"""
+    app_id = int(os.getenv("ZEGO_APP_ID")) 
+    server_secret = os.getenv("ZEGO_SERVER_SECRET")  
+    effective_time = 3600  # 1 hour expiry
+
+    # Payload for room privileges
+    payload = json.dumps({
+        "room_id": room_id,
+        "privilege": {1: 1, 2: 1}  # 1=Login, 2=Publish
+    })
+
+    # Generate token
+    token_info: TokenInfo = generate_token04(
+        app_id=app_id,
+        user_id=user_id,
+        secret=server_secret,
+        effective_time_in_seconds=effective_time,
+        payload=payload
+    )
+
+    if token_info.error_code != 0:
+        raise Exception(f"Token generation failed: {token_info.error_message}")
+
+    return {
+        "token": token_info.token,
+        "app_id": app_id
+    }
+
+@router.post("/generate-token")
+async def generate_token(data :TokenRequest):
+    try:
+        token_data = generate_zego_token(data.user_id, data.room_id)
+        return token_data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    
 @router.post("/create_consultation")
 async def create_consultation_route(data: CreateConsultationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
@@ -124,6 +308,14 @@ async def create_new_notification(data: CreateNotificationSchema,current_user_id
 async def set_analysis_from_doctor(data: UpdateConsultationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
         return await update_analysis_consultation(session, data)
+    except Exception as e:
+        logger.info(f"Error creating user: {e}")
+        raise HTTPException(status_code=400, detail="Failed to update user")
+    
+@router.put("/update_consultation_status/{status}/{consultation_id}")
+async def update_consultation_status_route(status: str,consultation_id:int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    try:
+        return await update_consultation_status(session,status,consultation_id)
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
@@ -1111,6 +1303,7 @@ async def handle_notification(data: dict, sender_id: int):
             "type": "notification",
             "sender_id": sender_id,
             "notification_type": data["notification_type"],
+            "consultation_id": data["consultation_id"] or None,
             "message": data["message"],
             "timestamp": datetime.utcnow().isoformat()
         }

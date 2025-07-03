@@ -3,6 +3,7 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useCal
 
 const NotificationContext = createContext();
 const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
+
 const notificationReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
@@ -25,10 +26,25 @@ const notificationReducer = (state, action) => {
         notifications: state.notifications.map(notif => ({ ...notif, read: true })),
         unreadCount: 0
       };
+    case 'REMOVE_NOTIFICATION':
+      const notificationToRemove = state.notifications.find(notif => notif.id === action.payload);
+      return {
+        ...state,
+        notifications: state.notifications.filter(notif => notif.id !== action.payload),
+        unreadCount: notificationToRemove && !notificationToRemove.read 
+          ? Math.max(0, state.unreadCount - 1) 
+          : state.unreadCount
+      };
     case 'SET_CONNECTION_STATUS':
       return {
         ...state,
         connectionStatus: action.payload
+      };
+    case 'SET_NOTIFICATIONS':
+      return {
+        ...state,
+        notifications: action.payload,
+        unreadCount: action.payload.filter(notif => !notif.read).length
       };
     case 'CLEAR_NOTIFICATIONS':
       return {
@@ -130,23 +146,30 @@ export const NotificationProvider = ({ children, userId }) => {
         
         if (data.type === 'notification') {
           const notification = {
-            id: `${data.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
-            ...data,
-            read: false
+            id: data.id || `${data.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
+            message: data.message,
+            notification_type: data.notification_type,
+            consultation_id: data.consultation_id || null, // Explicitly handle consultation_id
+            created_at: data.timestamp || new Date().toISOString(),
+            read: false,
+            sender_id: data.sender_id || null,
+            receiver_id: data.receiver_id || null
           };
           
+          console.log('Received notification:', notification);
           dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
           
           // Show browser notification if permission granted
           if (Notification.permission === 'granted') {
             new Notification(`New ${data.notification_type}`, {
               body: data.message,
-              icon: '/favicon.ico'
+              icon: '/favicon.ico',
+              tag: notification.id // Prevent duplicate notifications
             });
           }
         }
       } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        console.error('Error processing WebSocket message:', error, event.data);
       }
     };
 
@@ -238,7 +261,7 @@ export const NotificationProvider = ({ children, userId }) => {
     };
   }, [userId, connect, cleanup]);
 
-  const sendNotification = useCallback((receiverId, message, notificationType) => {
+  const sendNotification = useCallback((receiverId, message, notificationType, consultationId = null) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const payload = {
         type: 'notification',
@@ -248,10 +271,17 @@ export const NotificationProvider = ({ children, userId }) => {
         timestamp: new Date().toISOString()
       };
       
+      // Only add consultation_id if it's provided and not null/undefined
+      if (consultationId) {
+        payload.consultation_id = consultationId;
+      }
+      
       wsRef.current.send(JSON.stringify(payload));
       console.log('Notification sent:', payload);
+      return true;
     } else {
       console.warn('Cannot send notification: WebSocket not connected');
+      return false;
     }
   }, []);
 
@@ -263,11 +293,27 @@ export const NotificationProvider = ({ children, userId }) => {
     dispatch({ type: 'MARK_ALL_AS_READ' });
   }, []);
 
+  const removeNotification = useCallback((notificationId) => {
+    dispatch({ type: 'REMOVE_NOTIFICATION', payload: notificationId });
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    dispatch({ type: 'CLEAR_NOTIFICATIONS' });
+  }, []);
+
+  // Method to manually set notifications (useful for initial load from API)
+  const setNotifications = useCallback((notifications) => {
+    dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications });
+  }, []);
+
   const value = {
     ...state,
     sendNotification,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    removeNotification,
+    clearAllNotifications,
+    setNotifications
   };
 
   return (

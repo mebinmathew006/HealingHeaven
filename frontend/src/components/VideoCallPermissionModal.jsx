@@ -85,15 +85,15 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
         position: "bottom-center",
       });
       
-      sendNotification(doctor.id, "You have a call from user", "appointment");
+      sendNotification(doctor.id, "You have a call from user", "appointment",consultation_id);
       
       setTimeout(() => {
-        navigate("/videocall", {
+        navigate("/videocall_user", {
           state: {
             doctorId: doctor.id,
             psychologist_fee: doctor.fees,
             consultationId: consultation_id,
-            isRecordingtoggle: isRecording
+            // isRecordingtoggle: isRecording
           },
         });
       }, 4000);

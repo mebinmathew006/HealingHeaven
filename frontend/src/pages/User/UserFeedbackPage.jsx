@@ -45,10 +45,7 @@ export default function UserFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        console.log("Feedback submitted:", formData,);
-
         const response = await addFeedback(formData,consultation_id,user_id)
-        
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
@@ -72,7 +69,7 @@ export default function UserFeedbackPage() {
           buttonsStyling: false,
           background: "#ffffff",
         });
-        navigate("/user_profile");
+        navigate("/user_consultations");
       } catch (error) {}
     }
   };
