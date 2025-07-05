@@ -1,4 +1,3 @@
-// components/chat/MessageInput.js
 import React, { useRef, useCallback, useState } from 'react';
 import { Send, Paperclip, X, Image, File, Video, Mic } from 'lucide-react';
 
@@ -7,7 +6,7 @@ const MessageInput = ({
   setNewMessage,
   handleSendMessage,
   isConnected,
-  onFileUpload // New prop for handling file uploads
+  onFileUpload 
 }) => {
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);

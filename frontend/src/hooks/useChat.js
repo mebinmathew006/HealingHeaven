@@ -98,7 +98,7 @@ export const useChat = (userId, userType) => {
     setTimeout(() => {
       navigate("/doctor_video_call",);
     }, 5000);
-  }, [sendVideoCallResponse, navigate]);
+  }, [sendVideoCallResponse, navigate]);  
 
 
   const handleVideoCallRequestforUser = useCallback(async () => {
@@ -245,7 +245,7 @@ export const useChat = (userId, userType) => {
           }
         }
 
-        // Handle regular messages - IMPROVED LOGIC
+        // Handle regular messages 
         if (data.type === "message") {
           const currentConsultationId = activeConsultationIdRef.current;
 

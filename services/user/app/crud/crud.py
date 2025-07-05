@@ -2,11 +2,12 @@ from sqlalchemy.future import select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users import User,PsychologistProfile,UserProfile
-from schemas.users import UserCreate,UserWithOptionalProfileOut,DoctorVerificationOut
+from schemas.users import UserCreate,UserWithOptionalProfileOut,DoctorVerificationOut,RevokeDetails
 from utility.security import hash_password
 from sqlalchemy.orm import joinedload,contains_eager
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from datetime import date 
 
 async def get_user_by_email(session: AsyncSession, email: str):
     try:
@@ -204,9 +205,16 @@ async def update_user_psychologist_image(session: AsyncSession,user_id:int,profi
         await session.rollback()
     
     
-async def toggle_psychologist_status_by_id(session: AsyncSession,user_id:int):
+async def toggle_psychologist_status_by_id(session: AsyncSession,user_id:int,status:str):
     try:
-        await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=~PsychologistProfile.is_verified))
+        await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=status))
+        await session.commit()
+    except Exception :
+        await session.rollback()
+        
+async def revoke_psychologist_status_by_id(session: AsyncSession,user_id:int,data:RevokeDetails):
+    try:
+        await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_verified=data.status,reason_block=data.reason))
         await session.commit()
     except Exception :
         await session.rollback()
@@ -232,7 +240,7 @@ async def update_user_password(session: AsyncSession,email:str,password :str):
 async def get_all_psychologist_with_profile(session:AsyncSession):
     try:
         result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
-                                   .where(PsychologistProfile.is_verified == True).order_by(PsychologistProfile.is_available.desc()) )
+                                   .where(PsychologistProfile.is_verified == 'verified').order_by(PsychologistProfile.is_available.desc()) )
         return result.scalars().all()
     except Exception :
         await session.rollback()
@@ -338,6 +346,51 @@ async def doctor_profile_creation(
         await session.commit()
         await session.refresh(verification)
         return verification
+
+    except SQLAlchemyError as e:
+        await session.rollback()
+        # Log or raise error
+        print(f"Database error occurred: {e}")
+        
+async def doctor_profile_update(
+    session: AsyncSession,
+    user_id: int,
+    date_of_birth: date,
+    experience: str,
+    gender: str,
+    fees: str,
+    qualification: str,
+    specialization: str,
+    about_me: str,
+    id_url: str,
+    edu_url: str,
+    exp_url: str
+):
+    try:
+        result = await session.execute(select(PsychologistProfile).where(PsychologistProfile.user_id == user_id))
+        profile = result.scalar_one_or_none()
+        if profile:
+            
+            profile.date_of_birth=date_of_birth
+            profile.experience=experience
+            profile.gender=gender
+            profile.fees=fees
+            profile.qualification=qualification
+            profile.specialization=specialization
+            profile.about_me=about_me
+            profile.reason_block=''
+            profile.is_verified='pending'
+            if id_url:
+                profile.identification_doc=id_url
+            if edu_url:
+                profile.education_certificate=edu_url
+            if exp_url:
+                profile.experience_certificate=exp_url
+                
+                
+        await session.flush()
+        await session.commit()
+        return profile
 
     except SQLAlchemyError as e:
         await session.rollback()

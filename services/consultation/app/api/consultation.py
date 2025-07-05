@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from dependencies.database import get_session
@@ -44,7 +44,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 load_dotenv()
 from uuid import uuid4
-
+from fastapi.concurrency import run_in_threadpool
+from utils.cloudinary_utils import upload_to_cloudinary
 from utils.zego_server_assistant import generate_token04, TokenInfo
 
 router = APIRouter(tags=["consultations"])
@@ -888,18 +889,19 @@ async def upload_chat_file(
         unique_filename = f"{uuid.uuid4()}_{original_filename}"
         file_path = UPLOAD_DIR / unique_filename
         
-        # Save file
-        async with aiofiles.open(file_path, 'wb') as f:
-            content = await file.read()
-            await f.write(content)
+        
+        try:
+            file_url = await run_in_threadpool(upload_to_cloudinary, file, "chat_media")
+            
+        except Exception as e :
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY ,detail=f"Cloudinary upload failed: {str(e)}")
+       
         
         # Virus scan
         if not await scan_for_viruses(file_path):
             raise HTTPException(status_code=422, detail="File failed security scan")
         
-        # Generate file URL
-        file_url = f"/api/chat/files/{unique_filename}"
-        
+       
         return {
             "file_id": str(uuid.uuid4()),
             "filename": unique_filename,

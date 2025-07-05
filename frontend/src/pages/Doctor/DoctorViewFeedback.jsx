@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Search, Filter, MessageSquare, TrendingUp, Users, Calendar, BarChart3, User } from 'lucide-react';
+import { Star, Search, Filter, MessageSquare, TrendingUp, Users, Calendar, BarChart3 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import axiosInstance from '../../axiosconfig';
 import DoctorSidebar from '../../components/DoctorSidebar';
+import FeedbackCard from '../../components/FeedbackCard'; // Import the new component
 
 const DoctorViewFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -11,7 +12,7 @@ const DoctorViewFeedback = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('newest');
-const doctorId = useSelector((state) => state.userDetails.id);
+  const doctorId = useSelector((state) => state.userDetails.id);
   const [activeSection] = useState("doctor_view_feedback");
 
   // Real API call implementation
@@ -110,14 +111,6 @@ const doctorId = useSelector((state) => state.userDetails.id);
     return distribution;
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
   const ratingDistribution = getRatingDistribution();
   const totalFeedbacks = Array.isArray(feedbacks) ? feedbacks.length : 0;
 
@@ -130,164 +123,135 @@ const doctorId = useSelector((state) => state.userDetails.id);
   }
 
   return (
-   <div className="flex h-screen bg-gray-100">
-    <div >
-      <DoctorSidebar activeSection={activeSection} />
-
-    </div>
+    <div className="flex h-screen bg-gray-100">
+      <div>
+        <DoctorSidebar activeSection={activeSection} />
+      </div>
       <div className="flex-1 bg-gray-50 overflow-auto m-5">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          {/* <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Feedback</h1>
-          <p className="text-gray-600">Review feedback and ratings from your patients</p> */}
-        </div>
-
-        {/* Statistics Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Feedback</p>
-                <p className="text-2xl font-bold text-gray-900">{totalFeedbacks}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Star className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Average Rating</p>
-                <div className="flex items-center">
-                  <p className="text-2xl font-bold text-gray-900 mr-2">{getAverageRating()}</p>
-                  <div className="flex">
-                    {renderStars(Math.round(parseFloat(getAverageRating())))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">5-Star Reviews</p>
-                <p className="text-2xl font-bold text-gray-900">{ratingDistribution[5]}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <BarChart3 className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Satisfaction Rate</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {totalFeedbacks > 0 ? Math.round(((ratingDistribution[4] + ratingDistribution[5]) / totalFeedbacks) * 100) : 0}%
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rating Distribution */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating Distribution</h3>
-          <div className="space-y-3">
-            {[5, 4, 3, 2, 1].map(rating => (
-              <div key={rating} className="flex items-center">
-                <div className="flex items-center w-20">
-                  <span className="text-sm font-medium text-gray-700 mr-2">{rating}</span>
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                </div>
-                <div className="flex-1 mx-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-yellow-400 h-2 rounded-full"
-                      style={{
-                        width: totalFeedbacks > 0 ? `${(ratingDistribution[rating] / totalFeedbacks) * 100}%` : '0%'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-                <span className="text-sm text-gray-600 w-12 text-right">
-                  {ratingDistribution[rating]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1>Feedbacks</h1>
-        </div>
-
-        {/* Feedback Cards */}
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
             
-          {filteredFeedbacks.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No feedback found</h3>
-              <p className="text-gray-500">No feedback matches your current filters.</p>
-            </div>
-          ) : (
-            filteredFeedbacks.map((feedback) => (
-              <div key={feedback.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                     <div className="w-8 h-8 lg:w-10 lg:h-10   flex items-center justify-center flex-shrink-0">
-                        {feedback.user.user_profile.profile_image ? <img className="w-4 h-4 lg:w-6 lg:h-6 rounded-full" src={feedback.user.user_profile.profile_image} alt="profile_img" /> :<User className="rounded-full bg-blue-500 w-4 h-4 lg:w-6 lg:h-6 text-white" />}
-              
-            </div>
-                    
-                    <h3 className="text-lg font-semibold text-gray-900">{feedback.user.name}</h3>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(feedback.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="flex mr-2">
-                      {renderStars(feedback.rating)}
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">
-                      {feedback.rating}/5
-                    </span>
-                  </div>
+          </div>
+
+          {/* Statistics Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
-                
-                <div className="mb-4">
-                  <p className="text-gray-700 leading-relaxed">{feedback.message}</p>
-                </div>
-                
-                <div className="flex justify-between items-center text-sm text-gray-500">
-                  
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Feedback</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalFeedbacks}</p>
                 </div>
               </div>
-            ))
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Star className="w-6 h-6 text-yellow-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Average Rating</p>
+                  <div className="flex items-center">
+                    <p className="text-2xl font-bold text-gray-900 mr-2">{getAverageRating()}</p>
+                    <div className="flex">
+                      {renderStars(Math.round(parseFloat(getAverageRating())))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">5-Star Reviews</p>
+                  <p className="text-2xl font-bold text-gray-900">{ratingDistribution[5]}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <BarChart3 className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Satisfaction Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {totalFeedbacks > 0 ? Math.round(((ratingDistribution[4] + ratingDistribution[5]) / totalFeedbacks) * 100) : 0}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rating Distribution */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating Distribution</h3>
+            <div className="space-y-3">
+              {[5, 4, 3, 2, 1].map(rating => (
+                <div key={rating} className="flex items-center">
+                  <div className="flex items-center w-20">
+                    <span className="text-sm font-medium text-gray-700 mr-2">{rating}</span>
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                  </div>
+                  <div className="flex-1 mx-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-yellow-400 h-2 rounded-full"
+                        style={{
+                          width: totalFeedbacks > 0 ? `${(ratingDistribution[rating] / totalFeedbacks) * 100}%` : '0%'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-600 w-12 text-right">
+                    {ratingDistribution[rating]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters and Search */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h1>Feedbacks</h1>
+          </div>
+
+          {/* Feedback Cards */}
+          <div className="space-y-6">
+            {filteredFeedbacks.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No feedback found</h3>
+                <p className="text-gray-500">No feedback matches your current filters.</p>
+              </div>
+            ) : (
+              filteredFeedbacks.map((feedback) => (
+                <FeedbackCard 
+                  key={feedback.id} 
+                  feedback={feedback} 
+                  showPatientInfo={true}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Show results count */}
+          {filteredFeedbacks.length > 0 && (
+            <div className="mt-6 text-center text-sm text-gray-500">
+              Showing {filteredFeedbacks.length} of {totalFeedbacks} feedback{totalFeedbacks !== 1 ? 's' : ''}
+            </div>
           )}
         </div>
-
-        {/* Show results count */}
-        {filteredFeedbacks.length > 0 && (
-          <div className="mt-6 text-center text-sm text-gray-500">
-            Showing {filteredFeedbacks.length} of {totalFeedbacks} feedback{totalFeedbacks !== 1 ? 's' : ''}
-          </div>
-        )}
       </div>
-    </div>
     </div>
   );
 };

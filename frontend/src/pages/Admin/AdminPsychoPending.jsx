@@ -13,9 +13,94 @@ import {
   Shield,
   Loader,
   IndianRupee,
+  AlertTriangle,
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import AdminSidebar from "../../components/AdminSidebar";
+import { toast } from "react-toastify";
+
+// Move RevokeModal outside of main component to prevent re-renders
+const RevokeModal = ({ 
+  showRevokeModal, 
+  revokeReason, 
+  setRevokeReason, 
+  revokeReasonError, 
+  setRevokeReasonError, 
+  updating, 
+  handleCloseRevokeModal, 
+  handleRevokeVerification 
+}) => {
+  if (!showRevokeModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg max-w-md w-full mx-4">
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+            <h3 className="text-lg font-semibold text-gray-900">
+              Revoke Verification
+            </h3>
+          </div>
+
+          {/* Warning Message */}
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">
+              This action will revoke the psychologist's verification status. 
+              Please provide a clear reason for this action.
+            </p>
+          </div>
+
+          {/* Reason Input */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for Revoking Verification *
+            </label>
+            <textarea
+              value={revokeReason}
+              onChange={(e) => {
+                setRevokeReason(e.target.value);
+                setRevokeReasonError("");
+              }}
+              placeholder="Please provide a detailed reason for revoking verification..."
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none ${
+                revokeReasonError ? 'border-red-300' : 'border-gray-300'
+              }`}
+              rows="4"
+              maxLength="500"
+            />
+            {revokeReasonError && (
+              <p className="mt-1 text-sm text-red-600">{revokeReasonError}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">
+              {revokeReason.length}/500 characters
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={handleCloseRevokeModal}
+              disabled={updating}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRevokeVerification}
+              disabled={updating || !revokeReason.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {updating && <Loader className="w-4 h-4 animate-spin" />}
+              <span>{updating ? "Revoking..." : "Revoke Verification"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminPsychoPending = () => {
   const navigate = useNavigate();
@@ -25,45 +110,91 @@ const AdminPsychoPending = () => {
   const [error, setError] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [revokeReasonError, setRevokeReasonError] = useState("");
 
   // Fetch psychologist data from server
   useEffect(() => {
-    
-
     if (userId) {
       fetchPsychologistData();
     }
   }, [userId]);
-const fetchPsychologistData = async () => {
-      try {
-        setLoading(true);
-        // Replace with your actual API endpoint
-        const response = await axiosInstance.get(
-          `/users/get_psycholgist_details/${userId}`
-        );
-        console.log(response.data);
 
-        setPsychologist(response.data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-  const handleVerificationToggle = async () => {
+  const fetchPsychologistData = async () => {
     try {
-      const response = await axiosInstance.patch(`/users/change_psychologist_verification/${userId}`)
-      setUpdating(true);
-    fetchPsychologistData();
-      
+      setLoading(true);
+      // Replace with your actual API endpoint
+      const response = await axiosInstance.get(
+        `/users/get_psycholgist_details/${userId}`
+      );
+      console.log(response.data);
+
+      setPsychologist(response.data);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerificationToggle = async (status) => {
+    try {
+      const response = await axiosInstance.patch(
+        `/users/change_psychologist_verification/${userId}/${status}`
+      );
+      setUpdating(true);
+      toast.success('Status Updated Successfully',{position:'bottom-center'})
+      fetchPsychologistData();
+    } catch (err) {
+      setError(err.message);
+      toast.error('Status Updation Failed',{position:'bottom-center'})
     } finally {
       setUpdating(false);
     }
   };
 
-  
+  const handleRevokeVerification = async () => {
+    // Validate reason
+    if (!revokeReason.trim()) {
+      setRevokeReasonError("Please provide a reason for revoking verification");
+      return;
+    }
+
+    if (revokeReason.trim().length < 10) {
+      setRevokeReasonError("Reason must be at least 10 characters long");
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      const response = await axiosInstance.put(
+        `/users/revoke_psychologist_verification/${userId}`,
+        {
+          reason: revokeReason.trim(),
+          status: "blocked"
+        }
+      );
+      
+      toast.success('Verification Revoked Successfully', {position:'bottom-center'});
+      setShowRevokeModal(false);
+      setRevokeReason("");
+      setRevokeReasonError("");
+      fetchPsychologistData();
+    } catch (err) {
+      setError(err.message);
+      toast.error('Failed to Revoke Verification', {position:'bottom-center'});
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCloseRevokeModal = () => {
+    setShowRevokeModal(false);
+    setRevokeReason("");
+    setRevokeReasonError("");
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "Not provided";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -106,7 +237,7 @@ const fetchPsychologistData = async () => {
   if (error) {
     return (
       <div className="flex h-screen bg-gray-100">
-        <AdminSidebar activeSection="notifications" />
+        <AdminSidebar activeSection="psychologists" />
         <div className="flex-1 bg-gray-50 overflow-auto">
           <div className=" mx-auto p-6">
             <div className="space-y-8">
@@ -136,23 +267,15 @@ const fetchPsychologistData = async () => {
 
   if (!psychologist) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Psychologist Not Found
-          </h2>
-          <p className="text-gray-600">
-            No profile found for user ID: {userId}
-          </p>
-        </div>
-      </div>
+      <NoDoctorFound/>
     );
   }
 
+   
+
   return (
     <div className="flex h-screen bg-gray-100">
-      <AdminSidebar activeSection="notifications" />
+      <AdminSidebar activeSection="psychologists" />
       <div className="flex-1 bg-gray-50 overflow-auto">
         <div className=" mx-auto p-6">
           <div className="space-y-8">
@@ -167,7 +290,8 @@ const fetchPsychologistData = async () => {
                         <div className="relative">
                           <img
                             src={
-                              psychologist.profile_image || '/powerpoint-template-icons-b.jpg'
+                              psychologist.profile_image ||
+                              "/powerpoint-template-icons-b.jpg"
                             }
                             alt="Profile"
                             className="w-32 h-32 rounded-lg object-cover border-4 border-white"
@@ -180,12 +304,12 @@ const fetchPsychologistData = async () => {
                           <div className=" ">
                             <div
                               className={`px-1 py-1 w-25 mb-3 rounded-full text-sm font-medium ${
-                                psychologist.is_verified
+                                psychologist.is_verified=='verified'
                                   ? "bg-green-500 text-white"
                                   : "bg-red-500 text-white"
                               }`}
                             >
-                              {psychologist.is_verified
+                              {psychologist.is_verified=='verified'
                                 ? "✓ Verified"
                                 : "✗ Not Verified"}
                             </div>
@@ -202,8 +326,6 @@ const fetchPsychologistData = async () => {
                                 : "Unavailable"}
                             </div>
                           </div>
-
-                          
                         </div>
                       </div>
                     </div>
@@ -291,7 +413,7 @@ const fetchPsychologistData = async () => {
                           Consultation Fees
                         </h3>
                         <div className=" p-2 rounded-lg">
-                          <div >
+                          <div>
                             <p className="  text-gray-900">
                               ₹{psychologist.fees || "Not set"}
                               <span className="text-lg font-normal text-gray-600">
@@ -402,30 +524,33 @@ const fetchPsychologistData = async () => {
                           Admin Action
                         </h3>
                         <div className="flex flex-wrap gap-4">
-                          <button
-                            onClick={handleVerificationToggle}
-                            disabled={updating}
-                            className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors ${
-                              psychologist.is_verified
-                                ? "bg-red-500 text-white hover:bg-red-600 disabled:bg-red-300"
-                                : "bg-green-500 text-white hover:bg-green-600 disabled:bg-green-300"
-                            }`}
-                          >
-                            
-                            <span>
-                              {updating
-                                ? "Updating..."
-                                : psychologist.is_verified
-                                ? "Revoke Verification"
-                                : "Verify Profile"}
-                            </span>
-                          </button>
 
-                         
+                          {(psychologist.is_verified === 'verified' || psychologist.is_verified === 'pending') && 
+                          <button
+                            onClick={() => setShowRevokeModal(true)}
+                            disabled={updating}
+                            className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-red-500 text-white hover:bg-red-700 disabled:bg-red-300`}
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                            <span>
+                              {updating ? "Updating..." : "Revoke Verification"}
+                            </span>
+                          </button>}
+                            {(psychologist.is_verified=='blocked' || psychologist.is_verified=='pending') && 
+                          <button
+                            onClick={() => {
+                              handleVerificationToggle("verified");
+                            }}
+                            disabled={updating}
+                            className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-green-500 text-white hover:bg-green-600 disabled:bg-green-300`}
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>
+                              {updating ? "Updating..." : "Verify Profile"}
+                            </span>
+                          </button>}
                         </div>
                       </div>
-
-                      
                     </div>
                   </div>
 
@@ -437,6 +562,18 @@ const fetchPsychologistData = async () => {
                       onClose={() => setViewingDocument(null)}
                     />
                   )}
+
+                  {/* Revoke Modal */}
+                  <RevokeModal
+                    showRevokeModal={showRevokeModal}
+                    revokeReason={revokeReason}
+                    setRevokeReason={setRevokeReason}
+                    revokeReasonError={revokeReasonError}
+                    setRevokeReasonError={setRevokeReasonError}
+                    updating={updating}
+                    handleCloseRevokeModal={handleCloseRevokeModal}
+                    handleRevokeVerification={handleRevokeVerification}
+                  />
                 </div>
               </div>
             </div>
@@ -448,3 +585,20 @@ const fetchPsychologistData = async () => {
 };
 
 export default AdminPsychoPending;
+
+
+export const NoDoctorFound = () => {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-center">
+        <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          Psychologist Not Found
+        </h2>
+        <p className="text-gray-600">
+          No profile  
+        </p>
+      </div>
+    </div>
+  );
+};

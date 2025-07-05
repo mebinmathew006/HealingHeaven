@@ -46,6 +46,7 @@ import DoctorNotificationsPage from "../pages/Doctor/DoctorNotificationsPage";
 import UserBookingFromChat from "../pages/User/UserBookingFromChat";
 import { HostPage } from "../pages/User/HostPage";
 import { ParticipantPage} from "../pages/User/ParticipantPage";
+import NotFound from "../components/NotFound";
 
 const AppRoutes = () => {
   return (
@@ -55,6 +56,10 @@ const AppRoutes = () => {
 
        <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify_otp_password" element={<PasswordOTPVerification />} />
+        <Route path="/verify_otp" element={<OtpPage />} />
+        <Route path="/forgetpassword" element={<ForgotPassword />} />
+        <Route path="/verificationsucess" element={<SuccessPage />} />
 
         {/* <Route path="/videocall" element={<UserProtectedRoute><UserVideoCallPage/></UserProtectedRoute>} />
         <Route path="/doctor_video_call" element={<DoctorProtectedRoute><DoctorVideoCallPage /></DoctorProtectedRoute>} /> */}
@@ -64,10 +69,6 @@ const AppRoutes = () => {
       <Route element={<MainLayout />}>
         <Route path="/" element={<IndexPage />} />
        
-        <Route path="/verify_otp" element={<OtpPage />} />
-        <Route path="/verificationsucess" element={<SuccessPage />} />
-        <Route path="/forgetpassword" element={<ForgotPassword />} />
-        <Route path="/verify_otp_password" element={<PasswordOTPVerification />} />
         <Route path="/therapists" element={<PsychologistsDirectory />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/aboutus" element={<AboutUsPage />} />
@@ -112,6 +113,7 @@ const AppRoutes = () => {
         <Route path="/admin_consultation_page" element={<AdminConsultationList/>} />
         <Route path="/admin_notification_page" element={<AdminProtectedRoute><AdminNotification/></AdminProtectedRoute>} />
         <Route path="/admin_complaints" element={<AdminProtectedRoute><AdminComplaint/></AdminProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

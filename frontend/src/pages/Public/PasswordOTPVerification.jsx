@@ -6,8 +6,9 @@ import {
   EyeOff,
   Loader2,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import publicaxiosconfig from "../../Publicaxiosconfig";
 import { toast } from "react-toastify";
 
@@ -152,8 +153,9 @@ export default function PasswordOTPVerification() {
 
       setIsSubmitting(false);
       setIsSuccess(true);
+      toast.success('Password Reset Successfully')
     } catch (error) {
-      toast.error("Something Happend", { position: "bottom-center" });
+      toast.error(error.response?.data?.detail || "Something went wrong",{position:'bottom-center'});
       setIsSubmitting(false);
     }
   };
@@ -199,7 +201,25 @@ export default function PasswordOTPVerification() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center relative overflow-hidden">
+      {/* Background Medical Image Overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23e3f2fd'/%3E%3Cstop offset='100%25' style='stop-color:%23bbdefb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='800' fill='url(%23bg)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Abstract Medical Icons Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 right-20 w-32 h-32 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute bottom-32 left-16 w-24 h-24 bg-green-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 right-1/3 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-500"></div>
+        <div className="absolute top-1/3 left-1/4 w-20 h-20 bg-pink-200 rounded-full opacity-20 animate-pulse delay-700"></div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex items-center justify-between">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Verify and reset password
@@ -231,7 +251,7 @@ export default function PasswordOTPVerification() {
                     // Redirect to login in a real application
                     navigate('/login')
                   }}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium  bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Go to login
                 </button>
@@ -275,7 +295,7 @@ export default function PasswordOTPVerification() {
                     <p className="mt-2 text-xs text-gray-500 flex justify-end">
                       <button
                         onClick={resendOtp}
-                         className="font-medium text-indigo-600 hover:text-indigo-500 hover:cursor-pointer"
+                         className="font-medium text-green-900 hover:text-green-700 hover:cursor-pointer"
                         disabled={resendTimer > 0}
                       >
                         {resendTimer > 0
@@ -397,7 +417,7 @@ export default function PasswordOTPVerification() {
                     type="button"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     {isSubmitting ? (
                       <>
@@ -409,10 +429,20 @@ export default function PasswordOTPVerification() {
                     )}
                   </button>
                 </div>
+                <div className="pt-2">
+                <Link
+                  to={"/forgetpassword"}
+                  className="flex items-center text-sm font-bold text-[#2D777E] hover:text-gray-900"
+                >
+                  <ArrowLeft size={16} className="mr-1" />
+                  Back 
+                </Link>
+              </div>
               </div>
             </form>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

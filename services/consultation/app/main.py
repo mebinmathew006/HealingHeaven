@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from core import cloudinary_config
 from api import consultation
 app = FastAPI()
 

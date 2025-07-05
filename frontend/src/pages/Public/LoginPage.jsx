@@ -170,15 +170,26 @@ export default function LoginPage() {
         <div className="absolute top-20 right-20 w-32 h-32 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
         <div className="absolute bottom-32 left-16 w-24 h-24 bg-green-200 rounded-full opacity-20 animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 right-1/3 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-500"></div>
+        <div className="absolute top-1/3 left-1/4 w-20 h-20 bg-pink-200 rounded-full opacity-20 animate-pulse delay-700"></div>
       </div>
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex items-center justify-between">
         {/* Left Side - Medical Professional Image Placeholder */}
-        <div className="hidden lg:flex flex-1 justify-center items-center">
-          <div className="relative">
-            {/* Doctor Image Placeholder */}
-            <div className="w-96 h-96 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-2xl">
+       <div className="flex-1 text-center lg:text-left">
+            <div className="mb-8">
+              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+                Welcome to Our
+                <span className="text-green-800 block">Community</span>
+              </h1>
+              <p className="text-lg text-gray-600 max-w-md mx-auto lg:mx-0">
+                Connect with healthcare professionals or manage your health journey with our comprehensive platform.
+              </p>
+            </div>
+
+            {/* Illustration */}
+            <div className="hidden lg:block">
+              <div className="w-96 h-96 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-2xl">
               <div className="text-center">
                 <div className="w-32 h-32 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
                   <img src="logo.png" className="rounded-full" />
@@ -186,16 +197,8 @@ export default function LoginPage() {
               
               </div>
             </div>
-            
-            {/* Floating Medical Icons */}
-            <div className="absolute -top-4 -right-4 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white text-xs font-bold"></span>
-            </div>
-            <div className="absolute -bottom-4 -left-4 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shadow-lg">
-              
             </div>
           </div>
-        </div>
 
         {/* Right Side - Login Form */}
         <div className="w-full max-w-md lg:max-w-lg">
@@ -302,7 +305,7 @@ export default function LoginPage() {
               <div className="mb-6">
                 <button
                   onClick={loginSubmitHandler}
-                  className="w-full bg-gradient-to-r from-[#2D777E] to-green-700 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-[#2D777E] hover:to-green-500  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  className="w-full bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 text-white py-4 px-6 rounded-xl font-semibold text-lg   focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transform hover:scale-105 transition-all duration-200 shadow-lg"
                 >
                   Sign in
                 </button>

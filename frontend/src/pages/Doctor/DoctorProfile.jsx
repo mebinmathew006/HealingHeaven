@@ -20,7 +20,6 @@ import DoctorPendingPage from "./DoctorPendingPage";
 import { toast } from "react-toastify";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
 import Swal from 'sweetalert2';
-import { useNavigate } from "react-router-dom";
 import DoctorSidebar from "../../components/DoctorSidebar";
 
 const DoctorProfile = () => {
@@ -31,7 +30,6 @@ const DoctorProfile = () => {
   const [isAvailable, setIsAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate()
   useEffect(() => {
     fetchDoctor();
   }, []);
@@ -51,10 +49,9 @@ const DoctorProfile = () => {
       );
 
       setIsAvailable(response.data.is_available);
-      console.log(response.data);
-
       setFormData(response.data);
     } catch (error) {
+
       setFormData({});
     }
   };
@@ -172,18 +169,23 @@ const DoctorProfile = () => {
         formData
       );
       setIsEditing(false);
-      fetchDoctor()
+      fetchDoctor();
 
     } catch (error) {}
   };
-
-  if (!formData.date_of_birth) {
-    return <DoctorVerification doctorDetails={formData} />;
+ if (formData.is_verified === 'pending') {
+    return <DoctorPendingPage fetchDoctor={fetchDoctor} />;
   }
 
-  if (formData.is_verified === false) {
-    return <DoctorPendingPage />;
+ if (formData.is_verified === 'blocked') {
+     return <DoctorVerification fetchDoctor={fetchDoctor} data={formData}  />;
   }
+
+  if (!formData.date_of_birth) {  
+    return <DoctorVerification fetchDoctor={fetchDoctor}  />;
+  }
+
+  
 
   if (isOpen) {
     return (

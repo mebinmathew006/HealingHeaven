@@ -17,7 +17,8 @@ const MessageBubble = React.memo(({
       case 'image':
         return (
           <img 
-            src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} 
+            src={`${attachment.file_url}`} 
+            // src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filurl}`} 
             alt={`${BASE_URL_FOR_MEDIA}/${attachment.filename}`} 
             className="max-h-60 rounded-md object-contain"
           />
@@ -25,21 +26,23 @@ const MessageBubble = React.memo(({
       case 'video':
         return (
           <video controls className="max-h-60 rounded-md">
-            <source src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} type={attachment.file_type} />
+            <source 
+            src={`${attachment.file_url}`} type={attachment.file_type} />
+            {/* src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} type={attachment.file_type} /> */}
             Your browser does not support the video tag.
           </video>
         );
       case 'audio':
         return (
           <audio controls className="max-w-64">
-            <source src={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`} type={attachment.file_type} />
+            <source src={`${attachment.file_url}`} type={attachment.file_type} />
             Your browser does not support the audio element.
           </audio>
         );
       default:
         return (
           <a 
-            href={`${BASE_URL_FOR_MEDIA}/consultations/files/${attachment.filename}`}
+            href={`${attachment.file_url}`}
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center p-2 rounded hover:bg-gray-100"

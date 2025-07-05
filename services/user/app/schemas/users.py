@@ -36,6 +36,10 @@ class OtpVerification(BaseModel):
     otp:str
     email : EmailStr
     
+class RevokeDetails(BaseModel):
+    reason:str
+    status: str
+    
 class LoginSchema(BaseModel):
     email:EmailStr
     password :str
@@ -55,7 +59,7 @@ class PsychologistProfileOut(BaseModel):
     user: UserOut
     specialization: Optional[str]
     profile_image: Optional[str]
-    is_verified: bool
+    is_verified: Optional[str]
     is_available: Optional[bool]
     rating: Optional[float]
 
@@ -107,11 +111,12 @@ class DoctorVerificationOut(BaseModel):
     qualification: str
     specialization: str
     profile_image: Optional[str]
-    about_me: str = Field(...)
+    reason_block: Optional[str]
+    about_me: str = Field(...)  
     identification_doc: str = Field(...)
     education_certificate: str = Field(...)
     experience_certificate: str = Field(...)
-    is_verified: Optional[bool] = Field(None)
+    is_verified: Optional[str] = Field(None)
     is_available: Optional[bool] = Field(None)
     
     model_config = {
