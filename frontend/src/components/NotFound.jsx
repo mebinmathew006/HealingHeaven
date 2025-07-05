@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Home, ArrowLeft, Search, AlertCircle } from 'lucide-react';
 
 const NotFound = () => {
+    const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
@@ -27,7 +28,7 @@ const NotFound = () => {
           </Link>
           
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full justify-center"
           >
             <ArrowLeft className="w-5 h-5" />

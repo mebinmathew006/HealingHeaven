@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status,Form, File,UploadFile,BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import run_in_threadpool
-from typing import List
+from typing import List,Optional
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
@@ -279,6 +279,21 @@ async def update_availability(user_id:int,isAvailable:bool,current_user_id: str 
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
+@router.patch('/update_psychologist_documents/{user_id}')
+async def update_psychologist_documents(user_id:int,identification_doc: Optional[UploadFile] = File(None),education_certificate: Optional[UploadFile] = File(None),
+    experience_certificate: Optional[UploadFile] = File(None),current_user_id: str = Depends(get_current_user),session:AsyncSession =Depends(get_session)):
+    try:
+        if experience_certificate:
+            edu_url = await run_in_threadpool(upload_to_cloudinary, experience_certificate, "doctor_verification/education")
+            await crud.update_psychologist_documents_crud(session,user_id,edu_url,'edu_url')
+        elif identification_doc:
+            id_url = await run_in_threadpool(upload_to_cloudinary, identification_doc, "doctor_verification/id")
+            await crud.update_psychologist_documents_crud(session,user_id,id_url,'id_url')
+        elif education_certificate:
+            exp_url = await run_in_threadpool(upload_to_cloudinary, education_certificate, "doctor_verification/experience")
+            await crud.update_psychologist_documents_crud(session,user_id,exp_url,'exp_url')
+    except Exception as e :
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,detail='unable to upload image')
 
 
 @router.get("/get_user_details/{user_id}", response_model=users.UserWithOptionalProfileOut)

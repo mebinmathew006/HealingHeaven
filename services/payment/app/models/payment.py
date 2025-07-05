@@ -21,3 +21,5 @@ class WalletTransaction(Base):
     transaction_amount = Column(Integer)
 
     wallet = relationship("Wallet", back_populates="wallet_transactions")
+
+

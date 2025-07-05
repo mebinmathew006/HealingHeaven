@@ -228,6 +228,19 @@ async def psychologist_availability_update(session: AsyncSession,user_id:int,isA
         return new_value
     except SQLAlchemyError as e:
         await session.rollback()
+        
+async def update_psychologist_documents_crud(session: AsyncSession,user_id:int,url:str,doc_type):
+    try:
+        if doc_type=='edu_url': 
+            await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(education_certificate=url))
+        elif doc_type =='id_url':
+            await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(identification_doc=url))
+        elif doc_type =='exp_url':
+            await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(experience_certificate=url))
+        
+        await session.commit()
+    except SQLAlchemyError as e:
+        await session.rollback()
     
 async def update_user_password(session: AsyncSession,email:str,password :str):
     try:
