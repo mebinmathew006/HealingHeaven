@@ -1,4 +1,3 @@
-# utils/cloudinary_utils.py
 import cloudinary.uploader
 from fastapi import UploadFile
 from typing import Optional

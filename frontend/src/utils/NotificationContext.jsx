@@ -1,9 +1,16 @@
-// hooks/useNotifications.js
 import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 
 const NotificationContext = createContext();
 const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
 
+// Constants for connection management
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+const MAX_RECONNECT_DELAY = 30000; // 30 seconds
+const KEEP_ALIVE_INTERVAL = 20000; // 20 seconds
+const CONNECTION_TIMEOUT = 10000; // 10 seconds
+
+// Reducer remains the same as your original
 const notificationReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
@@ -71,11 +78,12 @@ export const NotificationProvider = ({ children, userId }) => {
   const reconnectAttempts = useRef(0);
   const isConnecting = useRef(false);
   const shouldReconnect = useRef(true);
+  const connectionTimeoutRef = useRef(null);
 
   const cleanup = useCallback(() => {
     console.log('Cleaning up WebSocket connection');
     
-    // Clear intervals and timeouts
+    // Clear all timeouts and intervals
     if (keepAliveIntervalRef.current) {
       clearInterval(keepAliveIntervalRef.current);
       keepAliveIntervalRef.current = null;
@@ -85,11 +93,16 @@ export const NotificationProvider = ({ children, userId }) => {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
     
-    // Close WebSocket if it exists and is open
+    // Close WebSocket if it exists
     if (wsRef.current) {
       const ws = wsRef.current;
-      wsRef.current = null; // Clear reference first to prevent reconnection
+      wsRef.current = null;
       
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close(1000, 'Component cleanup');
@@ -99,8 +112,28 @@ export const NotificationProvider = ({ children, userId }) => {
     isConnecting.current = false;
   }, []);
 
+  const scheduleReconnect = useCallback(() => {
+    if (!shouldReconnect.current || reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.log('Max reconnection attempts reached or reconnection disabled');
+      return;
+    }
+
+    const delay = Math.min(
+      INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts.current),
+      MAX_RECONNECT_DELAY
+    );
+
+    console.log(`Scheduling reconnection attempt ${reconnectAttempts.current + 1} in ${delay}ms`);
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (shouldReconnect.current) {
+        reconnectAttempts.current++;
+        connect();
+      }
+    }, delay);
+  }, []);
+
   const connect = useCallback(() => {
-    // Prevent multiple simultaneous connection attempts
     if (isConnecting.current || !shouldReconnect.current || !userId) {
       return;
     }
@@ -117,11 +150,19 @@ export const NotificationProvider = ({ children, userId }) => {
     
     const wsUrl = `${socketBaseUrl}/consultations/ws/notifications/${userId}`;
     const newWs = new WebSocket(wsUrl);
-    
-    // Set up event handlers before assigning to ref
+
+    // Set up connection timeout
+    connectionTimeoutRef.current = setTimeout(() => {
+      if (newWs.readyState === WebSocket.CONNECTING) {
+        console.log('WebSocket connection timeout');
+        newWs.close(1006, 'Connection timeout');
+      }
+    }, CONNECTION_TIMEOUT);
+
     newWs.onopen = () => {
       console.log('WebSocket connected successfully');
-      wsRef.current = newWs; // Only assign after successful connection
+      clearTimeout(connectionTimeoutRef.current);
+      wsRef.current = newWs;
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'connected' });
       reconnectAttempts.current = 0;
       isConnecting.current = false;
@@ -129,16 +170,21 @@ export const NotificationProvider = ({ children, userId }) => {
       // Start keep-alive ping
       keepAliveIntervalRef.current = setInterval(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: 'ping' }));
+          try {
+            wsRef.current.send(JSON.stringify({ type: 'ping' }));
+          } catch (error) {
+            console.error('Error sending ping:', error);
+            cleanup();
+            scheduleReconnect();
+          }
         }
-      }, 20000); // 20 seconds
+      }, KEEP_ALIVE_INTERVAL);
     };
 
     newWs.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
-        // Handle pong responses
         if (data.type === 'pong') {
           console.log('Received pong from server');
           return;
@@ -149,7 +195,7 @@ export const NotificationProvider = ({ children, userId }) => {
             id: data.id || `${data.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
             message: data.message,
             notification_type: data.notification_type,
-            consultation_id: data.consultation_id || null, // Explicitly handle consultation_id
+            consultation_id: data.consultation_id || null,
             created_at: data.timestamp || new Date().toISOString(),
             read: false,
             sender_id: data.sender_id || null,
@@ -159,12 +205,11 @@ export const NotificationProvider = ({ children, userId }) => {
           console.log('Received notification:', notification);
           dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
           
-          // Show browser notification if permission granted
           if (Notification.permission === 'granted') {
             new Notification(`New ${data.notification_type}`, {
               body: data.message,
               icon: '/favicon.ico',
-              tag: notification.id // Prevent duplicate notifications
+              tag: notification.id
             });
           }
         }
@@ -174,9 +219,9 @@ export const NotificationProvider = ({ children, userId }) => {
     };
 
     newWs.onclose = (event) => {
+      clearTimeout(connectionTimeoutRef.current);
       console.log(`WebSocket closed: code=${event.code}, reason="${event.reason}"`);
       
-      // Clear references and intervals
       if (wsRef.current === newWs) {
         wsRef.current = null;
       }
@@ -190,20 +235,8 @@ export const NotificationProvider = ({ children, userId }) => {
       dispatch({ type: 'SET_CONNECTION_STATUS', payload: 'disconnected' });
       
       // Only attempt reconnection for unexpected closures
-      if (shouldReconnect.current && event.code !== 1000 && reconnectAttempts.current < 5) {
-        const delay = Math.min(
-          1000 * Math.pow(2, reconnectAttempts.current), // Exponential backoff
-          30000 // Max 30 seconds
-        );
-        
-        console.log(`Scheduling reconnection attempt ${reconnectAttempts.current + 1} in ${delay}ms`);
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          if (shouldReconnect.current) {
-            reconnectAttempts.current++;
-            connect();
-          }
-        }, delay);
+      if (shouldReconnect.current && event.code !== 1000) {
+        scheduleReconnect();
       }
     };
 
@@ -212,7 +245,7 @@ export const NotificationProvider = ({ children, userId }) => {
       isConnecting.current = false;
     };
 
-  }, [userId]);
+  }, [userId, cleanup, scheduleReconnect]);
 
   // Request notification permissions
   useEffect(() => {
@@ -226,7 +259,6 @@ export const NotificationProvider = ({ children, userId }) => {
     const handleOnline = () => {
       console.log('Network came back online');
       if (state.connectionStatus === 'disconnected' && shouldReconnect.current) {
-        // Reset reconnection attempts when network comes back
         reconnectAttempts.current = 0;
         connect();
       }
@@ -253,7 +285,6 @@ export const NotificationProvider = ({ children, userId }) => {
       connect();
     }
 
-    // Cleanup function
     return () => {
       console.log('NotificationProvider unmounting, cleaning up...');
       shouldReconnect.current = false;
@@ -263,28 +294,33 @@ export const NotificationProvider = ({ children, userId }) => {
 
   const sendNotification = useCallback((receiverId, message, notificationType, consultationId = null) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const payload = {
-        type: 'notification',
-        receiver_id: receiverId,
-        message,
-        notification_type: notificationType,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Only add consultation_id if it's provided and not null/undefined
-      if (consultationId) {
-        payload.consultation_id = consultationId;
+      try {
+        const payload = {
+          type: 'notification',
+          receiver_id: receiverId,
+          message,
+          notification_type: notificationType,
+          timestamp: new Date().toISOString()
+        };
+        
+        if (consultationId) {
+          payload.consultation_id = consultationId;
+        }
+        
+        wsRef.current.send(JSON.stringify(payload));
+        console.log('Notification sent:', payload);
+        return true;
+      } catch (error) {
+        console.error('Error sending notification:', error);
+        return false;
       }
-      
-      wsRef.current.send(JSON.stringify(payload));
-      console.log('Notification sent:', payload);
-      return true;
     } else {
       console.warn('Cannot send notification: WebSocket not connected');
       return false;
     }
   }, []);
 
+  // Other methods remain the same as your original
   const markAsRead = useCallback((notificationId) => {
     dispatch({ type: 'MARK_AS_READ', payload: notificationId });
   }, []);
@@ -301,7 +337,6 @@ export const NotificationProvider = ({ children, userId }) => {
     dispatch({ type: 'CLEAR_NOTIFICATIONS' });
   }, []);
 
-  // Method to manually set notifications (useful for initial load from API)
   const setNotifications = useCallback((notifications) => {
     dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications });
   }, []);

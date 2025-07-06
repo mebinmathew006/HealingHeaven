@@ -17,9 +17,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const Dashboard = ({ chartData = [], earningsData = {}, type }) => {
+const Dashboard = ({ chartData = [], earningsData = {}, selectedYear, setSelectedYear}) => {
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showYearDropdown, setShowYearDropdown] = useState(false);
 
   const currentEarningsData = earningsData;

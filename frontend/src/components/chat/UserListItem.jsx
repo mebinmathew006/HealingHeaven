@@ -13,7 +13,6 @@ const UserListItem = React.memo(({
   const displayUser = user.user 
  const userId = userType === 'doctor' ? user.user_id : user.psychologist_id;
 
-  console.log(userId,user,'jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj')
 //   const userId = userType === 'doctor' ? user.user_id : user.doctor_id;
   
   return (
@@ -21,7 +20,7 @@ const UserListItem = React.memo(({
       onClick={() => handleUserSelect(userId, user.id)}
       className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${
         activeChat === userId
-          ? "bg-blue-50 border-r-2 border-r-blue-500"
+          ? "bg-green-50 border-r-2 border-r-green-500"
           : ""
       }`}
     >
@@ -53,7 +52,7 @@ const UserListItem = React.memo(({
             {displayUser?.email}
           </p>
           {user.unread > 0 && (
-            <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-500 rounded-full">
+            <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-green-500 rounded-full">
               {user.unread}
             </span>
           )}

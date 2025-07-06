@@ -447,9 +447,9 @@ export default function DoctorVerification({ fetchDoctor, data }) {
         <div className="flex flex-col items-center space-y-6">
           {/* Animated Loader Icon */}
           <div className="relative">
-            <Loader className="w-12 h-12 text-blue-600 animate-spin" />
-            <div className="absolute inset-0 w-12 h-12 border-4 border-blue-200 rounded-full animate-ping opacity-30"></div>
-            <div className="absolute inset-0 w-16 h-16 -m-2 border-2 border-t-blue-400 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+            <Loader className="w-12 h-12 text-green-600 animate-spin" />
+            <div className="absolute inset-0 w-12 h-12 border-4 border-green-200 rounded-full animate-ping opacity-30"></div>
+            <div className="absolute inset-0 w-16 h-16 -m-2 border-2 border-t-green-400 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
           </div>
 
           <div className="text-center">
@@ -461,13 +461,13 @@ export default function DoctorVerification({ fetchDoctor, data }) {
             <div className="flex items-center justify-center space-x-1">
               <span className="text-sm text-gray-600">Please wait</span>
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
                 <div
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
                   style={{ animationDelay: "0.1s" }}
                 ></div>
                 <div
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
                   style={{ animationDelay: "0.2s" }}
                 ></div>
               </div>
@@ -475,7 +475,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
           </div>
 
           <div className="w-64 bg-[#E5F2FE] rounded-full h-2 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full animate-pulse"></div>
+            <div className="bg-gradient-to-r from-green-500 to-purple-600 h-2 rounded-full animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -483,7 +483,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 flex items-center justify-center relative overflow-hidden">
       {/* Background Medical Image Overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
@@ -494,7 +494,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
 
       {/* Abstract Medical Icons Background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 right-20 w-32 h-32 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute top-20 right-20 w-32 h-32 bg-green-200 rounded-full opacity-20 animate-pulse"></div>
         <div className="absolute bottom-32 left-16 w-24 h-24 bg-[#E5F2FE] rounded-full opacity-20 animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 right-1/3 w-16 h-16 bg-indigo-200 rounded-full opacity-20 animate-pulse delay-500"></div>
         <div className="absolute top-1/3 left-1/4 w-20 h-20 bg-pink-200 rounded-full opacity-20 animate-pulse delay-700"></div>
@@ -555,7 +555,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
                 className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                   errors.date_of_birth
                     ? "focus:ring-red-500 ring-2 ring-red-500"
-                    : "focus:ring-blue-500"
+                    : "focus:ring-green-500"
                 }`}
               />
               {errors.date_of_birth && (
@@ -579,7 +579,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
                 className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                   errors.experience
                     ? "focus:ring-red-500 ring-2 ring-red-500"
-                    : "focus:ring-blue-500"
+                    : "focus:ring-green-500"
                 }`}
                 placeholder="Years of experience"
               />
@@ -602,7 +602,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
                 className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                   errors.gender
                     ? "focus:ring-red-500 ring-2 ring-red-500"
-                    : "focus:ring-blue-500"
+                    : "focus:ring-green-500"
                 }`}
               >
                 <option value="">Select Gender</option>
@@ -629,7 +629,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
                 className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                   errors.fees
                     ? "focus:ring-red-500 ring-2 ring-red-500"
-                    : "focus:ring-blue-500"
+                    : "focus:ring-green-500"
                 }`}
                 placeholder="Enter consultation fees"
               />
@@ -653,7 +653,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
               className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                 errors.qualification
                   ? "focus:ring-red-500 ring-2 ring-red-500"
-                  : "focus:ring-blue-500"
+                  : "focus:ring-green-500"
               }`}
               placeholder="Enter your qualification (e.g., MBBS, MD)"
             />
@@ -678,7 +678,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
               className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 ${
                 errors.specialization
                   ? "focus:ring-red-500 ring-2 ring-red-500"
-                  : "focus:ring-blue-500"
+                  : "focus:ring-green-500"
               }`}
               placeholder="Enter your specialization (e.g., Cardiology, Pediatrics)"
             />
@@ -703,7 +703,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
               className={`w-full px-4 py-3 bg-[#E5F2FE] rounded-lg border-0 focus:outline-none focus:ring-2 resize-none ${
                 errors.about_me
                   ? "focus:ring-red-500 ring-2 ring-red-500"
-                  : "focus:ring-blue-500"
+                  : "focus:ring-green-500"
               }`}
               placeholder="Tell us about yourself, your experience, and approach to patient care... (minimum 10 characters)"
             />

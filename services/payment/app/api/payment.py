@@ -47,7 +47,7 @@ async def create_razorpay_orders(
 @router.post("/add_money_to_wallet")
 async def add_money_to_wallet(
     rzrpay_schema: RazorpayOrder,
-    current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session)
 ):
     try:
         await money_to_wallet(session, rzrpay_schema.user_id, rzrpay_schema.totalAmount)

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import Swal from "sweetalert2";
+import DoctorSidebar from "../../components/DoctorSidebar";
 
 export default function DoctorFeedbackPage() {
   const [formData, setFormData] = useState({
@@ -12,8 +13,8 @@ export default function DoctorFeedbackPage() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const location = useLocation();
-  const consultationId =location?.state?.consultationId
-  const callDuration = location?.state?.callDuration
+  const consultationId = location?.state?.consultationId;
+  const callDuration = location?.state?.callDuration;
   const userId = useSelector((state) => state.userDetails.id);
   const navigate = useNavigate();
   const handleInputChange = (e) => {
@@ -34,14 +35,18 @@ export default function DoctorFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-        console.log({ ...formData, consultation_id: consultationId ,duration:callDuration},'kkkkkkkkkkkkkkk');
+       
 
         const response = await axiosInstance.put(
           "/consultations/set_analysis_from_doctor",
-          { ...formData, consultation_id: consultationId,duration:callDuration }
+          {
+            ...formData,
+            consultation_id: consultationId,
+            duration: callDuration,
+          }
         );
         console.log("Feedback submitted:", response.data);
-        
+
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
@@ -64,9 +69,9 @@ export default function DoctorFeedbackPage() {
           buttonsStyling: false,
           background: "#ffffff",
         });
-        await axiosInstance.patch(
-          `/users/update_availability/${userId}/${false}`
-        );
+        // await axiosInstance.patch(
+        //   `/users/update_availability/${userId}/${false}`
+        // );
         navigate("/doctor_view_consultations");
       } catch (error) {}
     }
@@ -102,72 +107,67 @@ export default function DoctorFeedbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4"></h1>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
-            <h2 className="text-2xl font-semibold text-white">
-              Share Diagnostic Analysis
-            </h2>
+     <div className="flex h-screen bg-gray-100">
+      <div>
+        <DoctorSidebar activeSection='doctor_view_consultations' />
+      </div>
+      <div className="flex-1 bg-gray-50 overflow-auto m-5">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4"></h1>
           </div>
 
-          <div className="p-8 space-y-8">
-{/* input */}
-<input 
-        type="text" 
-        name="consultation_id" 
-        value={consultationId || 'not'} 
-      />
-      <input 
-        type="text" 
-        name="duration" 
-        value={callDuration || 'not'} 
-      />
-            {/* jjjlkjlk */}
-            {/* Message */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Diagnostic Analysis
-              </label>
-              <textarea
-                name="message"
-                value={formData.message}
-                onChange={handleInputChange}
-                rows={6}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-none ${
-                  errors.message ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Please provide detailed information about your feedback..."
-              />
-              {errors.message && (
-                <p className="text-red-500 text-sm mt-1">{errors.message}</p>
-              )}
-              <div className="text-right text-sm text-gray-500 mt-1">
-                {formData.message.length}/500
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-green-800 to-green-900 p-6">
+              <h2 className="text-2xl font-semibold text-white">
+                Share Diagnostic Analysis
+              </h2>
+            </div>
+
+            <div className="p-8 space-y-8">
+              {/* Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Diagnostic Analysis
+                </label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  rows={6}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors resize-none ${
+                    errors.message ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="Please provide detailed information about your feedback..."
+                />
+                {errors.message && (
+                  <p className="text-red-500 text-sm mt-1">{errors.message}</p>
+                )}
+                <div className="text-right text-sm text-gray-500 mt-1">
+                  {formData.message.length}/500
+                </div>
+              </div>
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="bg-gradient-to-r from-green-800 to-green-900 text-white px-8 py-3 rounded-lg font-medium hover:from-green-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                >
+                  <Send className="w-5 h-5" />
+                  <span>Submit Analysis</span>
+                </button>
               </div>
             </div>
-            {/* Submit Button */}
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
-              >
-                <Send className="w-5 h-5" />
-                <span>Submit Analysis</span>
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center mt-8 text-gray-500">
-          <p>Your Analysis helps us create better experiences for the Users.</p>
+          {/* Footer */}
+          <div className="text-center mt-8 text-gray-500">
+            <p>
+              Your Analysis helps us create better experiences for the Users.
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -241,11 +241,11 @@ async def get_feedbacks_crud(session: AsyncSession, psychologist_id: int):
 async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: int, selectedYear: int):
     # Total earnings from completed payments for the selected year
     earnings_query = await session.execute(
-        select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
+        select(func.coalesce(func.sum(Payments.psychologist_fee*0.80), 0))
         .join(Consultation, Payments.consultation_id == Consultation.id)
         .where(
             Consultation.psychologist_id == psychologist_id,
-            Payments.payment_status == "paid",
+            Consultation.status == "completed",
             extract('year', Payments.created_at) == selectedYear
         )
     )
@@ -255,6 +255,7 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
     sessions_query = await session.execute(
         select(func.count(Consultation.id))
         .where(
+            Consultation.status == "completed",
             Consultation.psychologist_id == psychologist_id,
             extract('year', Consultation.created_at) == selectedYear
         )
@@ -265,6 +266,7 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
     patients_query = await session.execute(
         select(func.count(func.distinct(Consultation.user_id)))
         .where(
+            Consultation.status == "completed",
             Consultation.psychologist_id == psychologist_id,
             extract('year', Consultation.created_at) == selectedYear
         )
@@ -280,7 +282,7 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
         .join(Consultation, Payments.consultation_id == Consultation.id)
         .where(
             Consultation.psychologist_id == psychologist_id,
-            Payments.payment_status == "paid",
+            Consultation.status == "completed",
             extract('year', Payments.created_at) == selectedYear
         )
         .group_by('month')
@@ -308,7 +310,7 @@ async def doctor_dashboard_details_crud(session: AsyncSession, psychologist_id: 
 async def admin_dashboard_details_crud(session: AsyncSession, year: int):
     # Total earnings from completed payments in the given year
     earnings_query = await session.execute(
-        select(func.coalesce(func.sum(Payments.psychologist_fee), 0))
+        select(func.coalesce(func.sum(Payments.psychologist_fee*0.20), 0))
         .where(
             Payments.payment_status == "paid",
             extract('year', Payments.created_at) == year
@@ -459,6 +461,13 @@ async def get_doctor_consultations(session: AsyncSession,doctorId):
         .options(selectinload(Consultation.payments)).where(Consultation.psychologist_id==doctorId)
     )
     return result.scalars().all()
+
+async def get_doctor_fee_after_platform_fee(session: AsyncSession,consultation_id :int):
+    result = await session.execute(
+        select(func.coalesce(func.sum(Payments.psychologist_fee*0.80), 0))
+        .where(Payments.consultation_id==consultation_id)
+    )
+    return result.scalar()
 
 
 async def save_chat_message_with_attachments(session: AsyncSession,message: Optional[str],consultation_id: int,sender_type: str,attachments: List[Dict] = None,message_type: str = 'text') -> Dict:

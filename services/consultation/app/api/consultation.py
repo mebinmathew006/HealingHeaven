@@ -11,13 +11,13 @@ from fastapi.logger import logger
 from datetime import datetime 
 # from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications,update_consultation_status
-from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments
+from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments,get_doctor_fee_after_platform_fee
 from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
 from crud.crud import get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
 from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
 from infra.external.user_service import get_user_details,get_doctor_details,get_minimal_user_details
-from infra.external.payment_service import fetch_money_from_wallet
+from infra.external.payment_service import fetch_money_from_wallet,add_money_to_wallet
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict
 import asyncio
@@ -308,7 +308,11 @@ async def create_new_notification(data: CreateNotificationSchema,current_user_id
 @router.put("/set_analysis_from_doctor")
 async def set_analysis_from_doctor(data: UpdateConsultationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
-        return await update_analysis_consultation(session, data)
+        await update_analysis_consultation(session, data)
+        income = await get_doctor_fee_after_platform_fee(session,data.consultation_id)
+        data={'user_id':current_user_id,'totalAmount':income}
+        await add_money_to_wallet(data)
+
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
@@ -344,7 +348,6 @@ async def get_consultation(doctorId:int,current_user_id: str = Depends(get_curre
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        logger.info('[constuation]  inside the fucnot')
         consultation = await get_all_mapping_for_chat(session,doctorId)
         
         if not consultation:
@@ -1294,21 +1297,26 @@ async def notification_websocket(websocket: WebSocket, user_id: int):
         await manager.disconnect(user_id)
 
 async def handle_notification(data: dict, sender_id: int):
+    logger.info(f"[Notficaiation] Received notification data: {data}")
     """Process and deliver notifications"""
     try:
         required_fields = ["receiver_id", "message", "notification_type"]
         if not all(field in data for field in required_fields):
             logger.warning(f"Missing required fields in notification from {sender_id}")
             return
-
+        
+        # Build the base notification
         notification = {
             "type": "notification",
             "sender_id": sender_id,
             "notification_type": data["notification_type"],
-            "consultation_id": data["consultation_id"] or None,
             "message": data["message"],
             "timestamp": datetime.utcnow().isoformat()
         }
+        
+        # Add consultation_id only if it exists in the data
+        if "consultation_id" in data and data["consultation_id"]:
+            notification["consultation_id"] = data["consultation_id"]
         
         await manager.send_personal_message(notification, data["receiver_id"])
         

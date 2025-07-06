@@ -35,7 +35,7 @@ const FeedbackCard = ({ feedback, showPatientInfo = true }) => {
                     alt="profile_img" 
                   />
                 ) : (
-                  <User className="rounded-full bg-blue-500 w-8 h-8 lg:w-10 lg:h-10 text-white p-2" />
+                  <User className="rounded-full bg-green-800 w-8 h-8 lg:w-10 lg:h-10 text-white p-2" />
                 )}
               </div>
               <div>

@@ -52,12 +52,12 @@ export default function ConsultationsList({
   };
 
   return (
-    <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto">
+    <div className="flex-1 bg-gradient-to-br from-green-50 to-indigo-100 p-6 overflow-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Users className="w-6 h-6 text-blue-600" />
+          <div className="p-2 bg-green-100 rounded-lg">
+            <Users className="w-6 h-6 text-green-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">My Consultations</h1>
         </div>
@@ -66,21 +66,21 @@ export default function ConsultationsList({
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-600 text-sm font-medium">
+              <p className="text-green-600 text-sm font-medium">
                 Total Sessions
               </p>
-              <p className="text-2xl font-bold text-blue-900">
+              <p className="text-2xl font-bold text-green-900">
                 {consultationData.length}
               </p>
             </div>
-            <FileText className="w-8 h-8 text-blue-500" />
+            <FileText className="w-8 h-8 text-green-500" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-600 text-sm font-medium">Completed</p>
@@ -129,8 +129,8 @@ export default function ConsultationsList({
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-100 to-indigo-100 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-green-600" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">
@@ -168,7 +168,7 @@ export default function ConsultationsList({
 
                     <button
                       onClick={() => setSelectedConsultation(consultation)}
-                      className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="flex items-center space-x-2 px-4 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
                     >
                       <Eye className="w-4 h-4" />
                       <span className="text-sm font-medium">View Details</span>
@@ -176,7 +176,7 @@ export default function ConsultationsList({
 
                     <button
                       onClick={() => handleFeedback(consultation.id)}
-                      className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="flex items-center space-x-2 px-4 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
                     >
                       <Star className="w-4 h-4" />
                       <span className="text-sm font-medium">Feedback</span>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Bell, LogOut, Menu, X, ChartArea, Star, Video, Home, DollarSign } from "lucide-react";
+import { User, Bell, LogOut, Menu, X, ChartArea, Star, Video, Home, DollarSign, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../utils/useLogout";
 import { useSelector } from "react-redux";
@@ -32,6 +32,7 @@ const DoctorSidebar = ({ activeSection }) => {
   const menuItems = [
     { id: 'doctor_home_page', label: 'Profile', icon: Home },
     { id: 'doctor_revenue', label: 'Revenue', icon: DollarSign },
+    { id: 'doctor_wallet', label: 'Wallet', icon: Wallet },
     { id: 'doctor_view_notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { id: 'doctor_chat', label: 'Chat', icon: ChartArea },
     { id: 'doctor_view_feedback', label: 'Feedback', icon: Star },
@@ -72,7 +73,7 @@ const DoctorSidebar = ({ activeSection }) => {
         {/* Header */}
         <div className="p-4 lg:p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-green-800 rounded-full flex items-center justify-center flex-shrink-0">
               <User className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
             </div>
             <div className="min-w-0 flex-1">
@@ -97,7 +98,7 @@ const DoctorSidebar = ({ activeSection }) => {
                     onClick={() => handleSectionClick(item.id)}
                     className={`w-full flex items-center justify-between px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg text-left transition-colors ${
                       activeSection === item.id
-                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                        ? 'bg-green-50 text-green-700 border-r-2 border-green-700'
                         : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                     }`}
                   >

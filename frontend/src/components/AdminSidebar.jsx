@@ -32,7 +32,7 @@ const AdminSidebar = ({ activeSection, onSectionChange }) => {
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-green-800 rounded-full flex items-center justify-center">
             <User className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -53,7 +53,7 @@ const AdminSidebar = ({ activeSection, onSectionChange }) => {
                   onClick={() => handleNavigation(item)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                     activeSection === item.id
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                       ? 'bg-blue-50 text-green-700 border-r-2 border-green-700'
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >

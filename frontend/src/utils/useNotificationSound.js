@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNotifications } from './NotificationContext';
 
-export const useNotificationSound = (soundUrl = '/notification.mp3') => {
+export const useNotificationSound = (soundUrl = '/notification.wav') => {
   const { notifications } = useNotifications();
   const audioRef = useRef(null);
   const prevNotificationCount = useRef(0);

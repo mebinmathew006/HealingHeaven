@@ -5,6 +5,7 @@ const MessageBubble = React.memo(({
   isCurrentUser, 
   senderName, 
   activeUser, 
+  userType, 
   formatMessageTime 
 }) => {
   const BASE_URL_FOR_MEDIA = import.meta.env.VITE_BASE_URL
@@ -40,6 +41,15 @@ const MessageBubble = React.memo(({
           </audio>
         );
       default:
+        if (message=='requested for a video call'){
+          return(
+            <div className='flex'>
+              <p>user Requested For another session </p>
+              <button>accept</button>
+              <button>reject</button>
+            </div>
+          )
+        }
         return (
           <a 
             href={`${attachment.file_url}`}
@@ -82,7 +92,7 @@ const MessageBubble = React.memo(({
           <div
             className={`px-4 py-2 rounded-2xl ${
               isCurrentUser
-                ? "bg-blue-500 text-white rounded-br-sm"
+                ? "bg-green-900 text-white rounded-br-sm"
                 : "bg-white text-gray-900 rounded-bl-sm shadow-sm border border-gray-200"
             }`}
           >
@@ -121,7 +131,7 @@ const FileIcon = ({ type }) => {
     case 'pdf':
       return <div className={`${iconClass} bg-red-100 rounded p-1`}>PDF</div>;
     case 'video':
-      return <div className={`${iconClass} bg-blue-100 rounded p-1`}>VID</div>;
+      return <div className={`${iconClass} bg-green-100 rounded p-1`}>VID</div>;
     case 'audio':
       return <div className={`${iconClass} bg-purple-100 rounded p-1`}>AUD</div>;
     default:

@@ -26,7 +26,7 @@ import ContactUsPage from "../pages/Public/ContactUsPage";
 import PsychologistsDirectory from "../pages/Public/PsychologistsDirectory";
 import UserViewDoctorDetails from "../pages/User/UserViewDoctorDetails";
 import DoctorDetailsPage from "../pages/Public/DoctorDetailsPage";
-import WalletPage from "../pages/User/WalletPage";
+import WalletPage from "../components/WalletPage";
 import UserVideoCallPage from "../pages/User/UserVideoCallPage";
 import AdminConsultationList from "../pages/Admin/AdminConsultationList";
 import DoctorVideoCallPage from "../pages/Doctor/DoctorVideoCallPage";
@@ -47,6 +47,8 @@ import UserBookingFromChat from "../pages/User/UserBookingFromChat";
 import { HostPage } from "../pages/User/HostPage";
 import { ParticipantPage} from "../pages/User/ParticipantPage";
 import NotFound from "../components/NotFound";
+import UserWalletPage from "../pages/User/UserWalletPage";
+import DoctorWalletPage from "../pages/Doctor/DoctorWalletPage";
 
 const AppRoutes = () => {
   return (
@@ -81,7 +83,7 @@ const AppRoutes = () => {
         <Route path="/user_profile" element={<UserProtectedRoute><UserProfile /></UserProtectedRoute>} />
         <Route path="/user_view_psychologist" element={<UserProtectedRoute><ViewPsychologists /></UserProtectedRoute>} />
         <Route path="/user_view_psychologist_details" element={<UserProtectedRoute><UserViewDoctorDetails /></UserProtectedRoute>} />
-        <Route path="/wallet" element={<UserProtectedRoute><WalletPage/></UserProtectedRoute>} />
+        <Route path="/wallet" element={<UserProtectedRoute><UserWalletPage/></UserProtectedRoute>} />
         <Route path="/user_chat" element={<UserProtectedRoute><UserChat/></UserProtectedRoute>} />
         <Route path="/user_consultations" element={<UserProtectedRoute><UserViewConsultation/></UserProtectedRoute>} />
         <Route path="/user_feedback_page" element={<UserProtectedRoute><UserFeedbackPage/></UserProtectedRoute>} />
@@ -103,6 +105,7 @@ const AppRoutes = () => {
         <Route path="/doctor_view_notifications" element={<DoctorProtectedRoute><DoctorNotificationsPage/></DoctorProtectedRoute>} />
         <Route path="/doctor_revenue" element={<DoctorProtectedRoute><DoctorDashboard/></DoctorProtectedRoute>} />
         <Route path="/videocall_doctor" element={<DoctorProtectedRoute><HostPage/></DoctorProtectedRoute>} />
+        <Route path="/doctor_wallet" element={<DoctorProtectedRoute><DoctorWalletPage/></DoctorProtectedRoute>} />
 
 
         {/* Admin */}

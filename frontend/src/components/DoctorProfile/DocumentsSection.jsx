@@ -92,7 +92,7 @@ const DocumentsSection = ({
                   href={doc.currentFile}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+                  className="flex items-center space-x-2 text-green-600 hover:text-green-800"
                 >
                   <Eye className="w-4 h-4" />
                   <span>View Current</span>
@@ -100,7 +100,7 @@ const DocumentsSection = ({
                 {isEditing && (
                   <button
                     onClick={() => setFileType(doc.type)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="text-sm text-green-800 hover:text-green-900 xd"
                   >
                     Replace
                   </button>
@@ -141,7 +141,7 @@ const DocumentsSection = ({
                     </button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500">
+                  <label className="flex flex-col items-center justify-center w-full p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500">
                     <Upload className="w-5 h-5 text-gray-400 mb-2" />
                     <span className="text-sm text-gray-600">Click to upload</span>
                     <input 

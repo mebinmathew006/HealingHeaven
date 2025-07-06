@@ -90,7 +90,7 @@ const DoctorProfileHeader = ({
         <div className="relative">
           <img
             src={formData.profile_image}
-            className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold"
+            className="w-24 h-24 bg-gradient-to-br from-green-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold"
             alt="Profile"
           />
           <button

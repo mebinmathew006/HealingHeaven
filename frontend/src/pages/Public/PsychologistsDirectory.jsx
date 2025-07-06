@@ -66,7 +66,7 @@ export default function PsychologistsDirectory() {
       const response = await axiosInstance.get("users/view_psychologist");
       
       setpsychologists(response.data);
-      console.log(response.data);
+      console.log(response.data,'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk');
 
     } catch (error) {
       console.log(error);

@@ -92,6 +92,7 @@ export default function UserChat() {
               setNewMessage={setNewMessage}
               handleSendMessage={handleSendMessage}
               isConnected={isConnected}
+              activeChat= {activeChat}
             />
           </>
         ) : (

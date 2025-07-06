@@ -1,12 +1,14 @@
 import React, { useRef, useCallback, useState } from 'react';
 import { Send, Paperclip, X, Image, File, Video, Mic } from 'lucide-react';
 
+
 const MessageInput = ({
   newMessage,
   setNewMessage,
   handleSendMessage,
   isConnected,
-  onFileUpload 
+  onFileUpload ,
+  activeChat
 }) => {
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -98,7 +100,7 @@ const MessageInput = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleSend = () => {
+  const  handleSend = async () => {
     handleSendMessage(attachedFiles);
     setAttachedFiles([]);
   };
@@ -147,16 +149,16 @@ const MessageInput = ({
 
       {/* Input Area */}
       <div
-        className={`p-4 ${isDragOver ? 'bg-blue-50' : ''} transition-colors`}
+        className={`p-4 ${isDragOver ? 'bg-green-50' : ''} transition-colors`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {isDragOver && (
-          <div className="absolute inset-0 bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-green-50 border-2 border-dashed border-green-300 rounded-lg flex items-center justify-center z-10">
             <div className="text-center">
-              <Paperclip className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <p className="text-blue-600 font-medium">Drop files here to attach</p>
+              <Paperclip className="w-8 h-8 text-green-500 mx-auto mb-2" />
+              <p className="text-green-600 font-medium">Drop files here to attach</p>
             </div>
           </div>
         )}
@@ -190,7 +192,7 @@ const MessageInput = ({
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none max-h-32 min-h-[48px]"
+              className="w-full px-4 py-3 pr-12 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none max-h-32 min-h-[48px]"
               disabled={!isConnected}
               rows={1}
               style={{
@@ -208,7 +210,7 @@ const MessageInput = ({
           <button
             onClick={handleSend}
             disabled={(!newMessage.trim() && attachedFiles.length === 0) || !isConnected}
-            className="p-2.5 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 bg-green-500 text-white rounded-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Send message"
           >
             <Send className="w-5 h-5" />

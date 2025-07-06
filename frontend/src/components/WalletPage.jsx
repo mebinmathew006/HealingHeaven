@@ -9,20 +9,20 @@ import {
 } from "lucide-react";
 
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
+import axiosInstance from "../axiosconfig";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import UserSidebar from "../../components/UserSidebar";
+import UserSidebar from "./UserSidebar";
+import Swal from "sweetalert2";
 
 const WalletPage = () => {
   const [loading, setLoading] = useState(false);
   const [walletData, setWalletData] = useState(0);
   const [transactions, setTransactions] = useState([]);
-  const [activeSection, setActiveSection] = useState("wallet");
   const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
   const userId = useSelector((state) => state.userDetails.id);
   const scrollRef = useRef(null);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const fetchWallet = async () => {
     try {
@@ -31,6 +31,29 @@ const WalletPage = () => {
       );
       setWalletData(response.data.balance);
       setTransactions(response.data.wallet_transactions);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const HandleWithdraw = async () => {
+    try {
+      const result = await Swal.fire({
+        title: "Withdraw ?",
+        text: "Are you sure you want to withdraw all amount from Wallet ?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Yes, withdraw",
+        cancelButtonText: "Cancel",
+      });
+
+      if (!result.isConfirmed) return;
+      const response = await axiosInstance.post(
+        `/payments/fetch_money_from_wallet`,
+        { user_id: userId, psychologist_id: 1, psychologist_fee: walletData }
+      );
+      toast.success('Money Withdrawn successfully',{position:'bottom-center'})
+      fetchWallet()
     } catch (error) {
       console.log(error);
     }
@@ -182,23 +205,21 @@ const WalletPage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div>
-        <UserSidebar activeSection={activeSection} />
-      </div>
-
+    <div>
       {/* Main Content */}
       <div
-        className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto"
+        className="flex-1 bg-gradient-to-br from-green-50 to-indigo-100 p-6 overflow-auto"
         ref={scrollRef}
       >
-         <button className="text-sm font-medium text-blue-600 hover:cursor-pointer" onClick={()=>navigate(-1)}>
-                    Back
-                  </button>
+        <button
+          className="text-sm font-medium text-green-600 hover:cursor-pointer"
+          onClick={() => navigate(-1)}
+        >
+          Back
+        </button>
         <div className="">
           {/* Balance Card */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
+          <div className="bg-gradient-to-r from-green-600 to-green-900 rounded-2xl shadow-xl p-8 mb-8 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -206,13 +227,12 @@ const WalletPage = () => {
                     <Wallet className="w-8 h-8 mr-3" />
                     <h2 className="text-xl font-semibold">Current Balance</h2>
                   </div>
-                 
                 </div>
 
                 <div className="text-4xl font-bold mb-2">
                   {formatCurrency(walletData)}
                 </div>
-                <p className="text-blue-100">Available to spend</p>
+                <p className="text-green-100">Available to spend</p>
               </div>
 
               <button
@@ -227,6 +247,14 @@ const WalletPage = () => {
               >
                 Add 1000
               </button>
+              {walletData > 0 && (
+                <button
+                  className="text-base font-bold bg-blue-300 hover:bg-blue-400 bg-opacity-20 rounded-lg p-2 text-white-900 mb-1 hover:cursor-pointer"
+                  onClick={() => HandleWithdraw()}
+                >
+                  Withdraw
+                </button>
+              )}
             </div>
           </div>
 
@@ -246,7 +274,7 @@ const WalletPage = () => {
                   onClick={() => setFilter("all")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     filter === "all"
-                      ? "bg-blue-100 text-blue-700"
+                      ? "bg-green-100 text-green-700"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
@@ -389,12 +417,12 @@ const WalletPage = () => {
                   <p className="text-sm text-gray-500 mb-1">
                     Total Transactions
                   </p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-green-600">
                     {transactions.length}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>

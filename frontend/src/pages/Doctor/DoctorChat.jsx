@@ -87,6 +87,7 @@ export default function DoctorChat() {
               setNewMessage={setNewMessage}
               handleSendMessage={handleSendMessage}
               isConnected={isConnected}
+              activeChat= {activeChat}
             />
           </>
         ) : (

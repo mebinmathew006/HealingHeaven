@@ -86,7 +86,7 @@ const DoctorNotificationsPage = () => {
   const getNotificationColor = (type) => {
     switch (type) {
       case "message":
-        return "border-l-blue-500 bg-blue-50";
+        return "border-l-green-500 bg-green-50";
       case "appointment":
         return "border-l-green-500 bg-green-50";
       case "reminder":
@@ -140,12 +140,13 @@ const DoctorNotificationsPage = () => {
         consultationId: consultationId,
       },
     });
+    removeNotification()
   };
 
   return (
     <div className="flex h-screen bg-gray-100">
       <div>
-        <DoctorSidebar />
+        <DoctorSidebar activeSection='doctor_view_notifications'/>
       </div>
       {/* Header */}
       <div className="flex-1 bg-gray-50 overflow-auto">
@@ -153,7 +154,7 @@ const DoctorNotificationsPage = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <div className="relative">
-                <Bell className="w-8 h-8 text-blue-600" />
+                <Bell className="w-8 h-8 text-green-600" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -200,7 +201,7 @@ const DoctorNotificationsPage = () => {
                     onClick={() => setFilter(filterType)}
                     className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                       filter === filterType
-                        ? "bg-white text-blue-600 shadow-sm"
+                        ? "bg-white text-green-600 shadow-sm"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
@@ -218,7 +219,7 @@ const DoctorNotificationsPage = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>Mark all read</span>
@@ -234,22 +235,22 @@ const DoctorNotificationsPage = () => {
                 placeholder="Search notifications..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
             </div>
           </div>
 
           {/* Bulk Actions */}
           {selectedNotifications.length > 0 && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-              <span className="text-sm text-blue-700">
+            <div className="mt-4 p-3 bg-green-50 rounded-lg flex items-center justify-between">
+              <span className="text-sm text-green-700">
                 {selectedNotifications.length} notification
                 {selectedNotifications.length > 1 ? "s" : ""} selected
               </span>
               <div className="flex space-x-2">
                 <button
                   onClick={markSelectedAsRead}
-                  className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  className="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
                 >
                   <Check className="w-3 h-3" />
                   <span>Mark read</span>
@@ -305,7 +306,7 @@ const DoctorNotificationsPage = () => {
                       ? clearSelection
                       : selectAllNotifications
                   }
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  className="text-sm text-green-600 hover:text-green-800 font-medium"
                 >
                   {selectedNotifications.length === filteredNotifications.length
                     ? "Deselect all"
@@ -327,7 +328,7 @@ const DoctorNotificationsPage = () => {
                       : "border-l-gray-300"
                   } ${
                     selectedNotifications.includes(notification.id)
-                      ? "ring-2 ring-blue-500"
+                      ? "ring-2 ring-green-500"
                       : ""
                   }`}
                 >
@@ -342,7 +343,7 @@ const DoctorNotificationsPage = () => {
                         onChange={() =>
                           toggleNotificationSelection(notification.id)
                         }
-                        className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                       />
 
                       {/* Notification Icon */}
@@ -374,7 +375,7 @@ const DoctorNotificationsPage = () => {
                                   }
                                   className="mt-2 inline-flex items-center px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors"
                                 >
-                                  View Consultation
+                                  Join Session
                                 </button>
                               )} 
 
@@ -394,7 +395,7 @@ const DoctorNotificationsPage = () => {
                           {/* Status and Actions */}
                           <div className="flex items-center space-x-2 ml-4">
                             {!notification.read && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 New
                               </span>
                             )}
@@ -403,7 +404,7 @@ const DoctorNotificationsPage = () => {
                               {!notification.read && (
                                 <button
                                   onClick={() => markAsRead(notification.id)}
-                                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                  className="p-1 text-gray-400 hover:text-green-600 transition-colors"
                                   title="Mark as read"
                                 >
                                   <Check className="w-4 h-4" />

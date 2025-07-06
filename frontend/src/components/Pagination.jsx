@@ -74,7 +74,7 @@ const Pagination = ({
               disabled={loading || page === '...'}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 page === currentPage
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-green-600 text-white'
                   : page === '...'
                   ? 'text-gray-400 cursor-default'
                   : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'

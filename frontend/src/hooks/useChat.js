@@ -1,10 +1,10 @@
 // hooks/useChat.js
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNotificationSound } from "../utils/useNotificationSound";
 import axiosInstance from "../axiosconfig";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
+import { useNotifications } from "../utils/NotificationContext";
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -23,11 +23,11 @@ export const useChat = (userId, userType) => {
   const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
   const activeConsultationIdRef = useRef(null);
-  const currentSelectedUserid=useRef(null)
+  const currentSelectedUserid = useRef(null);
   const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
   // Enable notification sound
-  useNotificationSound();
-
+  const { sendNotification } = useNotifications();
+  
   // Update ref whenever activeConsultationId changes
   useEffect(() => {
     activeConsultationIdRef.current = activeConsultationId;
@@ -54,28 +54,26 @@ export const useChat = (userId, userType) => {
     }
   }, [userId, userType]);
 
-  const sendVideoCallResponse =   async (message) => {
-    
-    
-      if (
-        wsRef.current &&
-        wsRef.current.readyState === WebSocket.OPEN &&
-        activeConsultationIdRef.current
-      ) {
-        const messageData = {
-          type: "message",
-          message: message,
-          consultation_id: activeConsultationIdRef.current,
-          sender_id: userId,
-          sender_type: userType,
-          message_type: "text",
-          attachments: [],
-          created_at: new Date().toISOString(),
-        };
-        wsRef.current.send(JSON.stringify(messageData));
-      }
+  const sendVideoCallResponse = async (message) => {
+    if (
+      wsRef.current &&
+      wsRef.current.readyState === WebSocket.OPEN &&
+      activeConsultationIdRef.current
+    ) {
+      const messageData = {
+        type: "message",
+        message: message,
+        consultation_id: activeConsultationIdRef.current,
+        sender_id: userId,
+        sender_type: userType,
+        message_type: "text",
+        attachments: [],
+        created_at: new Date().toISOString(),
+      };
+      
+      wsRef.current.send(JSON.stringify(messageData));
     }
-  
+  };
 
   const handleVideoCallRequest = useCallback(async () => {
     const result = await Swal.fire({
@@ -88,26 +86,25 @@ export const useChat = (userId, userType) => {
     });
 
     if (!result.isConfirmed) {
-
       await sendVideoCallResponse("Doctor Rejected video Call");
       return;
     }
 
     await sendVideoCallResponse("Doctor accepted video Call");
-    toast.success("Connecting...");
-    setTimeout(() => {
-      navigate("/doctor_video_call",);
-    }, 5000);
-  }, [sendVideoCallResponse, navigate]);  
-
+    toast.success("You will recive a notification if user start the session",{position:'bottom-center'});
+    // setTimeout(() => {
+    //   navigate("/doctor_video_call");
+    // }, 5000);
+  }, [sendVideoCallResponse, navigate]);
 
   const handleVideoCallRequestforUser = useCallback(async () => {
-   
-    toast.success("Connecting...",{position:'bottom-center'});
+    toast.success("Connecting...", { position: "bottom-center" });
     setTimeout(async () => {
-      await navigate('/user_booking',{state:{doctorId:currentSelectedUserid.current}})
+      await navigate("/user_booking", {
+        state: { doctorId: currentSelectedUserid.current },
+      });
     }, 5000);
-  }, [ navigate]);
+  }, [navigate]);
   // Helper function to upload files
   const uploadFiles = useCallback(
     async (files, consultationId) => {
@@ -190,16 +187,15 @@ export const useChat = (userId, userType) => {
       try {
         const data = JSON.parse(event.data);
         console.log("[RECEIVED MESSAGE]", data);
-        
 
         if (
           data.message == "Doctor accepted video Call" &&
           userType == "user"
         ) {
-          
-          toast.info("doctor approved Connecting...",{position:'bottom-center'});
+          toast.info("doctor approved Connecting...", {
+            position: "bottom-center",
+          });
           handleVideoCallRequestforUser();
-          
         }
         if (
           data.message == "Doctor Rejected video Call" &&
@@ -245,7 +241,7 @@ export const useChat = (userId, userType) => {
           }
         }
 
-        // Handle regular messages 
+        // Handle regular messages
         if (data.type === "message") {
           const currentConsultationId = activeConsultationIdRef.current;
 
@@ -311,6 +307,11 @@ export const useChat = (userId, userType) => {
 
   const handleSendMessage = useCallback(
     async (attachedFiles = []) => {
+      if ( !newMessage=='requested for a video call' ){
+      sendNotification(activeChat, "You have message", "message",0);
+
+      }
+
       if (
         (!newMessage.trim() && attachedFiles.length === 0) ||
         !wsRef.current ||
@@ -354,8 +355,9 @@ export const useChat = (userId, userType) => {
           attachments: uploadedFiles,
           created_at: new Date().toISOString(),
         };
-
+        
         wsRef.current.send(JSON.stringify(messageData));
+
         setNewMessage("");
       } catch (error) {
         toast.error("Failed to send message. Please try again.");
@@ -452,7 +454,7 @@ export const useChat = (userId, userType) => {
         // SET CONSULTATION ID
         setActiveConsultationId(consultationId);
         setActiveChat(selectedUserId);
-        currentSelectedUserid.current=selectedUserId
+        currentSelectedUserid.current = selectedUserId;
 
         const user = users.find((u) =>
           userType === "doctor"

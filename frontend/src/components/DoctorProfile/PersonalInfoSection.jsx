@@ -20,7 +20,7 @@ const PersonalInfoSection = ({
         </h2>
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
           <Edit3 className="w-4 h-4" />
           <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
@@ -38,7 +38,7 @@ const PersonalInfoSection = ({
               name="name"
               value={formData.user.name}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           ) : (
             <div className="flex items-center space-x-2 text-gray-900">
@@ -58,7 +58,7 @@ const PersonalInfoSection = ({
               name="mobile_number"
               value={formData.user.mobile_number}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           ) : (
             <div className="flex items-center space-x-2 text-gray-900">
@@ -77,7 +77,7 @@ const PersonalInfoSection = ({
               name="gender"
               value={formData.gender}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="male">Male</option>
               <option value="female">Female</option>
@@ -100,7 +100,7 @@ const PersonalInfoSection = ({
               name="date_of_birth"
               value={formData.date_of_birth}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           ) : (
             <div className="flex items-center space-x-2 text-gray-900">
@@ -125,7 +125,7 @@ const PersonalInfoSection = ({
             Role
           </label>
           <div className="flex items-center space-x-2 text-gray-900">
-            <span className="capitalize bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+            <span className="capitalize bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
               {formData.user.role}
             </span>
           </div>

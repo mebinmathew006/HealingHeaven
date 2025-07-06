@@ -148,9 +148,9 @@ const handleRejoinConsultation = async (consultation) => {
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
     return sortOrder === "desc" ? (
-      <ArrowDown className="h-4 w-4 text-blue-600" />
+      <ArrowDown className="h-4 w-4 text-green-600" />
     ) : (
-      <ArrowUp className="h-4 w-4 text-blue-600" />
+      <ArrowUp className="h-4 w-4 text-green-600" />
     );
   };
 
@@ -203,7 +203,7 @@ const handleRejoinConsultation = async (consultation) => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading consultations...</p>
         </div>
       </div>
@@ -217,7 +217,7 @@ const handleRejoinConsultation = async (consultation) => {
           <p className="text-red-600 text-lg">{error}</p>
           <button
             onClick={() => fetchConsultations(currentPage, sortBy, sortOrder)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
             Retry
           </button>
@@ -275,7 +275,7 @@ const handleRejoinConsultation = async (consultation) => {
                         onClick={() => handleSortChange(option.value)}
                         className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
                           sortBy === option.value
-                            ? "bg-blue-50 text-blue-700"
+                            ? "bg-green-50 text-green-700"
                             : "text-gray-700"
                         }`}
                       >
@@ -295,7 +295,7 @@ const handleRejoinConsultation = async (consultation) => {
                     onClick={() => handleSortChange(option.value)}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       sortBy === option.value
-                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                        ? "bg-green-100 text-green-700 border border-green-200"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     }`}
                   >
@@ -418,14 +418,14 @@ const handleRejoinConsultation = async (consultation) => {
                               </p>
                             </div>
                           ) : (
-                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <h4 className="text-sm font-medium text-blue-900 mb-1 flex items-center">
+                                  <h4 className="text-sm font-medium text-green-900 mb-1 flex items-center">
                                     <FileText className="h-4 w-4 mr-1" />
                                     Analysis Required
                                   </h4>
-                                  <p className="text-sm text-blue-700">
+                                  <p className="text-sm text-green-700">
                                     Add your analysis for this consultation
                                   </p>
                                 </div>
@@ -436,7 +436,7 @@ const handleRejoinConsultation = async (consultation) => {
                                       consultation.duration || 0
                                     )
                                   }
-                                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
                                 >
                                   <Plus className="h-4 w-4" />
                                   <span>Add Analysis</span>
