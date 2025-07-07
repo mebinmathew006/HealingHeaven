@@ -104,6 +104,9 @@ export default function LoginPage() {
       // setting the user details in redux store
       const userDetails = response.data.user;
       const userEmail = response.data.user.email;
+      if (response.data.user.review=='test_review'){
+        console.log(response.data.user.review)
+      }
       console.log(response.data.user)
        if (!userDetails.is_active) {
         toast.info('Your are blocked',{position:'bottom-center'})

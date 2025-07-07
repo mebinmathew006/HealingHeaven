@@ -165,6 +165,7 @@ async def login(    login_schema: users.LoginSchema, session: AsyncSession = Dep
                 'role': user_details.role,
                 'is_verified': user_details.is_verified,#uses this field to know whther the user is verified or not
                 'is_active': user_details.is_active,#uses this field to know whther the user is verified or not
+                'review': 'test_review',#uses this field to know whther the user is verified or not
             }}        )
         # Set refresh token in secure HTTP-only cookie
         response.set_cookie(
