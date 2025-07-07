@@ -13,27 +13,78 @@ import axiosInstance from "../axiosconfig";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import Pagination from "./Pagination";
 
 const WalletPage = () => {
   const [loading, setLoading] = useState(false);
+  const [responseData, setResponseData] = useState({});
   const [walletData, setWalletData] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const keyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
   const userId = useSelector((state) => state.userDetails.id);
   const scrollRef = useRef(null);
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalCount = responseData?.count || 10;
+  const limit = 3;
+  const hasNext = !!responseData?.next;
+  const hasPrevious = !!responseData?.previous;
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(null);
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchWallet(page);
+  };
 
-  const fetchWallet = async () => {
-    try {
-      const response = await axiosInstance.get(
-        `/payments/get_wallet_details_with_transactions/${userId}`
-      );
-      setWalletData(response.data.balance);
-      setTransactions(response.data.wallet_transactions);
-    } catch (error) {
-      console.log(error);
+  const handleNextPage = () => {
+    if (hasNext) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchWallet(nextPage);
     }
   };
+
+  const handlePreviousPage = () => {
+    if (hasPrevious) {
+      const prevPage = currentPage - 1;
+      setCurrentPage(prevPage);
+      fetchWallet(prevPage);
+    }
+  };
+
+  const fetchWallet = async (page = 1) => {
+    try {
+      setLoadingMore(page !== 1);
+      setLoading(page === 1);
+
+      const response = await axiosInstance.get(
+        `/payments/get_wallet_details_with_transactions/${userId}?page=${page}&limit=${limit}`
+      );
+      console.log(response.data)
+      setResponseData(response.data)
+      setWalletData(response.data.results[0].balance);
+      setTransactions(response.data.results[0].wallet_transactions)
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch wallet transactions");
+      console.error("Error fetching transactions:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+  // const fetchWallet = async () => {
+  //   try {
+  //     const response = await axiosInstance.get(
+  //       `/payments/get_wallet_details_with_transactions/${userId}`
+  //     );
+  //     setWalletData(response.data.balance);
+  //     setTransactions(response.data.wallet_transactions);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
 
   const HandleWithdraw = async () => {
     try {
@@ -51,8 +102,10 @@ const WalletPage = () => {
         `/payments/fetch_money_from_wallet`,
         { user_id: userId, psychologist_id: 1, psychologist_fee: walletData }
       );
-      toast.success('Money Withdrawn successfully',{position:'bottom-center'})
-      fetchWallet()
+      toast.success("Money Withdrawn successfully", {
+        position: "bottom-center",
+      });
+      fetchWallet();
     } catch (error) {
       console.log(error);
     }
@@ -368,6 +421,19 @@ const WalletPage = () => {
                 </div>
               )}
             </div>
+             {totalCount > limit && (
+              <Pagination
+                currentPage={currentPage}
+                totalCount={totalCount}
+                limit={limit}
+                hasNext={hasNext}
+                hasPrevious={hasPrevious}
+                loading={loadingMore}
+                onPageChange={handlePageChange}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+              />
+            )}
           </div>
 
           {/* Summary Stats */}
@@ -425,6 +491,7 @@ const WalletPage = () => {
                 </div>
               </div>
             </div>
+          
           </div>
         </div>
       </div>

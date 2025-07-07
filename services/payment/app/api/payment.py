@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status,Form, File,UploadFile,BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import run_in_threadpool
 from typing import List
 from sqlalchemy import select,update
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.payment import RazorpayOrder,WalletWithTransactionsOut,WalletBalanceOut,UserConsultationMoney
+from schemas.payment import RazorpayOrder,WalletWithTransactionsOut,WalletBalanceOut,UserConsultationMoney,WalletWithTransactionsPagination
 from fastapi.responses import JSONResponse
 from fastapi.logger import logger
 from datetime import date 
@@ -75,20 +75,60 @@ async def fetch_money_from_wallet(
         )
 
 
-@router.get('/get_wallet_details_with_transactions/{user_id}', response_model=WalletWithTransactionsOut)
-async def get_wallet_details_with_transactions(user_id : int ,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+@router.get('/get_wallet_details_with_transactions/{user_id}', response_model=WalletWithTransactionsPagination)
+async def get_wallet_details_with_transactions(
+    user_id: int,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
     try:
-        data = await crud.get_wallet_details_with_transactions_by_id(session,user_id)
-        return data
-    except HTTPException as http_exc:
-        logger.error('dddfdddd',http_exc)
-        raise http_exc
-    
-    except Exception as e:
-        logger.error('dddfdddd',e)
+        # First get the wallet to get its ID
+        wallet = await crud.get_wallet_balance_by_id(session, user_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
         
-        raise HTTPException(status_code=500, detail="Internal server error while fetching wallet.")  
-    
+        # Count transactions for this wallet
+        
+        total = await crud.count_wallet_transactions(session, wallet.id)
+        offset = (page - 1) * limit
+        
+        # Get paginated transactions for this wallet
+        transactions = await crud.get_wallet_transactions_paginated(
+            session, wallet.id, skip=offset, limit=limit
+        )
+        
+        # Build response
+        wallet_with_transactions = WalletWithTransactionsOut(
+            id=wallet.id,
+            user_id=wallet.user_id,
+            balance=wallet.balance,
+            wallet_transactions=transactions
+        )
+        
+        # Build pagination URLs (convert None to empty string for validation)
+        
+        base_url = f"/get_wallet_details_with_transactions/{user_id}"
+        next_url = f"{base_url}?page={page + 1}&limit={limit}" if offset + limit < total else ""
+        prev_url = f"{base_url}?page={page - 1}&limit={limit}" if page > 1 else ""
+        response= {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": [wallet_with_transactions]  
+        }
+        
+        return response
+    except HTTPException as http_exc:
+        logger.error(f'HTTP Exception in wallet details: {str(http_exc)}')
+        raise http_exc
+    except Exception as e:
+        logger.error(f'Unexpected error fetching wallet details: {str(e)}')
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error while fetching wallet details"
+        )
     
 @router.get("/get_wallet_balance/{user_id}", response_model=WalletBalanceOut)
 async def get_wallet_balance(user_id: int, session: AsyncSession = Depends(get_session)):

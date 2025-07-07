@@ -43,7 +43,7 @@ const DoctorViewConsultation = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  // Mock doctor ID - replace with your actual Redux selector
+  
   const doctorId = useSelector((state) => state.userDetails.id);
 
   // Pagination state derived from API response

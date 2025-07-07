@@ -1,5 +1,5 @@
 from sqlalchemy.future import select
-from sqlalchemy import update
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.payment import *
 from sqlalchemy.orm import joinedload,selectinload
@@ -7,13 +7,36 @@ from sqlalchemy.exc import SQLAlchemyError
 from models.payment import Wallet,WalletTransaction
 from fastapi import HTTPException, status
 
-async def get_wallet_details_with_transactions_by_id(session: AsyncSession, user_id: int):
+async def get_wallet_details_with_transactions_by_id(session: AsyncSession, user_id: int,skip, limit):
     result = await session.execute(
     select(Wallet)
     .options(selectinload(Wallet.wallet_transactions))  # non-joined eager load
-    .where(Wallet.user_id == user_id)
+    .where(Wallet.user_id == user_id).offset(skip).limit(limit)
     )
     return result.scalar_one_or_none()
+
+async def get_wallet_transactions_paginated(
+    session: AsyncSession, 
+    wallet_id: int,
+    skip: int = 0,
+    limit: int = 100
+):
+    result = await session.execute(
+        select(WalletTransaction)
+        .where(WalletTransaction.wallet_id == wallet_id)
+        .offset(skip)
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def count_wallet_transactions(session: AsyncSession, wallet_id: int):
+    result = await session.execute(
+        select(func.count(WalletTransaction.id))
+        .join(WalletTransaction.wallet)
+        .where(Wallet.id == wallet_id)
+    )
+    return result.scalar()
 
 async def money_to_wallet(session: AsyncSession, user_id: int, amount: float):
     # Fetch the wallet for the user

@@ -22,7 +22,6 @@ class WalletTransactionOut(BaseModel):
     model_config = {
         "from_attributes": True
     }
-
 class WalletWithTransactionsOut(BaseModel):
     id: int
     user_id: int
@@ -32,6 +31,14 @@ class WalletWithTransactionsOut(BaseModel):
     model_config = {
         "from_attributes": True
     }
+    
+class WalletWithTransactionsPagination(BaseModel):
+    count: int
+    next: str
+    previous: str
+    results: List[WalletWithTransactionsOut] = []
+
+   
     
 class WalletBalanceOut(BaseModel):
     balance: int

@@ -37,7 +37,7 @@ export default function ForgotPassword() {
       setIsSubmitting(false);
       navigate('/verify_otp_password',{state:email})  
    } catch (error) {
-    toast.error('Something Happend !  Try Again',{position:'bottom-center'})
+    toast.error('Unable to Continue !  Try Again',{position:'bottom-center'})
       setIsSubmitting(false);
    }
      
