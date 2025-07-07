@@ -682,7 +682,7 @@ async def admin_dashboard_details_route(year:int,current_user_id: str = Depends(
 
 
 @router.get('/get_feedbacks/{psychologist_id}', response_model=list[CreateFeedbackSchema])
-async def get_feedbacks_route(psychologist_id: int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def get_feedbacks_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
     try:
         feedbacks = await get_feedbacks_crud(session, psychologist_id)
         

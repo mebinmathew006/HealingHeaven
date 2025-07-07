@@ -5,11 +5,14 @@ import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { addFeedback } from "../../services/consultationService";
+import UserSidebar from "../../components/UserSidebar";
 
 export default function UserFeedbackPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const consultation_id = location?.state?.consultation_id;
+    const [activeSection] = useState("user_consultations");
+  
   const user_id = useSelector((state) => state.userDetails.id);
   const [formData, setFormData] = useState({
     rating: 0,
@@ -76,11 +79,11 @@ export default function UserFeedbackPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
-              className="w-8 h-8 text-green-600"
+              className="w-8 h-8 text-green-900"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -104,22 +107,16 @@ export default function UserFeedbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen flex bg-gradient-to-br from-green-50 via-white to-green-50 ">
+       <div>
+        <UserSidebar activeSection={activeSection} />
+      </div>
+      <div className="w-screen m-10">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            We Value Your Feedback
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Help us improve by sharing your thoughts, reporting issues, or
-            suggesting new features. Your input drives our continuous
-            improvement.
-          </p>
-        </div>
+       
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
+          <div className="bg-gradient-to-r from-green-700 to-green-900 p-6">
             <h2 className="text-2xl font-semibold text-white">
               Share Your Experience
             </h2>
@@ -166,7 +163,7 @@ export default function UserFeedbackPage() {
                 value={formData.message}
                 onChange={handleInputChange}
                 rows={6}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors resize-none ${
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors resize-none ${
                   errors.message ? "border-red-500" : "border-gray-300"
                 }`}
                 placeholder="Please provide detailed information about your feedback..."
@@ -184,7 +181,7 @@ export default function UserFeedbackPage() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-green-700 to-green-900 text-white px-8 py-3 rounded-lg font-medium hover:from-green-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
               >
                 <Send className="w-5 h-5" />
                 <span>Submit Feedback</span>

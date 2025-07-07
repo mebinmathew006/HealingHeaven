@@ -24,7 +24,7 @@ import { consultationDetailsUser } from "../../services/consultationService";
 const UserViewConsultation = () => {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [consultationData, setConsultationData] = useState([]);
-  const [activeSection, setActiveSection] = useState("user_consultations");
+  const [activeSection] = useState("user_consultations");
   const [loading, setLoading] = useState(true);
   
   // Pagination state

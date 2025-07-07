@@ -92,9 +92,9 @@ export const useChat = (userId, userType) => {
 
     await sendVideoCallResponse("Doctor accepted video Call");
     toast.success("You will recive a notification if user start the session",{position:'bottom-center'});
-    // setTimeout(() => {
-    //   navigate("/doctor_video_call");
-    // }, 5000);
+    setTimeout(() => {
+      navigate("/doctor_view_notifications");
+    }, 2000);
   }, [sendVideoCallResponse, navigate]);
 
   const handleVideoCallRequestforUser = useCallback(async () => {

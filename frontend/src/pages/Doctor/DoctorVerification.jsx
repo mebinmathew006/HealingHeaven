@@ -359,7 +359,7 @@ export default function DoctorVerification({ fetchDoctor, data }) {
         // Update existing doctor data
         response = await axiosInstance.put(
           `users/doctor_verification_update/${userId}`,
-          formData,
+          formPayload,
           {
             headers: {
               "Content-Type": "multipart/form-data",

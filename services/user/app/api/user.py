@@ -442,6 +442,7 @@ async def doctor_verification_update(
         id_url = None
         edu_url = None
         exp_url = None
+        print(user_id,date_of_birth,experience,gender,fees,qualification,specialization,about_me,id, educationalCertificate,experienceCertificate,'ikkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk')
         
         # Upload files to Cloudinary only if they are provided
         try:
@@ -459,7 +460,6 @@ async def doctor_verification_update(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Cloudinary upload failed: {str(e)}"
             )
-        print(user_id,date_of_birth,experience,gender,fees,qualification,specialization,about_me,id_url, edu_url,exp_url,'ikkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk')
         
         try:
             await crud.doctor_profile_update(

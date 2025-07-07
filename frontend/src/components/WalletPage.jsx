@@ -12,7 +12,6 @@ import { useSelector } from "react-redux";
 import axiosInstance from "../axiosconfig";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import UserSidebar from "./UserSidebar";
 import Swal from "sweetalert2";
 
 const WalletPage = () => {
@@ -219,7 +218,7 @@ const WalletPage = () => {
         </button>
         <div className="">
           {/* Balance Card */}
-          <div className="bg-gradient-to-r from-green-600 to-green-900 rounded-2xl shadow-xl p-8 mb-8 text-white">
+          <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-2xl shadow-xl p-8 mb-8 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
