@@ -57,6 +57,8 @@ const PsychologistCard = ({ id,name, specialty,availability, imageSrc ,rating}) 
 export default function PsychologistsDirectory() {
   const userDetails = useSelector((state) => state.userDetails);
   const [psychologists, setpsychologists] = useState([]);
+  const navigate = useNavigate()
+
   useEffect(() => {
     getpsychos();
   }, []);
@@ -80,7 +82,9 @@ export default function PsychologistsDirectory() {
         </h1>
 
         {!userDetails.name ? (
-          <button className="bg-green-800 text-white px-4 py-2 rounded-md text-sm font-medium">
+          <button 
+          onClick={()=>navigate('/signup')}
+          className="bg-green-800 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer">
             Register as a Psychologist
           </button>
         ) : (
@@ -95,7 +99,7 @@ export default function PsychologistsDirectory() {
         better mental health.
       </p>
 
-     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
   {psychologists && psychologists.length > 0 ? (
     psychologists.map((psych) => (
       <PsychologistCard
