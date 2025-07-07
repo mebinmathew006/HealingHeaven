@@ -238,37 +238,56 @@ async def verify_password_otp(
 @router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
 async def view_psychologist(session: AsyncSession = Depends(get_session)):
     try:
+        # Get psychologist data
         data = await crud.get_all_psychologist_with_profile(session)
         if not data:
             raise HTTPException(status_code=404, detail="No psychologists found")
 
-        # Parallel rating fetch
-        ratings = await gather(
-            *(get_psycholgist_rating(p.user_id) for p in data)
-        )
+        # Parallel rating fetch with error handling
+        rating_tasks = [get_psycholgist_rating(p.user_id) for p in data]
+        ratings = await gather(*rating_tasks, return_exceptions=True)
+        
+        # Process ratings - handle exceptions and None values
+        processed_ratings = []
+        for rating in ratings:
+            if isinstance(rating, Exception):
+                logger.warning("Failed to fetch rating: %s", str(rating))
+                processed_ratings.append(0.0)
+            else:
+                processed_ratings.append(rating if rating is not None else 0.0)
 
-        enriched_ratings = [
-            users.PsychologistProfileOut(
-                id=p.id,
-                specialization=p.specialization,
-                profile_image=p.profile_image,
-                is_verified=p.is_verified,
-                is_available=p.is_available,
-                user=p.user,
-                rating=ratings[i] if ratings[i] is not None else 0.0
-            )
-            for i, p in enumerate(data)
-        ]
+        # Build response with proper null checks
+        enriched_ratings = []
+        for i, p in enumerate(data):
+            try:
+                profile_out = users.PsychologistProfileOut(
+                    id=p.id,
+                    specialization=p.specialization,
+                    profile_image=p.profile_image,
+                    is_verified=p.is_verified,
+                    is_available=p.is_available,
+                    user=p.user,
+                    rating=processed_ratings[i]
+                )
+                enriched_ratings.append(profile_out)
+            except Exception as e:
+                logger.error("Error creating profile out for psychologist %s: %s", p.id, str(e))
+                continue  # Skip problematic entries or handle differently
+
+        if not enriched_ratings:
+            raise HTTPException(status_code=404, detail="No valid psychologist profiles found")
 
         return enriched_ratings
 
     except HTTPException as http_exc:
-        logger.error("HTTP error while fetching psychologists: %s", http_exc)
+        logger.error("HTTP error while fetching psychologists: %s", str(http_exc))
         raise http_exc
-
     except Exception as e:
-        logger.error("Internal error while fetching psychologists: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error while fetching psychologists.")
+        logger.error("Internal error while fetching psychologists: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching psychologists."
+        )
 
 
 @router.patch('/update_availability/{user_id}/{isAvailable}')
