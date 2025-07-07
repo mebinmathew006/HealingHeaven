@@ -8,6 +8,7 @@ function UserWalletPage() {
   return (
 
          <div className="flex h-screen bg-gray-100 overflow-auto">
+          
         <UserSidebar activeSection={activeSection} />
       <WalletPage/>
     </div>

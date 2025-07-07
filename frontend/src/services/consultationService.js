@@ -48,3 +48,9 @@ export const updateStatusConsultation = async (status,consultations_id)=>{
         );
       return response
 }
+export const getCompliantConsultation = async (consultations_id)=>{
+   const response = await axiosInstance.get(
+          `/consultations/get_compliant_consultation/${consultations_id}`
+        );
+      return response.data
+}

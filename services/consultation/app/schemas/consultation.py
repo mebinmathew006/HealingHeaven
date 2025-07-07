@@ -166,7 +166,23 @@ class ConsultationResponseUser(BaseModel):
     status :Optional[str]
     duration :Optional[str]
     user: Optional[DoctorNameWithProfileImageConsultations]
-
+    video : Optional[str]
+    
+    model_config = {
+        "from_attributes": True
+    }
+    
+class ConsultationResponseUserCompliant(BaseModel):
+    
+    id :int
+    analysis:Optional[str]
+    created_at :Optional[datetime]
+    status :Optional[str]
+    duration :Optional[str]
+    video : Optional[str]
+    user: Optional[UserNameWithProfileImage]
+    doctor: Optional[DoctorNameWithProfileImageConsultations]
+    
     model_config = {
         "from_attributes": True
     }
@@ -177,7 +193,7 @@ class CompliantSchema(BaseModel):
     subject: str
     description: str
     status: Optional[str]
-    video: Optional[str]
+    
     
     model_config = {
         "from_attributes": True
@@ -187,7 +203,6 @@ class CompliantSchemaa(BaseModel):
     type: str
     subject: str
     description: str
-   
     
     model_config = {
         "from_attributes": True
@@ -213,6 +228,8 @@ class CompliantPaginatedResponse(BaseModel):
     
 class UpdateComplaintSchema(BaseModel):
     editingStatus:str
+    
+ 
     
 class TokenRequest(BaseModel):
     room_id: str

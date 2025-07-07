@@ -15,6 +15,7 @@ class Consultation(Base):
     updated_at = Column(TIMESTAMP(timezone=True), onupdate=func.now())
     status = Column(String(20))
     duration= Column(String)
+    video = Column(Text, nullable=True)
     
     payments = relationship("Payments", back_populates="consultation", uselist=False)
     feedback = relationship('Feedback',back_populates='consultation',uselist=False)
@@ -112,5 +113,4 @@ class Complaint(Base):  # corrected spelling if it's meant to be "complaint"
     description = Column(Text)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20))
-    video = Column(Text, nullable=True)
     consultation = relationship("Consultation", back_populates="complaints")

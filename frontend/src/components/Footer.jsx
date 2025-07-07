@@ -2,7 +2,7 @@ import React from 'react'
 import { ChevronDown, Menu, X, Facebook, Twitter, Instagram } from 'lucide-react';
 function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200">
+    <footer className="shadow-2xl bg-gradient-to-br  from-blue-50  to-green-50 border-t border-gray-200">
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row justify-between">
           <div className="mb-6 md:mb-0">

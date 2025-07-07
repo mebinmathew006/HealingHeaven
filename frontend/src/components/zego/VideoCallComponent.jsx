@@ -21,53 +21,7 @@ export const VideoCallComponent = ({
   const recordedChunksRef = useRef([]);
   const [isRecording, setIsRecording] = useState(false);
 
-  // Function to capture streams from video elements
-  // const captureStreams = () => {
-  //   const container = containerRef.current;
-  //   if (!container) return null;
-
-  //   // Find all video elements in the container
-  //   const videoElements = container.querySelectorAll("video");
-  //   if (videoElements.length === 0) return null;
-
-  //   // Create a canvas to combine streams
-  //   const canvas = document.createElement("canvas");
-  //   const ctx = canvas.getContext("2d");
-
-  //   // Set canvas dimensions (adjust as needed)
-  //   canvas.width = 1280;
-  //   canvas.height = 720;
-
-  //   // Create a stream from the canvas
-  //   const stream = canvas.captureStream(25); // 25 FPS
-
-  //   // Function to draw videos to canvas
-  //   const drawVideos = () => {
-  //     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  //     // Layout videos (simple grid layout)
-  //     const perRow = Math.ceil(Math.sqrt(videoElements.length));
-  //     const width = canvas.width / perRow;
-  //     const height = canvas.height / perRow;
-
-  //     videoElements.forEach((video, i) => {
-  //       const row = Math.floor(i / perRow);
-  //       const col = i % perRow;
-  //       try {
-  //         ctx.drawImage(video, col * width, row * height, width, height);
-  //       } catch (e) {
-  //         console.warn("Error drawing video:", e);
-  //       }
-  //     });
-
-  //     if (isRecording) {
-  //       requestAnimationFrame(drawVideos);
-  //     }
-  //   };
-
-  //   drawVideos();
-  //   return stream;
-  // };
+ 
 
   const startRecording = async () => {
   try {
@@ -179,10 +133,7 @@ export const VideoCallComponent = ({
       videoBitsPerSecond: 2500000
     });
 
-    // 6. MediaRecorder with proper audio codec
-    // const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-    //   ? 'video/webm;codecs=vp9,opus'
-    //   : 'video/webm';
+  
 
     mediaRecorderRef.current = new MediaRecorder(combinedStream, {
       mimeType,

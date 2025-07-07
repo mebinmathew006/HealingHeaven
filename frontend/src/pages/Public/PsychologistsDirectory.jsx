@@ -7,12 +7,12 @@ const PsychologistCard = ({ id,name, specialty,availability, imageSrc ,rating}) 
   const userId = useSelector((state)=>state.userDetails.id)
   const navigate = useNavigate()
   return (
-    <div className="bg-white rounded-lg shadow-2xl p-4 flex flex-col items-center">
+    <div className=" rounded-lg shadow-2xl p-4 flex flex-col items-center">
         <div className="mb-3">
 
       {availability ? (
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200">
+          <div className="flex items-center space-x-1 bg-blue-50 text-green-700 px-3 py-1 rounded-full border border-green-200">
             <CheckCircle className="w-4 h-4" />
             <span className="text-sm font-medium">Available Now</span>
           </div>
@@ -39,14 +39,14 @@ const PsychologistCard = ({ id,name, specialty,availability, imageSrc ,rating}) 
       <div className="w-full h-fit mb-4 overflow-hidden">
         <img
           src={imageSrc || '/powerpoint-template-icons-b.jpg'  }
-          className = "h-fit w-full rounded-4xl"
+          className = "h-50 w-100 rounded-4xl"
           alt={<SquareUser/>}
         />
       </div>
       <div className="text-center">
         <h3 className="font-semibold text-gray-800">{name}</h3>
         <p className="text-sm text-gray-600 mb-3">{specialty}</p>
-        <button className="bg-blue-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>userId ? navigate('/user_view_psychologist_details',{ state: { id,rating } }) : navigate('/public_view_psychologist_details',{ state: { id,rating } })}>
+        <button className="bg-green-800 text-white px-6 py-1 rounded-full text-sm"  onClick={()=>userId ? navigate('/user_view_psychologist_details',{ state: { id,rating } }) : navigate('/public_view_psychologist_details',{ state: { id,rating } })}>
           More
         </button>
       </div>
@@ -66,7 +66,6 @@ export default function PsychologistsDirectory() {
       const response = await axiosInstance.get("users/view_psychologist");
       
       setpsychologists(response.data);
-      console.log(response.data,'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk');
 
     } catch (error) {
       console.log(error);
@@ -74,14 +73,14 @@ export default function PsychologistsDirectory() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 ">
+    <div className="h-screen mx-auto p-6 bg-gradient-to-br from-blue-50  to-green-50">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
           Explore Our Licensed Psychologists
         </h1>
 
         {!userDetails.name ? (
-          <button className="bg-blue-800 text-white px-4 py-2 rounded-md text-sm font-medium">
+          <button className="bg-green-800 text-white px-4 py-2 rounded-md text-sm font-medium">
             Register as a Psychologist
           </button>
         ) : (

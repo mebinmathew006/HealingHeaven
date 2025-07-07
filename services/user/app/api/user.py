@@ -487,6 +487,18 @@ async def admin_view_users(current_user_id: str = Depends(get_current_user),sess
             detail="Failed to retrieve users"
         )
         
+@router.get("/doctor_profile_images")
+async def doctor_profile_images(session: AsyncSession = Depends(get_session)):
+    try:
+        # get first 9 doctors images
+        result = await crud.doctor_profile_images_crud(session)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve users"
+        )
+        
 @router.get("/admin_view_psychologist")
 async def admin_view_psychologist(current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
     try:

@@ -39,7 +39,7 @@ const AboutUsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50  to-green-50">
       {/* Header Section */}
       <div className="max-w-4xl mx-auto px-6 py-16">
         <div className="text-center mb-16">
@@ -124,7 +124,7 @@ const AboutUsPage = () => {
           </section>
 
           {/* Call to Action */}
-          <section className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white mt-16">
+          <section className="bg-gradient-to-r from-green-900 to-green-700 rounded-2xl p-12 text-center text-white mt-16">
             <h2 className="text-3xl font-bold mb-4">
               Ready to Begin Your Journey?
             </h2>

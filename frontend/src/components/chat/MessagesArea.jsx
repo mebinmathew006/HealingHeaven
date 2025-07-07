@@ -62,7 +62,7 @@ const MessagesArea = ({
 
   if (isLoadingMessages) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-br from-blue-50 to-green-50">
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
           <span className="ml-2 text-gray-500">Loading messages...</span>
@@ -72,7 +72,7 @@ const MessagesArea = ({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-br  from-blue-50  to-green-50">
       {/* Show message count for debugging */}
       {process.env.NODE_ENV === 'development' && (
         <div className="text-xs text-gray-400 text-center">
@@ -82,7 +82,7 @@ const MessagesArea = ({
 
       {/* No messages state */}
       {messages.length === 0 && !isLoadingMessages && (
-        <div className="flex justify-center items-center h-32">
+        <div className=" flex justify-center items-center h-32">
           <div className="text-center text-gray-500">
             <p>No messages yet</p>
             <p className="text-sm">Start the conversation!</p>
@@ -107,7 +107,7 @@ const MessagesArea = ({
               alt="Avatar"
               className="w-8 h-8 rounded-full"
             />
-            <div className="bg-white px-4 py-2 rounded-2xl rounded-bl-sm shadow-sm border border-gray-200">
+            <div className="bg-gradient-to-br  from-blue-50  to-green-50 px-4 py-2 rounded-2xl rounded-bl-sm shadow-sm border border-gray-200">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                 <div

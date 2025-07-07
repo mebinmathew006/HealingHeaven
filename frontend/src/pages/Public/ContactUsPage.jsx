@@ -31,7 +31,7 @@ const ContactUsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50  to-green-50">
       <div className="max-w-6xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="text-center mb-16">
@@ -108,12 +108,12 @@ const ContactUsPage = () => {
                 ></textarea>
               </div>
 
-              <button
+              {/* <button
                 onClick={handleSubmit}
                 className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 px-6 rounded-lg font-medium transition-colors duration-200"
               >
                 Submit
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -147,7 +147,7 @@ const ContactUsPage = () => {
                   <Mail className="w-6 h-6 text-blue-600 mt-1 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-gray-900">Email</p>
-                    <p className="text-gray-600">info@healinghaven.in</p>
+                    <p className="text-gray-600">info@healinghaven.live</p>
                   </div>
                 </div>
               </div>

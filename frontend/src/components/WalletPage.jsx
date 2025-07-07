@@ -208,7 +208,7 @@ const WalletPage = () => {
     <div>
       {/* Main Content */}
       <div
-        className="flex-1 bg-gradient-to-br from-green-50 to-indigo-100 p-6 overflow-auto"
+        className="flex-1 bg-gradient-to-br from-green-50 to-indigo-100 p-6 overflow-auto "
         ref={scrollRef}
       >
         <button

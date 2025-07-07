@@ -10,6 +10,8 @@ import {
   ArrowDown,
   Plus,
   Video,
+  Play,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -22,7 +24,8 @@ import { toast } from "react-toastify";
 
 const DoctorViewConsultation = () => {
   const navigate = useNavigate();
-
+  const baseUrl = import.meta.env.VITE_BASE_URL;
+  
   // State management
   const [consultationData, setConsultationData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +33,10 @@ const DoctorViewConsultation = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection] = useState("doctor_view_consultations");
   const [error, setError] = useState(null);
+
+  // Video modal state
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState(null);
 
   // Sorting state
   const [sortBy, setSortBy] = useState("created_at");
@@ -49,16 +56,30 @@ const DoctorViewConsultation = () => {
   const sortOptions = [
     { value: "created_at", label: "Date Created", apiField: "created_at" },
     { value: "status", label: "Status", apiField: "status" },
-
-    // { value: 'id', label: 'Consultation ID', apiField: 'id' }
   ];
-const handleRejoinConsultation = async (consultation) => {
-    try {
-      // Navigate to videocall page with required state
 
+  // Video modal handlers
+  const handleViewVideo = (consultation) => {
+    if (consultation.video) {
+      setCurrentVideo({
+        url: `${baseUrl}/consultations${consultation.video}`,
+        title: `Consultation #${consultation.id}`,
+        date: consultation.created_at,
+        patient: consultation.user?.name || "Unknown Patient"
+      });
+      setShowVideoModal(true);
+    }
+  };
+
+  const closeVideoModal = () => {
+    setShowVideoModal(false);
+    setCurrentVideo(null);
+  };
+
+  const handleRejoinConsultation = async (consultation) => {
+    try {
       navigate("/videocall_doctor", {
         state: {
-          
           consultationId: consultation.id,
         },
       });
@@ -67,6 +88,7 @@ const handleRejoinConsultation = async (consultation) => {
       toast.error("Sorry unable to start !!");
     }
   };
+
   // API call function with sorting
   const fetchConsultations = async (
     page = 1,
@@ -77,12 +99,10 @@ const handleRejoinConsultation = async (consultation) => {
       setLoadingMore(page !== 1);
       setLoading(page === 1);
 
-      // Get the API field name for sorting
       const sortOption = sortOptions.find((option) => option.value === sort);
       const orderingParam =
         order === "desc" ? `-${sortOption.apiField}` : sortOption.apiField;
 
-      // Replace this with your actual API endpoint
       const response = await axiosInstance.get(
         `/consultations/doctor_get_consulations/${doctorId}?page=${page}&limit=${limit}&ordering=${orderingParam}`
       );
@@ -123,14 +143,13 @@ const handleRejoinConsultation = async (consultation) => {
   const handleSortChange = (newSortBy) => {
     let newSortOrder = "desc";
 
-    // If clicking the same sort field, toggle the order
     if (newSortBy === sortBy) {
       newSortOrder = sortOrder === "desc" ? "asc" : "desc";
     }
 
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
-    setCurrentPage(1); // Reset to first page when sorting changes
+    setCurrentPage(1);
     setShowSortDropdown(false);
     fetchConsultations(1, newSortBy, newSortOrder);
   };
@@ -198,6 +217,25 @@ const handleRejoinConsultation = async (consultation) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showSortDropdown]);
+
+  // Close modal on escape key
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeVideoModal();
+      }
+    };
+
+    if (showVideoModal) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [showVideoModal]);
 
   if (loading) {
     return (
@@ -382,29 +420,44 @@ const handleRejoinConsultation = async (consultation) => {
                           <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                             <div className="flex items-center">
                               <User className="h-4 w-4 mr-1" />
-                              {consultation.user?.name || "Unknown Doctor"}
+                              {consultation.user?.name || "Unknown Patient"}
                             </div>
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-1" />
                               {formatDate(consultation.created_at)}
                             </div>
-                             {/* Rejoin button for pending consultations */}
-                          {consultation.status === "Pending" && (
-                            <button
-                              onClick={() =>
-                                handleRejoinConsultation(consultation)
-                              }
-                              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
-                            >
-                              <Video className="w-4 h-4" />
-                              <span className="text-sm font-medium">
-                                Rejoin
-                              </span>
-                            </button>
-                          )}
                           </div>
 
-                         
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-3 mb-4">
+                            {/* Rejoin button for pending consultations */}
+                            {consultation.status === "Pending" && (
+                              <button
+                                onClick={() =>
+                                  handleRejoinConsultation(consultation)
+                                }
+                                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+                              >
+                                <Video className="w-4 h-4" />
+                                <span className="text-sm font-medium">
+                                  Rejoin
+                                </span>
+                              </button>
+                            )}
+
+                            {/* View Recording button */}
+                            {consultation.video && (
+                              <button
+                                onClick={() => handleViewVideo(consultation)}
+                                className="flex items-center space-x-2 px-4 py-2 bg-green-800 text-white hover:bg-green-900 rounded-lg transition-colors"
+                              >
+                                <Play className="w-4 h-4" />
+                                <span className="text-sm font-medium">
+                                  View Recording
+                                </span>
+                              </button>
+                            )}
+                          </div>
 
                           {/* Analysis Section */}
                           {consultation.analysis ? (
@@ -469,6 +522,45 @@ const handleRejoinConsultation = async (consultation) => {
           </div>
         </div>
       </div>
+
+      {/* Video Modal */}
+      {showVideoModal && currentVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {currentVideo.title}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {currentVideo.patient} • {formatDate(currentVideo.date)}
+                </p>
+              </div>
+              <button
+                onClick={closeVideoModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video
+                  src={currentVideo.url}
+                  controls
+                  className="w-full h-auto max-h-[60vh]"
+                  controlsList="nodownload"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

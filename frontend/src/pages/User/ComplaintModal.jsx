@@ -1,8 +1,7 @@
-import React, { useState, useRef } from "react";
-import { X, AlertTriangle, Send, Upload, Video, Trash2, Play } from "lucide-react";
+import React, { useState } from "react";
+import { X, AlertTriangle, Send } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
-
 
 const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
   const [complaintData, setComplaintData] = useState({
@@ -10,13 +9,7 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
     subject: "",
     description: "",
   });
-  const [videoFile, setVideoFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  
-  const fileInputRef = useRef(null);
-  const videoRef = useRef(null);
 
   const complaintTypes = [
     { value: "unprofessional_behavior", label: "Unprofessional Behavior" },
@@ -35,76 +28,18 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
     }));
   };
 
-  const handleVideoUpload = (event) => {
-    const file = event.target.files[0];
-    setUploadError("");
-
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/mov', 'video/avi', 'video/quicktime'];
-    if (!allowedTypes.includes(file.type)) {
-      setUploadError("Please upload a valid video file (MP4, WebM, MOV, AVI, QuickTime)");
-      return;
-    }
-
-    // Validate file size (50MB limit)
-    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
-    if (file.size > maxSize) {
-      setUploadError("Video file size must be less than 50MB");
-      return;
-    }
-
-    setVideoFile(file);
-    
-    // Create preview URL
-    const previewUrl = URL.createObjectURL(file);
-    setVideoPreview(previewUrl);
-  };
-
-  const removeVideo = () => {
-    setVideoFile(null);
-    if (videoPreview) {
-      URL.revokeObjectURL(videoPreview);
-      setVideoPreview(null);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    setUploadError("");
-  };
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+    console.error({
+          ...complaintData,
+          consultation_id: consultationId
+        }),'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh'
     try {
-      // Create FormData to handle file upload
-      const formData = new FormData();
-      formData.append('type', complaintData.type);
-      formData.append('subject', complaintData.subject);
-      formData.append('description', complaintData.description);
-      formData.append('consultation_id', consultationId);
-      
-      // Only append video if one is selected
-      if (videoFile) {
-        formData.append('video', videoFile);
-      }
-
-      console.log('Submitting complaint with data:', {
-        ...complaintData,
-        consultation_id: consultationId,
-        hasVideo: !!videoFile,
-        videoName: videoFile?.name || 'No video',
-        videoSize: videoFile?.size || 0
-      });
-
       const response = await axiosInstance.post(
         "/consultations/register_complaint",
-        formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          ...complaintData,
+          consultation_id: consultationId
         }
       );
 
@@ -116,44 +51,34 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
         subject: "",
         description: "",
       });
-      removeVideo();
       onClose();
       
       // Show success message
-      toast.success('Complaint submitted successfully!',{position:'bottom-center'});
+      toast.success('Complaint submitted successfully!', {position:'bottom-center'});
       
     } catch (error) {
       console.error("Error submitting complaint:", error);
       
-      // More detailed error handling
       if (error.response) {
         console.error("Server responded with error:", error.response.data);
-        toast.error(`Error submitting complaint: ${error.response.data.message || 'Please try again.'}`,{position:'bottom-center'});
+        toast.error(`Error submitting complaint: ${error.response.data.message || 'Please try again.'}`, {position:'bottom-center'});
       } else if (error.request) {
         console.error("Network error:", error.request);
-        toast.error('Network error. Please check your connection and try again.',{position:'bottom-center'});
+        toast.error('Network error. Please check your connection and try again.', {position:'bottom-center'});
       } else {
         console.error("Error:", error.message);
-        toast.error('Error submitting complaint. Please try again.',{position:'bottom-center'});
+        toast.error('Error submitting complaint. Please try again.', {position:'bottom-center'});
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Form validation - video is completely optional
+  // Form validation
   const isFormValid =
     complaintData.type &&
     complaintData.subject.trim() &&
     complaintData.description.trim();
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   if (!isOpen) return null;
 
@@ -238,86 +163,6 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* Video Upload Section */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Video Evidence (Optional)
-            </label>
-            <p className="text-xs text-gray-500 mb-3">
-              You can submit your complaint with or without video evidence. Video is completely optional.
-            </p>
-            
-            {!videoFile ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                />
-                <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-600 mb-2">
-                  Click to upload a video file or drag and drop
-                </p>
-                <p className="text-xs text-gray-500 mb-4">
-                  Supported formats: MP4, WebM, MOV, AVI, QuickTime (Max 50MB)
-                </p>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Choose Video File</span>
-                </button>
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Video className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {videoFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatFileSize(videoFile.size)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={removeVideo}
-                    className="p-1 hover:bg-gray-200 rounded transition-colors"
-                    title="Remove video"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
-                </div>
-                
-                {videoPreview && (
-                  <div className="mt-3">
-                    <video
-                      ref={videoRef}
-                      src={videoPreview}
-                      controls
-                      className="w-full max-h-48 rounded-lg border"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {uploadError && (
-              <div className="mt-2 p-2 bg-red-100 border border-red-300 text-red-700 rounded text-sm">
-                {uploadError}
-              </div>
-            )}
-          </div>
-
           {/* Disclaimer */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
@@ -330,11 +175,6 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
                   hours. False or malicious complaints may result in account
                   restrictions.
                 </p>
-                {videoFile && (
-                  <p className="mt-2">
-                    <strong>Video Upload:</strong> Your video will be securely stored and only accessed by authorized personnel for complaint review purposes.
-                  </p>
-                )}
               </div>
             </div>
           </div>
@@ -367,7 +207,7 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Submit Complaint{videoFile ? ' (with Video)' : ''}</span>
+                  <span>Submit Complaint</span>
                 </>
               )}
             </button>

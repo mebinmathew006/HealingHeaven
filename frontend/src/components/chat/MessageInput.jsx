@@ -106,7 +106,7 @@ const MessageInput = ({
   };
 
   return (
-    <div className="bg-white border-t border-gray-200">
+    <div className="bg-gradient-to-br from-blue-50 to-green-50 border-t border-gray-200">
       {/* File Attachments Preview */}
       {attachedFiles.length > 0 && (
         <div className="px-4 pt-3 border-b border-gray-100">

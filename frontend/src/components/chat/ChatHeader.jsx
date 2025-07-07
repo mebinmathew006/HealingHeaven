@@ -123,7 +123,7 @@ const ChatHeader = ({
   }, [showNotificationPanel]);
 
   return (
-    <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm relative">
+    <div className="bg-gradient-to-br  from-blue-50  to-green-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm relative">
       <div className="flex items-center space-x-3">
         <button
           onClick={() => setSidebarOpen(true)}

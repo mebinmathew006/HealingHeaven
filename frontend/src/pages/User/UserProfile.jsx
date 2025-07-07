@@ -20,7 +20,7 @@ const UserProfile = () => {
         `/users/get_user_details/${userId}`
       );
       setFormData(response.data);
-      console.log(response.data)
+      console.log(response.data);
       // setCurrentProfileImage(response.data.profile_image);
     } catch (error) {
       console.log(error);
@@ -131,7 +131,7 @@ const UserProfile = () => {
           <div className="space-y-8">
             {/* Profile Header */}
             {formData ? (
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-sm p-8">
+              <div className="bg-gradient-to-r from-green-700 to-green-900 rounded-xl shadow-sm p-8">
                 <div className="flex items-start space-x-6">
                   <div className="relative">
                     <div>
@@ -140,7 +140,7 @@ const UserProfile = () => {
                           formData?.user_profile?.profile_image ||
                           "/powerpoint-template-icons-b.jpg"
                         }
-                        className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold"
+                        className="w-24 h-24  rounded-full flex items-center justify-center text-white text-2xl font-bold"
                         alt="Image"
                       />
                     </div>
@@ -157,7 +157,7 @@ const UserProfile = () => {
                       <div> </div>
                       <button
                         onClick={() => setIsEditing(!isEditing)}
-                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 bg-green-700 text-white font-bold rounded-lg hover:bg-green-600 transition-colors"
                       >
                         <Edit3 className="w-4 h-4" />
                         <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
@@ -201,17 +201,22 @@ const UserProfile = () => {
                       Gender
                     </label>
                     {isEditing ? (
-                      <input
+                      <select
                         type="text"
                         name="gender"
-                        value={
-                          formData.user_profile
-                            ? formData.user_profile.gender
-                            : ""
-                        }
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      >
+                        <option value= {formData.user_profile
+                            ? formData.user_profile.gender
+                            : ""}>
+                          {formData.user_profile
+                            ? formData.user_profile.gender
+                            : ""}
+                        </option>
+
+                        <option value={formData.user_profile.gender=='Male' ? 'Female':'Male' }>{formData.user_profile.gender=='Male' ? 'Female':'Male' }</option>
+                      </select>
                     ) : (
                       <div className="flex items-center space-x-2 text-gray-900">
                         <span>

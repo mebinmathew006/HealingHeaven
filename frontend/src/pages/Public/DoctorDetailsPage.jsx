@@ -95,7 +95,7 @@ const DoctorDetailsPage = ({}) => {
   const totalFeedbacks = Array.isArray(feedbacks) ? feedbacks.length : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50  to-green-50">
       {/* Header */}
       {doctor && (
         <>

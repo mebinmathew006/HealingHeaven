@@ -23,7 +23,7 @@ export default function ConsultationDetail({
           onClose={() => setIsModalOpen(false)}
         />
       )}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-green-50 to-indigo-50 rounded-lg border border-green-100 overflow-hidden">
         {/* Header with Back Button */}
         <div className="px-6 py-4 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -48,8 +48,8 @@ export default function ConsultationDetail({
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="w-6 h-6 text-blue-600" />
+            <div className="p-2 bg-green-100 rounded-lg">
+              <FileText className="w-6 h-6 text-green-600" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -99,7 +99,7 @@ export default function ConsultationDetail({
                 </div>
               </div>
 
-              {consultation.duration && (
+              {/* {consultation.duration && (
                 <div className="flex items-center space-x-3">
                   <Clock className="w-5 h-5 text-gray-500" />
                   <div>
@@ -109,7 +109,7 @@ export default function ConsultationDetail({
                     </p>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
@@ -132,7 +132,7 @@ export default function ConsultationDetail({
                   {consultation.analysis.length > 200 && (
                     <button
                       onClick={() => setShowFullAnalysis(!showFullAnalysis)}
-                      className="mt-3 text-blue-600 hover:text-blue-800 font-medium text-sm focus:outline-none focus:underline"
+                      className="mt-3 text-green-600 hover:text-green-800 font-medium text-sm focus:outline-none focus:underline"
                     >
                       {showFullAnalysis ? "Show Less" : "Read More"}
                     </button>
@@ -166,7 +166,7 @@ export default function ConsultationDetail({
             <div className="flex space-x-3">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
               >
                 Raise Compliant
               </button>

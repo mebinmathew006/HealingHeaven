@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Edit2, Save, X, Filter, Search, Play, Eye, Loader2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Edit2, Save, X as CloseIcon, Filter, Search, Play as PlayIcon, Eye, Loader2, X, Calendar, Clock, FileText, User } from "lucide-react";
 import AdminSidebar from "../../components/AdminSidebar";
 import axiosInstance from "../../axiosconfig";
 import Pagination from "../../components/Pagination";
 import { toast } from "react-toastify";
+import { getCompliantConsultation } from "../../services/consultationService";
+import ConsultationDetailsModal from "../../components/Consultaion/ConsultationDetailsModal";
 
+
+// Main AdminComplaint Component
 const AdminComplaint = () => {
   const baseurl = import.meta.env.VITE_BASE_URL;
   const [complaints, setComplaints] = useState([]);
@@ -13,18 +17,23 @@ const AdminComplaint = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("admin_complaints");
+  const [activeSection] = useState("admin_complaints");
   
   // Video modal state
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [videoLoading, setVideoLoading] = useState(false);
 
+  // Consultation modal state
+  const [showConsultationModal, setShowConsultationModal] = useState(false);
+  const [consultationData, setConsultationData] = useState(null);
+  const [consultationLoading, setConsultationLoading] = useState(false);
+
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrevious, setHasPrevious] = useState(false);
+  const [currentPage] = useState(1);
+  const [totalCount] = useState(0);
+  const [hasNext] = useState(false);
+  const [hasPrevious] = useState(false);
   const [limit] = useState(10); // Items per page
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -33,6 +42,7 @@ const AdminComplaint = () => {
       getConsultations(currentPage + 1, false);
     }
   };
+ 
   const handlePreviousPage = () => {
     if (hasPrevious && !loadingMore) {
       getConsultations(currentPage - 1, false);
@@ -47,6 +57,26 @@ const AdminComplaint = () => {
   useEffect(() => {
     fetchComplaints();
   }, []);
+
+  const handleConsultationView = async (consultationId) => {
+    setConsultationLoading(true);
+    setShowConsultationModal(true);
+    try {
+      const data = await getCompliantConsultation(consultationId);
+      setConsultationData(data);
+    } catch (error) {
+      console.error("Error fetching consultation:", error);
+      toast.error("Failed to fetch consultation details", {position: 'bottom-center'});
+      setShowConsultationModal(false);
+    } finally {
+      setConsultationLoading(false);
+    }
+  };
+
+  const closeConsultationModal = () => {
+    setShowConsultationModal(false);
+    setConsultationData(null);
+  };
 
   const fetchComplaints = async (page = 1, showLoadingSpinner = true) => {
     if (showLoadingSpinner) {
@@ -83,7 +113,7 @@ const AdminComplaint = () => {
       Resolved: "bg-green-100 text-green-800",
       Closed: "bg-gray-100 text-gray-800",
       Rejected: "bg-purple-100 text-purple-800",
-      Pending: "bg-blue-100 text-blue-800",
+      Pending: "bg-green-100 text-green-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -131,7 +161,6 @@ const AdminComplaint = () => {
   setShowVideoModal(true);
   setVideoLoading(false);
 };
-
 
   const closeVideoModal = () => {
     setShowVideoModal(false);
@@ -188,7 +217,7 @@ const AdminComplaint = () => {
                   placeholder="Search complaints..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
               <div className="relative">
@@ -196,11 +225,11 @@ const AdminComplaint = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="all">All Statuses</option>
                   {statusOptions.map((status) => (
-                    <option key={status} value={status}>
+                    <option  key={status} value={status}>
                       {status}
                     </option>
                   ))}
@@ -233,11 +262,9 @@ const AdminComplaint = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
+                      Sl.No
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Consultation ID
-                    </th>
+                   
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Type
                     </th>
@@ -248,7 +275,7 @@ const AdminComplaint = () => {
                       Description
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Video
+                      Consultaion
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -259,14 +286,12 @@ const AdminComplaint = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredComplaints.map((complaint) => (
+                  {filteredComplaints.map((complaint,index) => (
                     <tr key={complaint.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{complaint.id}
+                        #{index+1}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {complaint.consultation_id}
-                      </td>
+                     
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {complaint.type}
                       </td>
@@ -277,25 +302,19 @@ const AdminComplaint = () => {
                         {complaint.description}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {hasVideo(complaint) ? (
-                          <button
-                            onClick={() => handleViewVideo(complaint)}
-                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
-                            title="View video"
-                          >
-                            <Play className="w-3 h-3 mr-1" />
-                            View Video
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-400">No video</span>
-                        )}
+                        <button 
+                          onClick={() => handleConsultationView(complaint.consultation_id)}
+                          className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                        >
+                          View
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {editingId === complaint.id ? (
                           <select
                             value={editingStatus}
                             onChange={(e) => setEditingStatus(e.target.value)}
-                            className="text-sm px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="text-sm px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                           >
                             {statusOptions.map((status) => (
                               <option key={status} value={status}>
@@ -328,13 +347,13 @@ const AdminComplaint = () => {
                               className="text-red-600 hover:text-red-800 transition-colors"
                               title="Cancel"
                             >
-                              <X className="w-4 h-4" />
+                              <CloseIcon className="w-4 h-4" />
                             </button>
                           </div>
                         ) : (
                           <button
                             onClick={() => handleEdit(complaint)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            className="text-green-600 hover:text-green-800 transition-colors"
                             title="Edit Status"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -384,6 +403,15 @@ const AdminComplaint = () => {
           </div>
         )}
       </div>
+
+      {/* Consultation Details Modal */}
+      <ConsultationDetailsModal
+        isOpen={showConsultationModal}
+        onClose={closeConsultationModal}
+        consultationData={consultationData}
+        loading={consultationLoading}
+        baseUrl={baseurl}
+      />
 
       {/* Video Modal */}
       {showVideoModal && selectedVideo && (
@@ -449,7 +477,7 @@ const AdminComplaint = () => {
                   <a
                     href={selectedVideo.video_url}
                     download
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
                   >
                     Download Video
                   </a>
@@ -464,3 +492,5 @@ const AdminComplaint = () => {
 };
 
 export default AdminComplaint;
+
+

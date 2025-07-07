@@ -3,7 +3,7 @@ from sqlalchemy import func,extract,desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
-from schemas.consultation import CompliantSchema,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
+from schemas.consultation import CompliantSchemaa,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
 from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint,ChatAttachment
 from datetime import datetime
 import calendar
@@ -79,15 +79,15 @@ async def create_feedback(session: AsyncSession, data: CreateFeedbackSchema):
         await session.rollback()
         # Log error or raise appropriate exception
         raise e
-    
-async def register_complaint_crud(session: AsyncSession, data: dict):
+        
+async def register_complaint_crud(session: AsyncSession, data: CompliantSchemaa):
     complaint = Complaint(
-        consultation_id=data["consultation_id"],
-        type=data["type"],
-        subject=data["subject"],
-        description=data["description"],
-        status="pending",
-        video=data.get("video_url")  
+        consultation_id=data.consultation_id,
+        type=data.type,
+        subject=data.subject,
+        description=data.description,
+        status="pending"
+       
     )
     session.add(complaint)
     await session.commit()
@@ -125,6 +125,12 @@ async def update_consultation_status(session: AsyncSession, status:str,consultat
     consultation.status=status
     await session.commit()
     
+async def save_recording_database(session: AsyncSession, video_url:str,consultation_id:int):
+    result = await session.execute(select(Consultation).where(Consultation.id == consultation_id))
+    consultation = result.scalar_one_or_none()
+    consultation.video=video_url
+    await session.commit()
+    
 async def get_all_consultation(session: AsyncSession):
     result = await session.execute(
         select(Consultation)
@@ -158,6 +164,14 @@ async def consultation_for_user(session: AsyncSession, user_id: int, skip: int, 
         .limit(limit)
     )
     return result.scalars().all()
+
+async def consultation_details_with_id(session: AsyncSession,  consultation_id: int):
+    result = await session.execute(
+        select(Consultation)
+        .where(Consultation.id == consultation_id)
+        
+    )
+    return result.scalar()
 
 async def consultation_for_doctor(session: AsyncSession, psychologist_id: int, skip: int, limit: int, ordering: Optional[str] = None):
     query = select(Consultation).where(Consultation.psychologist_id == psychologist_id)

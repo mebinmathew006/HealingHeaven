@@ -4,7 +4,7 @@ from typing import List
 from dependencies.database import get_session
 import crud.crud as crud
 from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse,FeedbackCreationSchema
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ChatResponse,MappingResponse,MappingResponseUser ,CompliantSchemaa
+from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ConsultationResponseUserCompliant,MappingResponse,MappingResponseUser ,CompliantSchemaa
 from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
 from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage,TokenRequest
 from fastapi.logger import logger
@@ -12,9 +12,9 @@ from datetime import datetime
 # from starlette.websockets import WebSocketState  # ✅ correct
 from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications,update_consultation_status
 from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments,get_doctor_fee_after_platform_fee
-from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor
+from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor,consultation_details_with_id
 from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
-from crud.crud import get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation
+from crud.crud import get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation,save_recording_database
 from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
 from infra.external.user_service import get_user_details,get_doctor_details,get_minimal_user_details
 from infra.external.payment_service import fetch_money_from_wallet,add_money_to_wallet
@@ -64,87 +64,122 @@ os.makedirs(RECORDINGS_DIR, exist_ok=True)
 # In-memory storage for tracking recording parts (use DB in production)
 recording_sessions = {}
 
+import subprocess
+from pathlib import Path
+
 @router.post("/recordings")
 async def upload_recording(
     file: UploadFile = File(...),
     roomId: str = Form(...),
     userId: str = Form(...),
-    isFinal: str = Form(...)
+    isFinal: str = Form(...),
+    session: AsyncSession = Depends(get_session)
 ):
     try:
         is_final = isFinal.lower() == 'true'
         session_id = f"{roomId}_{userId}"
+        recordings_dir = Path(RECORDINGS_DIR).absolute()  # Use absolute path
 
-        # Print received information for debugging
-        print(f"\nReceived {'FINAL' if is_final else 'chunk'} recording from {userId} in room {roomId}")
+        # Debug info
+        print(f"\nReceived {'FINAL' if is_final else 'chunk'} recording from {userId}")
         print(f"File size: {file.size} bytes")
         print(f"Content type: {file.content_type}")
+        print(f"Base recordings directory: {recordings_dir}")
 
-        # Ensure the file is a video
+        # Validation
         if not file.content_type.startswith('video/'):
             raise HTTPException(status_code=400, detail="Only video files are accepted")
 
-        # Read the file content
         contents = await file.read()
         if len(contents) == 0:
             raise HTTPException(status_code=400, detail="Empty file received")
 
-        # Create session directory if it doesn't exist
-        session_dir = os.path.join(RECORDINGS_DIR, session_id)
-        os.makedirs(session_dir, exist_ok=True)
+        # Create session-specific directory
+        session_dir = recordings_dir / session_id
+        session_dir.mkdir(exist_ok=True, parents=True)
+        print(f"Session directory: {session_dir}")
 
-        # Save the chunk
-        chunk_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex}.webm"
-        chunk_path = os.path.join(session_dir, chunk_filename)
+        # Save chunk with unique name in session directory only
+        chunk_filename = f"chunk_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.webm"
+        chunk_path = session_dir / chunk_filename
         
         with open(chunk_path, 'wb') as f:
             f.write(contents)
+        print(f"Saved chunk to: {chunk_path}")
 
-        # Update session tracking
+        # Initialize/update session tracking
         if session_id not in recording_sessions:
             recording_sessions[session_id] = {
                 'chunks': [],
-                'created_at': datetime.now()
+                'created_at': datetime.now(),
+                'session_dir': str(session_dir)  # Track the directory
             }
         
-        recording_sessions[session_id]['chunks'].append(chunk_path)
+        recording_sessions[session_id]['chunks'].append(str(chunk_path))
         recording_sessions[session_id]['last_updated'] = datetime.now()
 
-        # If this is the final chunk, combine all parts
+        # Process final chunk
         if is_final:
-            final_filename = f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
-            final_path = os.path.join(RECORDINGS_DIR, final_filename)
+            final_filename = f"recording_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
+            final_path = recordings_dir / final_filename
             
-            print(f"\nCombining {len(recording_sessions[session_id]['chunks'])} chunks into final recording...")
+            print(f"\nCombining {len(recording_sessions[session_id]['chunks'])} chunks...")
+            print(f"Final path: {final_path}")
 
-            # Combine all chunks into one file (simple concatenation works for WebM)
-            with open(final_path, 'wb') as final_file:
+            # Create concat list file in session directory
+            concat_file = session_dir / "concat.txt"
+            with open(concat_file, 'w') as f:
                 for chunk in recording_sessions[session_id]['chunks']:
-                    with open(chunk, 'rb') as chunk_file:
-                        final_file.write(chunk_file.read())
-                    # Remove the chunk file
-                    os.remove(chunk)
-            
-            # Clean up session directory
-            try:
-                os.rmdir(session_dir)
-            except OSError:
-                pass  # Directory not empty or already deleted
+                    f.write(f"file '{chunk}'\n")
 
-            # Remove session from tracking
+            # Combine using ffmpeg
+            try:
+                subprocess.run([
+                    'ffmpeg',
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', str(concat_file),
+                    '-c', 'copy',
+                    '-y',
+                    str(final_path)
+                ], check=True)
+                print("Successfully combined chunks")
+            except subprocess.CalledProcessError as e:
+                print(f"FFmpeg error: {e}")
+                raise HTTPException(status_code=500, detail="Failed to combine video chunks")
+
+            # Clean up - remove all chunks and session directory
+            print("Cleaning up temporary files...")
+            for chunk in recording_sessions[session_id]['chunks']:
+                try:
+                    Path(chunk).unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"Error deleting chunk {chunk}: {e}")
+
+            try:
+                concat_file.unlink(missing_ok=True)
+                session_dir.rmdir()  # Only works if directory is empty
+            except Exception as e:
+                print(f"Error cleaning up session dir: {e}")
+
+            # Verify final file exists
+            if not final_path.exists():
+                raise HTTPException(status_code=500, detail="Final recording not created")
+
+            # Remove session tracking
             del recording_sessions[session_id]
 
-            # Generate URL for the final recording
+            # Save to database
             final_url = f"/recordings/{final_filename}"
             
-            print(f"Final recording saved: {final_path}")
-            print(f"Final size: {os.path.getsize(final_path)} bytes")
+            consultation_id=int(roomId[4:])
+            await save_recording_database(session, final_url, consultation_id)
 
             return JSONResponse({
                 "status": "success",
                 "message": "Recording completed",
-                "finalUrl": final_url,
-                "fileSize": os.path.getsize(final_path)
+                "finalUrl": final_url,  
+                "fileSize": final_path.stat().st_size
             })
 
         return JSONResponse({
@@ -155,7 +190,7 @@ async def upload_recording(
         })
 
     except Exception as e:
-        print(f"\nError processing recording: {str(e)}")
+        print(f"\nError processing recording: {str(e)}", flush=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/recordings/{filename}")
@@ -166,10 +201,7 @@ async def get_recording(filename: str):
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="Recording not found")
 
-        # In production, you might want to:
-        # 1. Add authentication
-        # 2. Set proper content headers
-        # 3. Implement range requests for large files
+      
         from fastapi.responses import FileResponse
         return FileResponse(
             file_path,
@@ -179,6 +211,7 @@ async def get_recording(filename: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Cleanup old sessions (run periodically)
 def cleanup_old_sessions(hours_old=24):
@@ -197,7 +230,6 @@ def cleanup_old_sessions(hours_old=24):
             except Exception as e:
                 print(f"Error cleaning up session {session_id}: {e}")
 
-# You might want to call this periodically (e.g., using a BackgroundTask or scheduler)
 
 def generate_zego_token(user_id: str, room_id: str) -> dict:
     """Generate a ZEGOCLOUD token"""
@@ -248,39 +280,9 @@ async def create_consultation_route(data: CreateConsultationSchema,current_user_
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.post("/register_complaint")
-async def register_complaint_route(
-    consultation_id: int = Form(...),
-    type: str = Form(...),
-    subject: str = Form(...),
-    description: str = Form(...),
-    video: Optional[UploadFile] = File(None),  # ✅ Optional here
-    current_user_id: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
+async def register_complaint_route(data:CompliantSchemaa,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
 ):
     try:
-        video_url = None
-
-        # ✅ Save video only if provided
-        if video:
-            file_ext = os.path.splitext(video.filename)[-1]
-            filename = f"{uuid4().hex}{file_ext}"
-            save_path = f"static/complaints/{filename}"
-            
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-            with open(save_path, "wb") as f:
-                f.write(await video.read())
-
-            video_url = f"/static/complaints/{filename}"
-
-        data = {
-            "consultation_id": consultation_id,
-            "type": type,
-            "subject": subject,
-            "description": description,
-            "video_url": video_url  # ✅ This can be None
-        }
-
         complaint = await register_complaint_crud(session, data)
         return complaint
 
@@ -461,6 +463,7 @@ async def get_consultation_for_user(
                 created_at=consult.created_at,
                 status=consult.status,
                 duration=consult.duration,
+                video=consult.video,
                 user=user_details[i]
             )
             for i, consult in enumerate(consultations)
@@ -478,6 +481,72 @@ async def get_consultation_for_user(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.get("/get_compliant_consultation/{consultations_id}", response_model=ConsultationResponseUserCompliant)
+async def get_compliant_consultation(
+    consultations_id: int,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        # Get consultation details
+        consultation = await consultation_details_with_id(session, consultations_id)
+        if not consultation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Consultation not found"
+            )
+
+        # Get user and doctor details
+        doctor = await get_doctor_details(consultation.psychologist_id)
+        user = await get_user_details(consultation.user_id)
+        
+        if not doctor or not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Associated user or doctor not found"
+            )
+
+        # Build response dictionary
+        response_data = {
+            "id": consultation.id,
+            "analysis": consultation.analysis,
+            "created_at": consultation.created_at,
+            "status": consultation.status,
+            "duration": consultation.duration,
+            "video": consultation.video if consultation.video else None,
+            "user": {
+                "name": user.get('name'),
+                "user_profile": {
+                    "profile_image": user.get('user_profile', {}).get('profile_image')
+                }
+            } if user else None,
+            "doctor": {
+                "name": doctor.get('name'),
+                "psychologist_profile": {
+                    "profile_image": doctor.get('psychologist_profile', {}).get('profile_image'),
+                    "specialization": doctor.get('psychologist_profile', {}).get('specialization')
+                }
+            } if doctor else None
+                }
+        return response_data
+
+    except HTTPException as ex:
+        logger.error(ex)
+        raise
+        
+    except AttributeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Missing expected attribute: {str(e)}"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error while fetching consultation"
+        )
     
 @router.get("/doctor_get_consulations/{doctor_id}", response_model=PaginatedConsultationResponse)
 async def doctor_get_consulations_route(
@@ -508,6 +577,7 @@ async def doctor_get_consulations_route(
                 created_at=consult.created_at,
                 status=consult.status,
                 duration=consult.duration,
+                video=consult.video,
                 user=user_details[i]
             )
             for i, consult in enumerate(consultations)

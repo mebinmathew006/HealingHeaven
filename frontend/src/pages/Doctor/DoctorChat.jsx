@@ -36,7 +36,7 @@ export default function DoctorChat() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-blue-50 to-green-50">
       {/* Sidebar */}
       <ChatSidebar
         sidebarOpen={sidebarOpen}
@@ -91,7 +91,7 @@ export default function DoctorChat() {
             />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center ">
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
