@@ -1,6 +1,6 @@
 # 🩺 HealingHeaven
 
-**HealingHeaven** is a modern telemedicine platform that connects patients with doctors for secure video consultations, real-time chat, appointment scheduling, and more.
+**HealingHeaven** is a modern mental health platform that connects patients with doctors for secure video consultations, real-time chat, appointment scheduling, and more.
 
 ---
 
