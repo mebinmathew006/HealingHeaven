@@ -15,10 +15,6 @@ healingheaven/
 ├── frontend/ # React or Next.js frontend
 └── nginx/ # NGINX reverse proxy config
 
-yaml
-Copy
-Edit
-
 ---
 
 ## 🚀 Features
@@ -37,7 +33,7 @@ Edit
 | Layer         | Tech                        |
 |---------------|-----------------------------|
 | Frontend      | React + Tailwind CSS        |
-| Backend       | FastAPI / Django (modular)  |
+| Backend       | FastAPI   |
 | Database      | PostgreSQL                  |
 | WebSocket     | FastAPI + Starlette         |
 | Video Calls   | WebRTC + custom signaling   |
@@ -82,7 +78,7 @@ WS	/ws/video/{room_id}	WebRTC signaling
 
  Doctor rating and feedback
 
-Razorpay payment integration
+ Razorpay payment integration
 
 
 🧑‍💻 Contributing
@@ -95,5 +91,25 @@ Fork it, submit a PR, or raise an issue.
 
 🙌 Author
 Mebin Mathew
+
+🧑‍💻 Sample .env
+USER_DATABASE_URL=''
+CORS_ORIGINS=''
+MAIL_USERNAME=''
+MAIL_PASSWORD=''
+MAIL_FROM_NAME=''
+MAIL_FROM=''
+MAIL_SERVER=''
+MAIL_PORT=''
+SECRET_KEY=''
+REDIS_HOST =''
+REDIS_PORT= ''
+CLOUD_NAME=''
+CLOUDINARY_API_KEY=''
+CLOUDINARY_SECRET_KEY=''
+POSTGRES_DB=''
+POSTGRES_USER=''
+POSTGRES_PASSWORD=''
+GOOGLE_CLIENT_ID=''
 
 
