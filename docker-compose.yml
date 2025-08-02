@@ -38,8 +38,6 @@ services:
       - consultation-service
       - payment-service
 
-
-
  #  paymenttttttttttttttttttttttttttttttttttttt
   payment-service:
     build: ./services/payment

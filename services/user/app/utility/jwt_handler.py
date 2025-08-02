@@ -6,7 +6,7 @@ import os
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_EXPIRE_MINUTES = 15
+ACCESS_EXPIRE_MINUTES = 60
 REFRESH_EXPIRE_DAYS = 7
 
 def create_access_token(data: dict):

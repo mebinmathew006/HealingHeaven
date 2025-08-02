@@ -25,7 +25,7 @@ const WalletPage = () => {
   const scrollRef = useRef(null);
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const totalCount = responseData?.count || 10;
+  const totalCount = responseData?.count || 0;
   const limit = 3;
   const hasNext = !!responseData?.next;
   const hasPrevious = !!responseData?.previous;
@@ -74,17 +74,6 @@ const WalletPage = () => {
       setLoadingMore(false);
     }
   };
-  // const fetchWallet = async () => {
-  //   try {
-  //     const response = await axiosInstance.get(
-  //       `/payments/get_wallet_details_with_transactions/${userId}`
-  //     );
-  //     setWalletData(response.data.balance);
-  //     setTransactions(response.data.wallet_transactions);
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
 
   const HandleWithdraw = async () => {
     try {

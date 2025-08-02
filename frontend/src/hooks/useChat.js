@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../utils/NotificationContext";
+import { useSelector } from "react-redux";
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -27,7 +28,8 @@ export const useChat = (userId, userType) => {
   const socketBaseUrl = import.meta.env.VITE_WEBSOCKET_URL;
   // Enable notification sound
   const { sendNotification } = useNotifications();
-  
+  const accessToken = useSelector((state) => state.userDetails.access_token);;
+
   // Update ref whenever activeConsultationId changes
   useEffect(() => {
     activeConsultationIdRef.current = activeConsultationId;
@@ -389,7 +391,7 @@ export const useChat = (userId, userType) => {
 
       try {
         const ws = new WebSocket(
-          `${socketBaseUrl}/consultations/ws/chat/${consultationId}`
+          `${socketBaseUrl}/consultations/ws/chat/${consultationId}?token=${accessToken}`
         );
         wsRef.current = ws;
 

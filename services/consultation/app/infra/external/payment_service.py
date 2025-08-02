@@ -23,4 +23,4 @@ async def add_money_to_wallet(data: dict) -> dict:
             print(f"HTTPX Request error: {e}")
         except httpx.HTTPStatusError as e:
             print(f" error in payment-service: {e}")
-    return {}       
+            

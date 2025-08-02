@@ -15,6 +15,8 @@ import { useLocation } from "react-router-dom";
 import axiosInstance from "../../axiosconfig";
 import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
 import FeedbackCard from "../../components/FeedbackCard";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 
 const DoctorDetailsPage = ({}) => {
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +25,7 @@ const DoctorDetailsPage = ({}) => {
   const [feedbacksLoading, setFeedbacksLoading] = useState(true);
   const location = useLocation();
   const { id, rating } = location.state;
+  const userid = useSelector((state)=>state.userDetails.id)
 
   useEffect(() => {
     fetchDoctor();
@@ -55,6 +58,13 @@ const DoctorDetailsPage = ({}) => {
   const handleStartCall = () => {
     console.log("Starting call...");
     setShowModal(false);
+  };
+  const handleChatOption = () => {
+    if (!userid){
+      toast.error('Please Login first',{position:'bottom-center'})
+      return
+    }
+
   };
 
   const handleVideoCall = () => {
@@ -95,11 +105,11 @@ const DoctorDetailsPage = ({}) => {
   const totalFeedbacks = Array.isArray(feedbacks) ? feedbacks.length : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50  to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 ">
       {/* Header */}
       {doctor && (
         <>
-          <div className="bg-white shadow-sm">
+          <div className="shadow-sm">
             <div className="max-w-6xl mx-auto px-4 py-6">
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Doctor Image */}
@@ -120,7 +130,7 @@ const DoctorDetailsPage = ({}) => {
                       <h1 className="text-3xl font-bold text-gray-900 mb-2">
                         {doctor?.user?.name}
                       </h1>
-                      <p className="text-xl text-blue-600 mb-3">
+                      <p className="text-xl text-green-900 mb-3">
                         {doctor.specialization}
                       </p>
 
@@ -133,7 +143,7 @@ const DoctorDetailsPage = ({}) => {
                         <div className="flex items-center gap-1">
                           <Award className="w-5 h-5 text-green-600" />
                           <span className="text-gray-700">
-                            {doctor.experience}
+                            {doctor.experience} Years experience
                           </span>
                         </div>
                       </div>
@@ -178,7 +188,7 @@ const DoctorDetailsPage = ({}) => {
                 {/* Education */}
                 <div className="bg-white rounded-xl p-6 shadow-sm">
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                    <GraduationCap className="w-5 h-5 text-green-600" />
                     Education & Training
                   </h3>
                   <ul className="space-y-2">
@@ -197,7 +207,7 @@ const DoctorDetailsPage = ({}) => {
                     Specializations
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg">
+                    <div className="bg-green-50 text-green-800 px-4 py-2 rounded-lg">
                       {doctor.specialization}
                     </div>
                   </div>
@@ -220,19 +230,29 @@ const DoctorDetailsPage = ({}) => {
               {/* Right Column */}
               <div className="space-y-6">
                 {/* Quick Book */}
-                {doctor.is_available && (
+                {doctor.is_available ? (
                   <div className="bg-white rounded-xl p-6 shadow-sm">
                     <h3 className="text-xl font-semibold mb-4">Consultation</h3>
                     <div className="space-y-4">
                       <button
                         onClick={handleVideoCall}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+                        className="w-full bg-green-700 hover:bg-green-900 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
                       >
                         Consult Now
                       </button>
                     </div>
                   </div>
-                )}
+                ): ( <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <h6 className="text-xl font-semibold mb-4">Do you want to connect the therapist through chat ?</h6>
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleChatOption}
+                        className="w-full bg-green-700 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+                      >
+                        Chat Now
+                      </button>
+                    </div>
+                  </div>)}
                 {/* Conditionally render modal here */}
                 {showModal && (
                   <VideoCallPermissionModal
@@ -300,7 +320,7 @@ const DoctorDetailsPage = ({}) => {
                 
                 {feedbacksLoading ? (
                   <div className="bg-white rounded-xl p-12 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
                     <p className="text-gray-500 mt-4">Loading feedback...</p>
                   </div>
                 ) : feedbacks.length === 0 ? (
@@ -320,7 +340,7 @@ const DoctorDetailsPage = ({}) => {
                     ))}
                     {feedbacks.length > 5 && (
                       <div className="text-center mt-6">
-                        <button className="text-blue-600 hover:text-blue-700 font-medium">
+                        <button className="text-green-600 hover:text-green-700 font-medium">
                           View all {feedbacks.length} reviews
                         </button>
                       </div>

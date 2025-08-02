@@ -49,7 +49,7 @@ class Payments(Base):
 class ConsultationMapping(Base):
     __tablename__='consultation_mapping'
     
-    id = Column(Integer, primary_key=True,index=True , autoincrement=True)
+    id = Column(Integer, primary_key=True, index=True , autoincrement=True)
     user_id = Column(Integer, index=True)
     psychologist_id = Column(Integer, index=True)
     

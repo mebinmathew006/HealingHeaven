@@ -9,6 +9,14 @@ from datetime import datetime
 import calendar
 from typing import Optional,List,Dict
 from fastapi import HTTPException
+from sqlalchemy import or_
+import logging
+import traceback
+from utils.time import utc_to_ist
+
+logger = logging.getLogger("uvicorn.error")
+
+
 async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
     try:
         async with session.begin():
@@ -52,11 +60,8 @@ async def create_consultation(session: AsyncSession, data: CreateConsultationSch
         await session.refresh(consultation)
         await session.refresh(payment)
 
-        return {
-            "consultation_id": consultation.id,
-            "payment_id": payment.id
-        }
-
+        return consultation.id
+           
     except SQLAlchemyError as e:
         await session.rollback()
         # Log error or raise appropriate exception
@@ -398,13 +403,11 @@ async def count_compliants(session: AsyncSession):
 
 async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id: int):
     try:
-        # First verify consultation exists
         consultation_exists = await session.execute(
             select(ConsultationMapping).where(ConsultationMapping.id == consultation_id))
         if not consultation_exists.scalar():
-            return []  # Return empty rather than error if consultation doesn't exist
-
-        # Fetch messages with attachments
+            return []  
+       
         result = await session.execute(
             select(Chat)
             .options(selectinload(Chat.attachments))
@@ -414,34 +417,32 @@ async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id
         
         messages = result.scalars().all()
         
-        # Format response to match your frontend expectations
+       
         formatted_messages = []
         for msg in messages:
-            # Process attachments - with null checks
+           
             attachments = []
             for att in msg.attachments:
-                if not att.file_url:  # Skip invalid attachments
+                if not att.file_url:  
                     continue
                     
                 attachments.append({
                     "id": att.id,
-                    "filename": att.filename,  # Using filename instead of original_filename
+                    "filename": att.filename,  
                     "original_filename": att.original_filename,
                     "file_url": att.file_url,
                     "file_type": att.file_type,
                     "file_size": att.file_size,
                     "upload_status": att.upload_status
                 })
-
             formatted_messages.append({
                 "id": msg.id,
                 "message": msg.message,
-                "sender": msg.sender,  # Only using sender since no sender_id in model
-                "created_at": msg.created_at.isoformat(),
+                "sender": msg.sender,  
+                "created_at": utc_to_ist(msg.created_at).isoformat(),
                 "message_type": msg.message_type,
                 "has_attachments": msg.has_attachments,
                 "attachments": attachments,
-                # Add consultation_id if needed by frontend
                 "consultation_id": consultation_id  
             })
 
@@ -469,12 +470,26 @@ async def get_complaints_crud(session: AsyncSession,user_id:int):
     )
     return result.scalars().all()
 
+
 async def get_doctor_consultations(session: AsyncSession,doctorId):
     result = await session.execute(
         select(Consultation)
         .options(selectinload(Consultation.payments)).where(Consultation.psychologist_id==doctorId)
     )
     return result.scalars().all()
+
+
+async def verify_user_consultation(session: AsyncSession, consultation_id, current_user_id):
+    result = await session.execute(
+        select(ConsultationMapping).where(
+            ConsultationMapping.id == consultation_id,
+            or_(
+                ConsultationMapping.psychologist_id == current_user_id,
+                ConsultationMapping.user_id == current_user_id
+            )
+        )
+    )
+    return result.scalars().first()
 
 async def get_doctor_fee_after_platform_fee(session: AsyncSession,consultation_id :int):
     result = await session.execute(
@@ -483,25 +498,37 @@ async def get_doctor_fee_after_platform_fee(session: AsyncSession,consultation_i
     )
     return result.scalar()
 
-
-async def save_chat_message_with_attachments(session: AsyncSession,message: Optional[str],consultation_id: int,sender_type: str,attachments: List[Dict] = None,message_type: str = 'text') -> Dict:
-    """Save chat message with optional attachments in a single transaction"""
+async def save_chat_message_with_attachments(
+    session: AsyncSession,
+    message: Optional[str],
+    consultation_id: int,
+    sender_type: str,
+    attachments: List[Dict] = None,
+    message_type: str = 'text'
+) -> Dict:
     try:
-        chat = Chat(message=message,sender=sender_type,consultation_map_id=consultation_id,message_type=message_type,
-                    has_attachments=bool(attachments and len(attachments) > 0  ))
+        if session.in_transaction():
+            await session.rollback()
+
+        logger.debug(f"Inserting chat: consultation_id={consultation_id}, sender={sender_type}, message={message}")
+        logger.debug(f"Attachments: {attachments}")
+
+        chat = Chat(
+            message=message,
+            sender=sender_type,
+            consultation_map_id=consultation_id,
+            message_type=message_type,
+            has_attachments=bool(attachments and len(attachments) > 0)
+        )
         session.add(chat)
-        await session.flush()  # Flush to get the ID but don't commit yet
-        
-        # Add attachments if any
+        await session.flush()
         attachment_ids = []
         if attachments:
             for attachment_data in attachments:
                 if attachment_data.get('upload_status') == 'success':
-                    # Ensure all required fields are present with defaults
-                    original_filename = attachment_data.get('original_filename', 
-                                        attachment_data.get('filename', 'unknown'))
+                    logger.debug(f"Processing attachment: {attachment_data}")
+                    original_filename = attachment_data.get('original_filename', attachment_data.get('filename', 'unknown'))
                     file_path = attachment_data.get('file_path', '')
-                    
                     attachment = ChatAttachment(
                         chat_id=chat.id,
                         filename=attachment_data['filename'],
@@ -515,22 +542,31 @@ async def save_chat_message_with_attachments(session: AsyncSession,message: Opti
                     session.add(attachment)
                     await session.flush()
                     attachment_ids.append(attachment.id)
+
         await session.commit()
+
         return {
             "chat_id": chat.id,
             "attachment_ids": attachment_ids,
             "created_at": chat.created_at.isoformat() if hasattr(chat, 'created_at') else datetime.utcnow().isoformat()
         }
-        
+
     except Exception as e:
-        print(f"Error saving chat message: {str(e)}", exc_info=True)
         await session.rollback()
-        raise SQLAlchemyError(
-            status_code=500,
-            detail="Failed to save message and attachments"
-        )
+        logger.error("Error saving chat message:", traceback.format_exc())
+        raise RuntimeError("Failed to save chat message")
+
+       
 async def update_complaints_curd(session: AsyncSession, data :UpdateComplaintSchema,complaint_id:int):
     result = await session.execute(select(Complaint).where(Complaint.id == complaint_id))
     complaint = result.scalar_one_or_none()
     complaint.status=data.editingStatus
     await session.commit()
+    
+async def delete_partial_consultation(session: AsyncSession,consultation_id:int):
+    result = await session.execute(
+        select(Complaint)
+        .join(Consultation)
+        .where(Consultation.user_id == consultation_id)
+    )
+    return result.scalars().all()

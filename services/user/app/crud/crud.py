@@ -45,7 +45,6 @@ async def get_user_by_id_for_profile(session: AsyncSession, user_id: int):
     except Exception :
         await session.rollback()
    
-
 async def get_doctor_by_id_for_profile(session: AsyncSession, psychologist_id: int):
     try:
         result = await session.execute(
@@ -57,6 +56,18 @@ async def get_doctor_by_id_for_profile(session: AsyncSession, psychologist_id: i
         return result.scalars().first()
     except Exception :
         await session.rollback()
+   
+
+async def check_doctor_availability(session: AsyncSession, psychologist_id: int):
+    try:
+        result = await session.execute(
+        select(PsychologistProfile.is_available)
+        .where(PsychologistProfile.user_id == psychologist_id)
+        )
+        return result.scalars().first()
+    except Exception :
+        await session.rollback()
+        return False
     
 
 async def get_user_details_by_id(session: AsyncSession, user_id: int):

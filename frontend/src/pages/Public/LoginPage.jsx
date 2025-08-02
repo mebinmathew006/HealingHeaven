@@ -5,7 +5,6 @@ import publicaxiosconfig from "../../Publicaxiosconfig";
 import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
 import { toast } from "react-toastify";
-import axiosInstance from "../../axiosconfig";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -65,7 +64,7 @@ export default function LoginPage() {
 
   const handleCredentialResponse = async (response) => {
     try {
-      const backendResponse = await axiosInstance.post("/users/google-login", {
+      const backendResponse = await publicaxiosconfig.post("/users/google-login", {
         credential: response.credential, // Send the credential token to your backend
       });
 
@@ -104,10 +103,7 @@ export default function LoginPage() {
       // setting the user details in redux store
       const userDetails = response.data.user;
       const userEmail = response.data.user.email;
-      if (response.data.user.review=='test_review'){
-        console.log(response.data.user.review)
-      }
-      console.log(response.data.user)
+      
        if (!userDetails.is_active) {
         toast.info('Your are blocked',{position:'bottom-center'})
         return

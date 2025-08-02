@@ -1,24 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from dependencies.database import get_session
 import crud.crud as crud
-from schemas.consultation import PaginatedConsultationResponse,CompliantSchema,ConsultationResponseUser,NotificationResponse,FeedbackCreationSchema
-from schemas.consultation import CreateConsultationSchema,ConsultationResponse,ConsultationResponseUserCompliant,MappingResponse,MappingResponseUser ,CompliantSchemaa
-from schemas.consultation import UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,PaginatedNotificationResponse
-from schemas.consultation import CompliantPaginatedResponse,UpdateComplaintSchema,UserNameWithProfileImage,UserProfileImage,TokenRequest
 from fastapi.logger import logger
 from datetime import datetime 
-# from starlette.websockets import WebSocketState  # ✅ correct
-from crud.crud import count_consultations,get_complaints_crud,register_complaint_crud,consultation_for_user,get_all_notifications,update_consultation_status
-from crud.crud import doctor_dashboard_details_crud,admin_dashboard_details_crud,save_chat_message_with_attachments,get_doctor_fee_after_platform_fee
-from crud.crud import get_psychologist_rating_crud,get_feedbacks_crud,count_consultations_by_doctor_crud,consultation_for_doctor,consultation_details_with_id
-from crud.crud import create_notification,create_consultation,get_all_consultation,get_doctor_consultations,get_all_mapping_for_chat
-from crud.crud import get_chat_messages_using_cons_id,get_all_mapping_for_chat_user,update_analysis_consultation,save_recording_database
-from crud.crud import create_feedback,count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd
-from infra.external.user_service import get_user_details,get_doctor_details,get_minimal_user_details
+from infra.external.user_service import (get_user_details, get_doctor_details, get_minimal_user_details, 
+                                         change_doctor_availability, check_doctor_availability)
 from infra.external.payment_service import fetch_money_from_wallet,add_money_to_wallet
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict
 import asyncio
 import logging
@@ -29,39 +17,59 @@ import re
 from fastapi import Query
 from asyncio import gather
 import aiofiles
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, UploadFile, File, Form, HTTPException,Request
+from fastapi import (
+    UploadFile, File, Form,Request,WebSocket, WebSocketDisconnect,APIRouter, Depends, HTTPException,status)
 from fastapi.responses import FileResponse,JSONResponse
 from pathlib import Path
 from typing import Optional
+from core.redis import redis_client
+
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', default=None)
 import uuid
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 import json
-from dependencies.get_current_user import get_current_user
+from dependencies.get_current_user import get_current_user,get_current_user_ws
 from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 load_dotenv()
 from uuid import uuid4
 from fastapi.concurrency import run_in_threadpool
 from utils.cloudinary_utils import upload_to_cloudinary
+from utils.time import utc_to_ist
 from utils.zego_server_assistant import generate_token04, TokenInfo
+from schemas.consultation import (
+        PaginatedConsultationResponse, CompliantSchema, ConsultationResponseUser,
+        NotificationResponse, FeedbackCreationSchema, CreateConsultationSchema, 
+        ConsultationResponse, ConsultationResponseUserCompliant,MappingResponse,
+        MappingResponseUser, CompliantSchemaa, UpdateConsultationSchema,
+        CreateFeedbackSchema, CreateNotificationSchema,PaginatedNotificationResponse,
+        CompliantPaginatedResponse, UpdateComplaintSchema,UserNameWithProfileImage,
+        UserProfileImage,TokenRequest
+        )
+from crud.crud import ( 
+        count_consultations, get_complaints_crud, register_complaint_crud, consultation_for_user, 
+        get_all_notifications, update_consultation_status, doctor_dashboard_details_crud, 
+        admin_dashboard_details_crud, save_chat_message_with_attachments, get_doctor_fee_after_platform_fee,
+        get_psychologist_rating_crud, get_feedbacks_crud,count_consultations_by_doctor_crud, consultation_for_doctor,
+        consultation_details_with_id ,create_notification,create_consultation, get_all_consultation, 
+        get_doctor_consultations, get_all_mapping_for_chat ,get_chat_messages_using_cons_id,
+        get_all_mapping_for_chat_user, update_analysis_consultation,save_recording_database, create_feedback,
+        count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd,
+        delete_partial_consultation, verify_user_consultation
+        )
+
 
 router = APIRouter(tags=["consultations"])
-
-
 logger = logging.getLogger("uvicorn.error")
-
 ZEGO_APP_ID = int(os.getenv("ZEGO_APP_ID"))
 ZEGO_SERVER_SECRET = os.getenv("ZEGO_SERVER_SECRET")
-
-
 # Configuration
 RECORDINGS_DIR = "recordings"
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-# In-memory storage for tracking recording parts (use DB in production)
+# In-memory storage for tracking recording parts
 recording_sessions = {}
 
 import subprocess
@@ -268,16 +276,65 @@ async def generate_token(data :TokenRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-    
+
 @router.post("/create_consultation")
-async def create_consultation_route(data: CreateConsultationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def create_consultation_route(
+    data: CreateConsultationSchema,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    doctor_locked = False
+    consultation_created = False
+    consultation_id = None
+
+    lock_key = f"lock:doctor:{data.psychologist_id}"
+    lock_token = str(uuid.uuid4())
+
     try:
-        await fetch_money_from_wallet(data.dict())
+        # ✅ First acquire Redis lock — no availability check before this!
+        lock_acquired = await redis_client.set(lock_key, lock_token, ex=10, nx=True)
+        if not lock_acquired:
+            raise HTTPException(status_code=409, detail="Doctor is currently busy. Try again.")
         
-        return await create_consultation(session, data)
+        # ✅ Now check availability after locking (still helpful as defense)
+        response = await check_doctor_availability(data.dict())
+        
+        logger.info(f"[{current_user_id}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")
+        
+        if response == False:
+            raise HTTPException(status_code=409, detail="Doctor is not available")
+        
+
+        # Mark doctor as unavailable
+        response = await change_doctor_availability(data.dict(), False)
+        if not response.get("status"):
+            raise HTTPException(status_code=409, detail="Doctor is not available")
+        doctor_locked = True
+
+        # Create consultation
+        consultation_id = await create_consultation(session, data)
+        consultation_created = True
+
+        # Charge wallet
+        return await fetch_money_from_wallet(data.dict())
+
     except Exception as e:
-        logger.info(f"Error creating user: {e}")
-        raise HTTPException(status_code=400, detail="Failed to update user")
+        logger.error(f"Error creating consultation: {e}")
+
+        if consultation_created and consultation_id:
+            await delete_partial_consultation(session, consultation_id)
+
+        if doctor_locked:
+            await change_doctor_availability(data, True)
+
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something went wrong")
+
+    finally:
+        # Release the lock only if we still own it
+        stored_token = await redis_client.get(lock_key)
+        if stored_token == lock_token:
+            await redis_client.delete(lock_key)
+
     
 @router.post("/register_complaint")
 async def register_complaint_route(data:CompliantSchemaa,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
@@ -839,7 +896,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     
 
 # # ***************************************Chat***********************************************
-# # In-memory storage (consider Redis for production)
+# # In-memory storage 
 # chat_endpoints.py - Enhanced WebSocket and File Upload Endpoints
 # Configuration
 
@@ -1013,13 +1070,28 @@ async def get_chat_file(filename: str):
 async def chat_websocket(
     websocket: WebSocket,
     consultation_id: int,
-    session: AsyncSession = Depends(get_session)
-):
+    session: AsyncSession = Depends(get_session),
+    ):
     # Constants
     VALID_SENDER_TYPES = ["doctor", "user"]
     MAX_MESSAGE_SIZE = 2000
     
     await websocket.accept()
+    try:
+        current_user_id = await get_current_user_ws(websocket)
+        logger.info(f'[websocket] some error occured {current_user_id}')
+        
+        if not current_user_id:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        
+        verify_user = await verify_user_consultation(session, consultation_id, current_user_id)
+        if not verify_user:
+                await websocket.send_json({"error": "Invalid consultation ID"})
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                return
+    except Exception as e:
+        logger.error(f'[websocket] some error occured {e}')
     await websocket.send_json({"type": "handshake", "status": "connected"})
 
     # Initial user identification
@@ -1061,6 +1133,7 @@ async def chat_websocket(
         logger.warning(f"Initial connection failed: {str(e)}")
         await websocket.close(code=4001)
         return
+    
     except Exception as e:
         logger.error(f"Unexpected connection error: {str(e)}")
         await websocket.close(code=4002)
@@ -1200,7 +1273,7 @@ async def chat_websocket(
                     "message": message,
                     "message_type": message_type,
                     "attachments": attachments,
-                    "created_at": datetime.utcnow().isoformat()
+                    "created_at": utc_to_ist(datetime.utcnow()).isoformat() 
                 }
                 
                 async with room_lock:

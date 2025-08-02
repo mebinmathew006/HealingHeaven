@@ -50,7 +50,6 @@ async def google_login(data: users.GoogleLoginSchema, request: Request, session:
     if not email:
         raise HTTPException(status_code=400, detail="Email not found in Google token")
 
-    # Check if user exists
     user = await crud.get_user_by_email(session,email)
 
     if not user:
@@ -76,7 +75,6 @@ async def google_login(data: users.GoogleLoginSchema, request: Request, session:
             "role": user.role,
             "is_verified": user.is_verified,
             "is_active": user.is_active,
-            # "profile_image": user.profile_image
         }
     })
 
@@ -84,9 +82,9 @@ async def google_login(data: users.GoogleLoginSchema, request: Request, session:
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,  # Set to False only in dev
-        samesite="strict",  # or "lax" if needed
-        max_age=60 * 60 * 24 * 7  # 7 days
+        secure=True, 
+        samesite="strict", 
+        max_age=60 * 60 * 24 * 7 
     )
 
     return response
@@ -98,7 +96,7 @@ async def create_user(user: users.UserCreate,background_tasks: BackgroundTasks, 
     if db_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     new_user = await crud.create_user(session, user)
-    otp = otp_generate()  # simple 6-digit OTP
+    otp = otp_generate()  #  6-digit OTP
     await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
     send_otp_email.delay(user.email_address, otp)
     return new_user
@@ -153,7 +151,7 @@ async def login(    login_schema: users.LoginSchema, session: AsyncSession = Dep
     user_details = await crud.get_user_by_email(session, login_schema.email)
     if user_details and verify_password(login_schema.password, user_details.password):
         
-        access_token = create_access_token({"sub": str(user_details.id)})  # Convert to string
+        access_token = create_access_token({"sub": str(user_details.id)})  
         refresh_token = create_refresh_token({"sub": str(user_details.id)})     
         
         response = JSONResponse(
@@ -163,11 +161,11 @@ async def login(    login_schema: users.LoginSchema, session: AsyncSession = Dep
                 'email': user_details.email_address,
                 'name': user_details.name,
                 'role': user_details.role,
-                'is_verified': user_details.is_verified,#uses this field to know whther the user is verified or not
-                'is_active': user_details.is_active,#uses this field to know whther the user is verified or not
-                'review': 'test_review',#uses this field to know whther the user is verified or not
+                'is_verified': user_details.is_verified,
+                'is_active': user_details.is_active,
+                
             }}        )
-        # Set refresh token in secure HTTP-only cookie
+        
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
@@ -192,8 +190,8 @@ async def forgetpassword(
             otp = otp_generate()  # simple 6-digit OTP
             await redis_client.delete(f"otp:{email_schema.email}")
             await redis_client.set(f"otp:{email_schema.email}", otp, ex=300)
-            # background_tasks.add_task(send_otp_email,email_schema.email, otp)
-            # Use Celery instead of background task
+           
+            # Use Celery 
             send_otp_email.delay(email_schema.email, otp)
             return JSONResponse(content={"status": "success"}, status_code=200)
 
@@ -297,7 +295,15 @@ async def update_availability(user_id:int,isAvailable:bool,current_user_id: str 
         data= await crud.psychologist_availability_update(session,user_id,isAvailable)
         return JSONResponse(content={"status": data}, status_code=200)
     except:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")  
+    
+@router.patch('/update_psychologist_for_consultaion/{user_id}/{isAvailable}')
+async def update_psychologist_for_consultaion_route(user_id:int,isAvailable:bool,session: AsyncSession = Depends(get_session)):
+    try :
+        data= await crud.psychologist_availability_update(session,user_id,isAvailable)
+        return JSONResponse(content={"status": True}, status_code=200)
+    except Exception as e:
+        return JSONResponse(content={"status": True}, status_code=400)
     
 @router.patch('/update_psychologist_documents/{user_id}')
 async def update_psychologist_documents(user_id:int,identification_doc: Optional[UploadFile] = File(None),education_certificate: Optional[UploadFile] = File(None),
@@ -328,6 +334,14 @@ async def get_user_details(user_id: int, session: AsyncSession = Depends(get_ses
 async def get_user_details_by_id(user_id: int, session: AsyncSession = Depends(get_session)):
 
     data = await crud.get_user_by_id_for_profile(session,user_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return data
+
+@router.get("/check_doctor_availability/{psychologist_id}")
+async def get_user_details_by_id(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+
+    data = await crud.check_doctor_availability(session,psychologist_id)
     if not data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return data
