@@ -75,7 +75,7 @@ export default function PsychologistsDirectory() {
   };
 
   return (
-    <div className="h-screen mx-auto p-6 bg-gradient-to-br from-blue-50  to-green-50">
+    <div className="h-fit mx-auto p-6 bg-gradient-to-br from-blue-50  to-green-50">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
           Explore Our Licensed Psychologists

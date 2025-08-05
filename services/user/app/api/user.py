@@ -12,7 +12,6 @@ from utility.cloudinary_utils import upload_to_cloudinary
 from core.redis import redis_client
 from utility.otp_generator import otp_generate
 from fastapi.responses import JSONResponse
-# from dependencies.auth import create_access_token,create_refresh_token,verify_refresh_token
 from utility.jwt_handler import create_access_token,create_refresh_token,verify_token
 from fastapi.logger import logger
 from datetime import date 
@@ -104,7 +103,12 @@ async def create_user(user: users.UserCreate,background_tasks: BackgroundTasks, 
 
 
 @router.put("/update_user_details/{user_id}")
-async def update_user_details(user_id: int, user_and_profile: users.UserWithOptionalProfileOut,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def update_user_details(
+    user_id: int, 
+    user_and_profile: users.UserWithOptionalProfileOut,
+    current_user_id: str = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session)
+    ):
     
     
     if int(current_user_id) != user_id:
@@ -123,7 +127,12 @@ async def update_user_details(user_id: int, user_and_profile: users.UserWithOpti
     
    
 @router.put("/update_psychologist_details/{user_id}")
-async def update_psychologist_details(user_id: int, user_and_profile: users.DoctorVerificationOut,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def update_psychologist_details(
+    user_id: int, 
+    user_and_profile: users.DoctorVerificationOut,
+    current_user_id: str = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session)
+    ):
     try:
         updated_user = await crud.update_psychologist_and_profile(session, user_id, user_and_profile)
         if not updated_user:
@@ -290,7 +299,12 @@ async def view_psychologist(session: AsyncSession = Depends(get_session)):
 
 
 @router.patch('/update_availability/{user_id}/{isAvailable}')
-async def update_availability(user_id:int,isAvailable:bool,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def update_availability(
+    user_id:int,
+    isAvailable:bool,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
     try :
         data= await crud.psychologist_availability_update(session,user_id,isAvailable)
         return JSONResponse(content={"status": data}, status_code=200)
@@ -298,7 +312,11 @@ async def update_availability(user_id:int,isAvailable:bool,current_user_id: str 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")  
     
 @router.patch('/update_psychologist_for_consultaion/{user_id}/{isAvailable}')
-async def update_psychologist_for_consultaion_route(user_id:int,isAvailable:bool,session: AsyncSession = Depends(get_session)):
+async def update_psychologist_for_consultaion_route(
+    user_id:int,
+    isAvailable:bool,
+    session: AsyncSession = Depends(get_session)
+    ):
     try :
         data= await crud.psychologist_availability_update(session,user_id,isAvailable)
         return JSONResponse(content={"status": True}, status_code=200)
@@ -306,8 +324,14 @@ async def update_psychologist_for_consultaion_route(user_id:int,isAvailable:bool
         return JSONResponse(content={"status": True}, status_code=400)
     
 @router.patch('/update_psychologist_documents/{user_id}')
-async def update_psychologist_documents(user_id:int,identification_doc: Optional[UploadFile] = File(None),education_certificate: Optional[UploadFile] = File(None),
-    experience_certificate: Optional[UploadFile] = File(None),current_user_id: str = Depends(get_current_user),session:AsyncSession =Depends(get_session)):
+async def update_psychologist_documents(
+    user_id:int,
+    identification_doc: Optional[UploadFile] = File(None),
+    education_certificate: Optional[UploadFile] = File(None),
+    experience_certificate: Optional[UploadFile] = File(None),
+    current_user_id: str = Depends(get_current_user),
+    session:AsyncSession =Depends(get_session)
+    ):
     try:
         if experience_certificate:
             edu_url = await run_in_threadpool(upload_to_cloudinary, experience_certificate, "doctor_verification/education")
@@ -354,30 +378,24 @@ async def get_doctor_details_by_id(psychologist_id: int, session: AsyncSession =
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return data
 
-
 @router.get("/get_psycholgist_details/{user_id}", response_model=users.DoctorVerificationOut)
 async def get_psycholgist_details(user_id: int, session: AsyncSession = Depends(get_session)):
     try:
         try:
             data = await crud.get_psycholgist_by_id(session, user_id)
-        
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error: {str(e)}"
             )
-
         if not data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-
         return data 
-
     except HTTPException as http_exc:
         raise http_exc
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -435,7 +453,6 @@ async def doctor_verification(
             detail=f"Internal server error: {str(e)}"
         )
         
-        
 @router.put("/doctor_verification_update/{user_id}")
 async def doctor_verification_update(
     user_id: int,
@@ -446,22 +463,19 @@ async def doctor_verification_update(
     qualification: str = Form(...),
     specialization: str = Form(...),
     about_me: str = Form(...),
-    id: UploadFile = File(None),  # Optional file
-    educationalCertificate: UploadFile = File(None),  # Optional file
-    experienceCertificate: UploadFile = File(None),  # Optional file
+    id: UploadFile = File(None),  
+    educationalCertificate: UploadFile = File(None),  
+    experienceCertificate: UploadFile = File(None),  
     current_user_id: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        # Initialize URLs as None
         id_url = None
         edu_url = None
         exp_url = None
-        print(user_id,date_of_birth,experience,gender,fees,qualification,specialization,about_me,id, educationalCertificate,experienceCertificate,'ikkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk')
         
-        # Upload files to Cloudinary only if they are provided
         try:
-            if id and id.filename:  # Check if file exists and has a filename
+            if id and id.filename:  
                 id_url = await run_in_threadpool(upload_to_cloudinary, id, "doctor_verification/id")
             
             if educationalCertificate and educationalCertificate.filename:
@@ -487,9 +501,9 @@ async def doctor_verification_update(
                 qualification=qualification,
                 specialization=specialization,
                 about_me=about_me,
-                id_url=id_url,  # Will be None if not provided
-                edu_url=edu_url,  # Will be None if not provided
-                exp_url=exp_url  # Will be None if not provided
+                id_url=id_url,  
+                edu_url=edu_url,  
+                exp_url=exp_url  
             )
             
         except Exception as e:
@@ -497,21 +511,20 @@ async def doctor_verification_update(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error: {str(e)}"
             )
-
         return JSONResponse(content={"status": "success", "message": "Doctor profile updated successfully"}, status_code=200)
-
     except HTTPException as http_exc:
-        raise http_exc  # Re-raise to send the correct status and message
-
+        raise http_exc 
     except Exception as e:
-        # Fallback for any unexpected errors
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
         )
 
 @router.get("/admin_view_users")
-async def admin_view_users(current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def admin_view_users(
+    current_user_id: str = Depends(get_current_user)
+    ,session: AsyncSession = Depends(get_session)
+    ):
     try:
         result = await crud.get_all_users(session)
         return result
@@ -534,7 +547,10 @@ async def doctor_profile_images(session: AsyncSession = Depends(get_session)):
         )
         
 @router.get("/admin_view_psychologist")
-async def admin_view_psychologist(current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def admin_view_psychologist(
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
     try:
         result = await crud.get_all_psychologist(session)
         return result
@@ -545,16 +561,24 @@ async def admin_view_psychologist(current_user_id: str = Depends(get_current_use
         )
         
 @router.patch('/toggle_user_status/{user_id}')
-async def toggle_user_status(user_id:int,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def toggle_user_status(
+    user_id:int,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
     try :
         data= await crud.toggle_user_status_by_id(session,user_id)
         return JSONResponse(content={"status": data}, status_code=200)
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
-    
 @router.patch('/update_user_profile_image/{user_id}')
-async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def toggle_user_status(
+    user_id:int,
+    profile_image: UploadFile = File(...),
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
     try :
         profile_url = await run_in_threadpool(upload_to_cloudinary, profile_image, "profile_images/id")
         data= await crud.update_user_profile_image(session,user_id,profile_url)
@@ -563,7 +587,11 @@ async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),c
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
 @router.patch('/update_psychologist_profile_image/{user_id}')
-async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def toggle_user_status(user_id:int,
+                             profile_image: UploadFile = File(...),
+                             current_user_id: str = Depends(get_current_user),
+                             session: AsyncSession = Depends(get_session)
+                             ):
     try :
         profile_url = await run_in_threadpool(upload_to_cloudinary, profile_image, "profile_images/id")
         data= await crud.update_user_psychologist_image(session,user_id,profile_url)
@@ -571,9 +599,14 @@ async def toggle_user_status(user_id:int,profile_image: UploadFile = File(...),c
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
-    
 @router.patch('/change_psychologist_verification/{user_id}/{status}')
-async def change_psychologist_verification(user_id:int,status:str,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def change_psychologist_verification(
+    user_id:int,
+    status:str,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
+    
     try :
         data= await crud.toggle_psychologist_status_by_id(session,user_id,status)
         return JSONResponse(content={"status": data}, status_code=200)
@@ -581,17 +614,18 @@ async def change_psychologist_verification(user_id:int,status:str,current_user_i
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
 @router.put('/revoke_psychologist_verification/{user_id}')
-async def change_psychologist_verification(user_id:int,revoke_details:users.RevokeDetails,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)):
+async def change_psychologist_verification(
+    user_id:int,
+    revoke_details:users.RevokeDetails,
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
     try :
         data= await crud.revoke_psychologist_status_by_id(session,user_id,revoke_details)
         return JSONResponse(content={"status": data}, status_code=200)
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")
     
-    
-
-
-
 @router.post("/refresh_token")
 async def refresh_token(request: Request):
     refresh_token = request.cookies.get("refresh_token")

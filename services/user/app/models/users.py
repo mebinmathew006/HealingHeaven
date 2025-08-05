@@ -18,28 +18,24 @@ class User(Base):
     is_active = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=True,  onupdate=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=True,  onupdate=func.now())
+    
     user_profile = relationship("UserProfile", back_populates="user", uselist=False)
     psychologist_profile = relationship("PsychologistProfile", back_populates="user", uselist=False)
     
-    
-
 
 class UserProfile(Base):
     __tablename__ = "user_profile"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     profile_image = Column(Text, nullable=True)
     date_of_birth = Column(Date, nullable=True)
     gender = Column(String(10), nullable=True)
-
     user = relationship("User", back_populates="user_profile")
 
 
 class PsychologistProfile(Base):
     __tablename__ = "psychologist_profile"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     profile_image = Column(Text, nullable=True)
@@ -58,5 +54,4 @@ class PsychologistProfile(Base):
     is_available = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, nullable=True)
     updated_at = Column(TIMESTAMP, nullable=True)
-
     user = relationship("User", back_populates="psychologist_profile")

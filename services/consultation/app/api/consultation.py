@@ -6,6 +6,11 @@ from fastapi.logger import logger
 from datetime import datetime 
 from infra.external.user_service import (get_user_details, get_doctor_details, get_minimal_user_details, 
                                          change_doctor_availability, check_doctor_availability)
+from fastapi import ( 
+                     UploadFile, File, Form,Request,WebSocket, 
+                     WebSocketDisconnect,APIRouter, Depends, 
+                     HTTPException,status
+                     )
 from infra.external.payment_service import fetch_money_from_wallet,add_money_to_wallet
 from typing import Dict
 import asyncio
@@ -16,19 +21,18 @@ import os
 import re
 from fastapi import Query
 from asyncio import gather
-import aiofiles
-from fastapi import (
-    UploadFile, File, Form,Request,WebSocket, WebSocketDisconnect,APIRouter, Depends, HTTPException,status)
+
 from fastapi.responses import FileResponse,JSONResponse
 from pathlib import Path
 from typing import Optional
 from core.redis import redis_client
-
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', default=None)
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', default=None)
 import uuid
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+import subprocess
+from pathlib import Path
 import json
 from dependencies.get_current_user import get_current_user,get_current_user_ws
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,219 +67,7 @@ from crud.crud import (
 
 router = APIRouter(tags=["consultations"])
 logger = logging.getLogger("uvicorn.error")
-ZEGO_APP_ID = int(os.getenv("ZEGO_APP_ID"))
-ZEGO_SERVER_SECRET = os.getenv("ZEGO_SERVER_SECRET")
-# Configuration
-RECORDINGS_DIR = "recordings"
-os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
-# In-memory storage for tracking recording parts
-recording_sessions = {}
-
-import subprocess
-from pathlib import Path
-
-@router.post("/recordings")
-async def upload_recording(
-    file: UploadFile = File(...),
-    roomId: str = Form(...),
-    userId: str = Form(...),
-    isFinal: str = Form(...),
-    session: AsyncSession = Depends(get_session)
-):
-    try:
-        is_final = isFinal.lower() == 'true'
-        session_id = f"{roomId}_{userId}"
-        recordings_dir = Path(RECORDINGS_DIR).absolute()  # Use absolute path
-
-        # Debug info
-        print(f"\nReceived {'FINAL' if is_final else 'chunk'} recording from {userId}")
-        print(f"File size: {file.size} bytes")
-        print(f"Content type: {file.content_type}")
-        print(f"Base recordings directory: {recordings_dir}")
-
-        # Validation
-        if not file.content_type.startswith('video/'):
-            raise HTTPException(status_code=400, detail="Only video files are accepted")
-
-        contents = await file.read()
-        if len(contents) == 0:
-            raise HTTPException(status_code=400, detail="Empty file received")
-
-        # Create session-specific directory
-        session_dir = recordings_dir / session_id
-        session_dir.mkdir(exist_ok=True, parents=True)
-        print(f"Session directory: {session_dir}")
-
-        # Save chunk with unique name in session directory only
-        chunk_filename = f"chunk_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.webm"
-        chunk_path = session_dir / chunk_filename
-        
-        with open(chunk_path, 'wb') as f:
-            f.write(contents)
-        print(f"Saved chunk to: {chunk_path}")
-
-        # Initialize/update session tracking
-        if session_id not in recording_sessions:
-            recording_sessions[session_id] = {
-                'chunks': [],
-                'created_at': datetime.now(),
-                'session_dir': str(session_dir)  # Track the directory
-            }
-        
-        recording_sessions[session_id]['chunks'].append(str(chunk_path))
-        recording_sessions[session_id]['last_updated'] = datetime.now()
-
-        # Process final chunk
-        if is_final:
-            final_filename = f"recording_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
-            final_path = recordings_dir / final_filename
-            
-            print(f"\nCombining {len(recording_sessions[session_id]['chunks'])} chunks...")
-            print(f"Final path: {final_path}")
-
-            # Create concat list file in session directory
-            concat_file = session_dir / "concat.txt"
-            with open(concat_file, 'w') as f:
-                for chunk in recording_sessions[session_id]['chunks']:
-                    f.write(f"file '{chunk}'\n")
-
-            # Combine using ffmpeg
-            try:
-                subprocess.run([
-                    'ffmpeg',
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', str(concat_file),
-                    '-c', 'copy',
-                    '-y',
-                    str(final_path)
-                ], check=True)
-                print("Successfully combined chunks")
-            except subprocess.CalledProcessError as e:
-                print(f"FFmpeg error: {e}")
-                raise HTTPException(status_code=500, detail="Failed to combine video chunks")
-
-            # Clean up - remove all chunks and session directory
-            print("Cleaning up temporary files...")
-            for chunk in recording_sessions[session_id]['chunks']:
-                try:
-                    Path(chunk).unlink(missing_ok=True)
-                except Exception as e:
-                    print(f"Error deleting chunk {chunk}: {e}")
-
-            try:
-                concat_file.unlink(missing_ok=True)
-                session_dir.rmdir()  # Only works if directory is empty
-            except Exception as e:
-                print(f"Error cleaning up session dir: {e}")
-
-            # Verify final file exists
-            if not final_path.exists():
-                raise HTTPException(status_code=500, detail="Final recording not created")
-
-            # Remove session tracking
-            del recording_sessions[session_id]
-
-            # Save to database
-            final_url = f"/recordings/{final_filename}"
-            
-            consultation_id=int(roomId[4:])
-            await save_recording_database(session, final_url, consultation_id)
-
-            return JSONResponse({
-                "status": "success",
-                "message": "Recording completed",
-                "finalUrl": final_url,  
-                "fileSize": final_path.stat().st_size
-            })
-
-        return JSONResponse({
-            "status": "success",
-            "message": "Chunk uploaded",
-            "chunkSize": len(contents),
-            "totalChunks": len(recording_sessions[session_id]['chunks'])
-        })
-
-    except Exception as e:
-        print(f"\nError processing recording: {str(e)}", flush=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/recordings/{filename}")
-async def get_recording(filename: str):
-    try:
-        file_path = os.path.join(RECORDINGS_DIR, filename)
-        
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Recording not found")
-
-      
-        from fastapi.responses import FileResponse
-        return FileResponse(
-            file_path,
-            media_type="video/webm",
-            filename=filename
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Cleanup old sessions (run periodically)
-def cleanup_old_sessions(hours_old=24):
-    now = datetime.now()
-    for session_id, session_data in list(recording_sessions.items()):
-        if (now - session_data['last_updated']).total_seconds() > hours_old * 3600:
-            print(f"Cleaning up old session: {session_id}")
-            try:
-                session_dir = os.path.join(RECORDINGS_DIR, session_id)
-                for chunk in session_data['chunks']:
-                    if os.path.exists(chunk):
-                        os.remove(chunk)
-                if os.path.exists(session_dir):
-                    os.rmdir(session_dir)
-                del recording_sessions[session_id]
-            except Exception as e:
-                print(f"Error cleaning up session {session_id}: {e}")
-
-
-def generate_zego_token(user_id: str, room_id: str) -> dict:
-    """Generate a ZEGOCLOUD token"""
-    app_id = int(os.getenv("ZEGO_APP_ID")) 
-    server_secret = os.getenv("ZEGO_SERVER_SECRET")  
-    effective_time = 3600  # 1 hour expiry
-
-    # Payload for room privileges
-    payload = json.dumps({
-        "room_id": room_id,
-        "privilege": {1: 1, 2: 1}  # 1=Login, 2=Publish
-    })
-
-    # Generate token
-    token_info: TokenInfo = generate_token04(
-        app_id=app_id,
-        user_id=user_id,
-        secret=server_secret,
-        effective_time_in_seconds=effective_time,
-        payload=payload
-    )
-
-    if token_info.error_code != 0:
-        raise Exception(f"Token generation failed: {token_info.error_message}")
-
-    return {
-        "token": token_info.token,
-        "app_id": app_id
-    }
-
-@router.post("/generate-token")
-async def generate_token(data :TokenRequest):
-    try:
-        token_data = generate_zego_token(data.user_id, data.room_id)
-        return token_data
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
 
 @router.post("/create_consultation")
 async def create_consultation_route(
@@ -656,6 +448,210 @@ async def doctor_get_consulations_route(
         raise HTTPException(status_code=500, detail=str(e))
     
     
+ZEGO_APP_ID = int(os.getenv("ZEGO_APP_ID"))
+ZEGO_SERVER_SECRET = os.getenv("ZEGO_SERVER_SECRET")
+# Configuration
+RECORDINGS_DIR = "recordings"
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
+# In-memory storage for tracking recording parts
+recording_sessions = {}
+
+
+@router.post("/recordings")
+async def upload_recording(
+    file: UploadFile = File(...),
+    roomId: str = Form(...),
+    userId: str = Form(...),
+    isFinal: str = Form(...),
+    session: AsyncSession = Depends(get_session)
+):
+    try:
+        is_final = isFinal.lower() == 'true'
+        session_id = f"{roomId}_{userId}"
+        recordings_dir = Path(RECORDINGS_DIR).absolute()  # Use absolute path
+
+        # Debug info
+        print(f"\nReceived {'FINAL' if is_final else 'chunk'} recording from {userId}")
+        print(f"File size: {file.size} bytes")
+        print(f"Content type: {file.content_type}")
+        print(f"Base recordings directory: {recordings_dir}")
+
+        # Validation
+        if not file.content_type.startswith('video/'):
+            raise HTTPException(status_code=400, detail="Only video files are accepted")
+
+        contents = await file.read()
+        if len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Empty file received")
+
+        # Create session-specific directory
+        session_dir = recordings_dir / session_id
+        session_dir.mkdir(exist_ok=True, parents=True)
+        print(f"Session directory: {session_dir}")
+
+        # Save chunk with unique name in session directory only
+        chunk_filename = f"chunk_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.webm"
+        chunk_path = session_dir / chunk_filename
+        
+        with open(chunk_path, 'wb') as f:
+            f.write(contents)
+        print(f"Saved chunk to: {chunk_path}")
+
+        # Initialize/update session tracking
+        if session_id not in recording_sessions:
+            recording_sessions[session_id] = {
+                'chunks': [],
+                'created_at': datetime.now(),
+                'session_dir': str(session_dir)  # Track the directory
+            }
+        
+        recording_sessions[session_id]['chunks'].append(str(chunk_path))
+        recording_sessions[session_id]['last_updated'] = datetime.now()
+
+        # Process final chunk
+        if is_final:
+            final_filename = f"recording_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm"
+            final_path = recordings_dir / final_filename
+            
+            print(f"\nCombining {len(recording_sessions[session_id]['chunks'])} chunks...")
+            print(f"Final path: {final_path}")
+
+            # Create concat list file in session directory
+            concat_file = session_dir / "concat.txt"
+            with open(concat_file, 'w') as f:
+                for chunk in recording_sessions[session_id]['chunks']:
+                    f.write(f"file '{chunk}'\n")
+
+            # Combine using ffmpeg
+            try:
+                subprocess.run([
+                    'ffmpeg',
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', str(concat_file),
+                    '-c', 'copy',
+                    '-y',
+                    str(final_path)
+                ], check=True)
+                print("Successfully combined chunks")
+            except subprocess.CalledProcessError as e:
+                print(f"FFmpeg error: {e}")
+                raise HTTPException(status_code=500, detail="Failed to combine video chunks")
+
+            # Clean up - remove all chunks and session directory
+            print("Cleaning up temporary files...")
+            for chunk in recording_sessions[session_id]['chunks']:
+                try:
+                    Path(chunk).unlink(missing_ok=True)
+                except Exception as e:
+                    print(f"Error deleting chunk {chunk}: {e}")
+
+            try:
+                concat_file.unlink(missing_ok=True)
+                session_dir.rmdir()  # Only works if directory is empty
+            except Exception as e:
+                print(f"Error cleaning up session dir: {e}")
+
+            # Verify final file exists
+            if not final_path.exists():
+                raise HTTPException(status_code=500, detail="Final recording not created")
+
+            # Remove session tracking
+            del recording_sessions[session_id]
+
+            # Save to database
+            final_url = f"/recordings/{final_filename}"
+            
+            consultation_id=int(roomId[4:])
+            await save_recording_database(session, final_url, consultation_id)
+
+            return JSONResponse({
+                "status": "success",
+                "message": "Recording completed",
+                "finalUrl": final_url,  
+                "fileSize": final_path.stat().st_size
+            })
+
+        return JSONResponse({
+            "status": "success",
+            "message": "Chunk uploaded",
+            "chunkSize": len(contents),
+            "totalChunks": len(recording_sessions[session_id]['chunks'])
+        })
+
+    except Exception as e:
+        print(f"\nError processing recording: {str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/recordings/{filename}")
+async def get_recording(filename: str):
+    try:
+        file_path = os.path.join(RECORDINGS_DIR, filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="Recording not found")
+
+      
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            file_path,
+            media_type="video/webm",
+            filename=filename
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def cleanup_old_sessions(hours_old=24):
+    now = datetime.now()
+    for session_id, session_data in list(recording_sessions.items()):
+        if (now - session_data['last_updated']).total_seconds() > hours_old * 3600:
+            print(f"Cleaning up old session: {session_id}")
+            try:
+                session_dir = os.path.join(RECORDINGS_DIR, session_id)
+                for chunk in session_data['chunks']:
+                    if os.path.exists(chunk):
+                        os.remove(chunk)
+                if os.path.exists(session_dir):
+                    os.rmdir(session_dir)
+                del recording_sessions[session_id]
+            except Exception as e:
+                print(f"Error cleaning up session {session_id}: {e}")
+
+def generate_zego_token(user_id: str, room_id: str) -> dict:
+    """Generate a ZEGOCLOUD token"""
+    app_id = int(os.getenv("ZEGO_APP_ID")) 
+    server_secret = os.getenv("ZEGO_SERVER_SECRET")  
+    effective_time = 3600  # 1 hour expiry
+    # Payload for room privileges
+    payload = json.dumps({
+        "room_id": room_id,
+        "privilege": {1: 1, 2: 1}  # 1=Login, 2=Publish
+    })
+    # Generate token
+    token_info: TokenInfo = generate_token04(
+        app_id=app_id,
+        user_id=user_id,
+        secret=server_secret,
+        effective_time_in_seconds=effective_time,
+        payload=payload
+    )
+    if token_info.error_code != 0:
+        raise Exception(f"Token generation failed: {token_info.error_message}")
+    return {
+        "token": token_info.token,
+        "app_id": app_id
+    }
+
+@router.post("/generate-token")
+async def generate_token(data :TokenRequest):
+    try:
+        token_data = generate_zego_token(data.user_id, data.room_id)
+        return token_data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
 @router.get("/get_notifications/", response_model=PaginatedNotificationResponse)
 async def get_notifications_route(
     page: int = Query(1, ge=1),
@@ -676,10 +672,8 @@ async def get_notifications_route(
             "previous": prev_url,
             "results": notifications
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
     
 @router.get("/get_compliants", response_model=CompliantPaginatedResponse)
 async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query(10, le=100),current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session),
@@ -690,18 +684,15 @@ async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query
         compliants = await get_compliants_crud(session, skip=offset, limit=limit)
         next_url = f"/get_compliants?page={page + 1}&limit={limit}" if offset + limit < total else None
         prev_url = f"/get_compliants?page={page - 1}&limit={limit}" if page > 1 else None
-
         return {
             "count": total,
             "next": next_url,
             "previous": prev_url,
             "results": compliants
         }
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    
 @router.patch("/update_complaints/{complaint_id}")
 async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
@@ -710,7 +701,6 @@ async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
 
-
 @router.get('/get_psycholgist_rating/{psychologist_id}')
 async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
     try:
@@ -718,7 +708,6 @@ async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSess
         return  avg_rating if avg_rating is not None else 0.0
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
     
 @router.get('/doctor_dashboard_details/{psychologist_id}/{selectedYear}')
 async def doctor_dashboard_details_route(psychologist_id: int,selectedYear:int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
@@ -735,8 +724,6 @@ async def admin_dashboard_details_route(year:int,current_user_id: str = Depends(
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
 
 @router.get('/get_feedbacks/{psychologist_id}', response_model=list[CreateFeedbackSchema])
 async def get_feedbacks_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
