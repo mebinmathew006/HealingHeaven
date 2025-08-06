@@ -91,15 +91,19 @@ async def google_login(data: users.GoogleLoginSchema, request: Request, session:
 
 @router.post("/signup", response_model=users.UserOut)
 async def create_user(user: users.UserCreate,background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_session)):
-    db_user = await crud.get_user_by_email(session, user.email_address)
-    if db_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-    new_user = await crud.create_user(session, user)
-    otp = otp_generate()  #  6-digit OTP
-    await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
-    send_otp_email.delay(user.email_address, otp)
-    return new_user
-
+    try:
+        
+        db_user = await crud.get_user_by_email(session, user.email_address)
+        if db_user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+        new_user = await crud.create_user(session, user)
+        otp = otp_generate()
+        await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
+        send_otp_email.delay(user.email_address, otp)
+        return new_user
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something Went Wrong")
 
 
 @router.put("/update_user_details/{user_id}")

@@ -47,7 +47,7 @@ def send_otp_email(to_email: str, otp: str):
 
         Your OTP code is: {otp}
 
-        It is valid for the next 10 minutes.
+        It is valid for the next 5 minutes.
 
         Regards,
         Healing Heaven Team

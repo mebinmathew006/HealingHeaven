@@ -3,16 +3,26 @@
 from pydantic import BaseModel, EmailStr, Field,validator
 from typing import Optional
 from datetime import date, datetime
+import re
 
 class GoogleLoginSchema(BaseModel):
     credential: str
     
+
 class UserCreate(BaseModel):
     name: str
     email_address: EmailStr
     mobile_number: str
     password: str
+    confirmPassword: str
     role: str
+
+    @validator("name")
+    def validate_name(cls, v):
+        if not re.fullmatch(r"[A-Za-z ]+", v):
+            raise ValueError("Name must contain only alphabets and spaces")
+        return v
+
     @validator("mobile_number")
     def validate_mobile_number(cls, v):
         if not v.isdigit():
@@ -20,6 +30,35 @@ class UserCreate(BaseModel):
         if len(v) != 10:
             raise ValueError("Mobile number must be exactly 10 digits")
         return v
+
+    @validator("password")
+    def validate_password_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must contain at least one special character")
+        return v
+
+    @validator("confirmPassword")
+    def validate_confirm_password(cls, v, values):
+        password = values.get("password")
+        if password and v != password:
+            raise ValueError("Passwords do not match")
+        return v
+
+    @validator("role")
+    def validate_role(cls, v):
+        allowed_roles = {"patient", "doctor"}
+        if v.lower() not in allowed_roles:
+            raise ValueError("Invalid Role provided")
+        return v.lower()
+
 
 class UserOut(BaseModel):
     id: int

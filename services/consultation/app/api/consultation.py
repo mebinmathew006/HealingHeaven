@@ -83,12 +83,12 @@ async def create_consultation_route(
     lock_token = str(uuid.uuid4())
 
     try:
-        # ✅ First acquire Redis lock — no availability check before this!
+        # First acquire Redis lock — no availability check before this!
         lock_acquired = await redis_client.set(lock_key, lock_token, ex=10, nx=True)
         if not lock_acquired:
             raise HTTPException(status_code=409, detail="Doctor is currently busy. Try again.")
         
-        # ✅ Now check availability after locking (still helpful as defense)
+        # Now check availability after locking (still helpful as defense)
         response = await check_doctor_availability(data.dict())
         
         logger.info(f"[{current_user_id}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")

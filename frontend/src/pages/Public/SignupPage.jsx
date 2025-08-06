@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Home } from "lucide-react";
-import {  useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import publicaxiosconfig from "../../Publicaxiosconfig";
 import { toast } from "react-toastify";
 
@@ -54,6 +54,8 @@ export default function SignupPage() {
           newErrors.name = "Full name is required";
         } else if (value.trim().length < 3) {
           newErrors.name = "Full name must be at least 3 characters";
+        } else if (!/^[A-Za-z\s]+$/.test(value.trim())) {
+          newErrors.name = "Name must contain only alphabets and spaces";
         } else {
           delete newErrors.name;
         }
@@ -62,8 +64,6 @@ export default function SignupPage() {
       case "mobile_number":
         if (!value.trim()) {
           newErrors.mobile_number = "Mobile Number is required";
-        } else if (value.trim().length !== 10) {
-          newErrors.mobile_number = "Mobile number must be exactly 10 digits";
         } else if (!/^\d{10}$/.test(value.trim())) {
           newErrors.mobile_number =
             "Mobile number must contain exactly 10 digits";
@@ -75,8 +75,8 @@ export default function SignupPage() {
       case "role":
         if (!value.trim()) {
           newErrors.role = "Role is required";
-        } else if (!["doctor", "patient"].includes(value)) {
-          newErrors.role = "Select a valid role";
+        } else if (!["doctor", "patient"].includes(value.toLowerCase())) {
+          newErrors.role = "Select a valid role (doctor or patient)";
         } else {
           delete newErrors.role;
         }
@@ -86,7 +86,7 @@ export default function SignupPage() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!value.trim()) {
           newErrors.email_address = "Email address is required";
-        } else if (!emailRegex.test(value)) {
+        } else if (!emailRegex.test(value.trim())) {
           newErrors.email_address = "Please enter a valid email address";
         } else {
           delete newErrors.email_address;
@@ -98,11 +98,22 @@ export default function SignupPage() {
           newErrors.password = "Password is required";
         } else if (value.length < 8) {
           newErrors.password = "Password must be at least 8 characters";
+        } else if (!/[A-Z]/.test(value)) {
+          newErrors.password =
+            "Password must contain at least one uppercase letter";
+        } else if (!/[a-z]/.test(value)) {
+          newErrors.password =
+            "Password must contain at least one lowercase letter";
+        } else if (!/[0-9]/.test(value)) {
+          newErrors.password = "Password must contain at least one digit";
+        } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          newErrors.password =
+            "Password must contain at least one special character";
         } else {
           delete newErrors.password;
         }
 
-        // Also check confirm password if it exists
+        // Validate confirmPassword again in case password changed
         if (formData.confirmPassword && value !== formData.confirmPassword) {
           newErrors.confirmPassword = "Passwords do not match";
         } else if (formData.confirmPassword) {
@@ -123,7 +134,6 @@ export default function SignupPage() {
       default:
         break;
     }
-
     setErrors(newErrors);
   };
 
@@ -133,59 +143,68 @@ export default function SignupPage() {
 
     Object.entries(formData).forEach(([name, value]) => {
       switch (name) {
-        case "name":
-          if (!value.trim()) {
-            newErrors.name = "Full name is required";
-          } else if (value.trim().length < 3) {
-            newErrors.name = "Full name must be at least 3 characters";
-          }
-          break;
+      case "name":
+        if (!value.trim()) {
+          newErrors.name = "Full name is required";
+        } else if (value.trim().length < 3) {
+          newErrors.name = "Full name must be at least 3 characters";
+        } else if (!/^[A-Za-z ]+$/.test(value.trim())) {
+          newErrors.name = "Name must contain only alphabets and spaces";
+        }
+        break;
 
-        case "mobile_number":
-          if (!value.trim()) {
-            newErrors.mobile_number = "Mobile Number is required";
-          } else if (!/^\d{10}$/.test(value.trim())) {
-            newErrors.mobile_number =
-              "Mobile number must contain exactly 10 digits";
-          }
-          break;
+      case "mobile_number":
+        if (!value.trim()) {
+          newErrors.mobile_number = "Mobile Number is required";
+        } else if (!/^\d{10}$/.test(value.trim())) {
+          newErrors.mobile_number = "Mobile number must contain exactly 10 digits";
+        }
+        break;
 
-        case "role":
-          if (!value.trim()) {
-            newErrors.role = "Role is required";
-          } else if (!["doctor", "patient"].includes(value)) {
-            newErrors.role = "Select a valid role";
-          }
-          break;
+      case "role":
+        if (!value.trim()) {
+          newErrors.role = "Role is required";
+        } else if (!["doctor", "patient"].includes(value.toLowerCase())) {
+          newErrors.role = "Select a valid role (doctor or patient)";
+        }
+        break;
 
-        case "email_address":
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!value.trim()) {
-            newErrors.email_address = "Email address is required";
-          } else if (!emailRegex.test(value)) {
-            newErrors.email_address = "Please enter a valid email address";
-          }
-          break;
+      case "email_address":
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) {
+          newErrors.email_address = "Email address is required";
+        } else if (!emailRegex.test(value.trim())) {
+          newErrors.email_address = "Please enter a valid email address";
+        }
+        break;
 
-        case "password":
-          if (!value) {
-            newErrors.password = "Password is required";
-          } else if (value.length < 8) {
-            newErrors.password = "Password must be at least 8 characters";
-          }
-          break;
+      case "password":
+        if (!value) {
+          newErrors.password = "Password is required";
+        } else if (value.length < 8) {
+          newErrors.password = "Password must be at least 8 characters";
+        } else if (!/[A-Z]/.test(value)) {
+          newErrors.password = "Password must contain at least one uppercase letter";
+        } else if (!/[a-z]/.test(value)) {
+          newErrors.password = "Password must contain at least one lowercase letter";
+        } else if (!/\d/.test(value)) {
+          newErrors.password = "Password must contain at least one digit";
+        } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+          newErrors.password = "Password must contain at least one special character";
+        }
+        break;
 
-        case "confirmPassword":
-          if (!value) {
-            newErrors.confirmPassword = "Please confirm your password";
-          } else if (value !== formData.password) {
-            newErrors.confirmPassword = "Passwords do not match";
-          }
-          break;
+      case "confirmPassword":
+        if (!value) {
+          newErrors.confirmPassword = "Please confirm your password";
+        } else if (value !== formData.password) {
+          newErrors.confirmPassword = "Passwords do not match";
+        }
+        break;
 
-        default:
-          break;
-      }
+      default:
+        break;
+    }
     });
 
     setErrors(newErrors);
@@ -213,10 +232,19 @@ export default function SignupPage() {
         });
         navigate("/verify_otp", { state: formData.email_address });
       } catch (error) {
-        console.error("Signup error:", error.response?.data || error.message);
-        toast.error("Something went wrong! Please try again.", {
-          position: "bottom-center",
-        });
+        const errorData = error.response?.data;
+
+        if (errorData?.detail && Array.isArray(errorData.detail)) {
+          toast.error(errorData.detail[0].msg, {
+            position: "bottom-center",
+          });
+        } else {
+          toast.error("Signup failed. Please try again.", {
+            position: "bottom-center",
+          });
+        }
+
+        console.error("Signup error:", errorData || error.message);
       }
     }
     setIsSubmitting(false);

@@ -153,7 +153,7 @@ export default function PasswordOTPVerification() {
 
       setIsSubmitting(false);
       setIsSuccess(true);
-      toast.success('Password Reset Successfully')
+      toast.success('Password Reset Successfully',{position:'bottom-center'})
     } catch (error) {
       toast.error(error.response?.data?.detail || "Something went wrong",{position:'bottom-center'});
       setIsSubmitting(false);

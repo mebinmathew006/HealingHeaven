@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Eye, EyeOff, Home, LockKeyhole, Mail } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import publicaxiosconfig from "../../Publicaxiosconfig";
 import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
@@ -64,9 +64,12 @@ export default function LoginPage() {
 
   const handleCredentialResponse = async (response) => {
     try {
-      const backendResponse = await publicaxiosconfig.post("/users/google-login", {
-        credential: response.credential, // Send the credential token to your backend
-      });
+      const backendResponse = await publicaxiosconfig.post(
+        "/users/google-login",
+        {
+          credential: response.credential, // Send the credential token to your backend
+        }
+      );
 
       const userDetailsGoogle = backendResponse.data.user;
       dispatch(setUserDetails(userDetailsGoogle));
@@ -103,14 +106,8 @@ export default function LoginPage() {
       // setting the user details in redux store
       const userDetails = response.data.user;
       const userEmail = response.data.user.email;
-      
-       if (!userDetails.is_active) {
-        toast.info('Your are blocked',{position:'bottom-center'})
-        return
-      }
 
-      if (userDetails.is_verified) {
-     
+      if (userDetails.is_verified && userDetails.is_active) {
         dispatch(setUserDetails(userDetails));
 
         toast.success("Login Successful.", {
@@ -124,19 +121,23 @@ export default function LoginPage() {
         } else {
           navigate("/user_home_page");
         }
-
-      } else {
+      } else if (!userDetails.is_active && !userDetails.is_verified) {
         toast.info("Verifiy your Email first ", {
           position: "bottom-center",
         });
         try {
-          await publicaxiosconfig.post("/users/forgetpassword", { email: userEmail });
+          await publicaxiosconfig.post("/users/forgetpassword", {
+            email: userEmail,
+          });
           navigate("/verify_otp", { state: userEmail });
         } catch (error) {
           toast.error("Unable to Verifiy your Email.", {
             position: "bottom-center",
           });
         }
+      } else {
+        toast.info("Your are blocked", { position: "bottom-center" });
+        return;
       }
     } catch (error) {
       toast.error("Unable to login.", {
@@ -153,17 +154,17 @@ export default function LoginPage() {
       }
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center relative overflow-hidden">
       {/* Background Medical Image Overlay */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23e3f2fd'/%3E%3Cstop offset='100%25' style='stop-color:%23bbdefb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='800' fill='url(%23bg)'/%3E%3C/svg%3E")`
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23e3f2fd'/%3E%3Cstop offset='100%25' style='stop-color:%23bbdefb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='800' fill='url(%23bg)'/%3E%3C/svg%3E")`,
         }}
       />
-      
+
       {/* Abstract Medical Icons Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 right-20 w-32 h-32 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
@@ -175,29 +176,29 @@ export default function LoginPage() {
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex items-center justify-between">
         {/* Left Side - Medical Professional Image Placeholder */}
-       <div className="flex-1 text-center lg:text-left">
-            <div className="mb-8">
-              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-                Welcome to Our
-                <span className="text-green-800 block">Community</span>
-              </h1>
-              <p className="text-lg text-gray-600 max-w-md mx-auto lg:mx-0">
-                Connect with healthcare professionals or manage your health journey with our comprehensive platform.
-              </p>
-            </div>
+        <div className="flex-1 text-center lg:text-left">
+          <div className="mb-8">
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              Welcome to Our
+              <span className="text-green-800 block">Community</span>
+            </h1>
+            <p className="text-lg text-gray-600 max-w-md mx-auto lg:mx-0">
+              Connect with healthcare professionals or manage your health
+              journey with our comprehensive platform.
+            </p>
+          </div>
 
-            {/* Illustration */}
-            <div className="hidden lg:block">
-              <div className="w-96 h-96 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-2xl">
+          {/* Illustration */}
+          <div className="hidden lg:block">
+            <div className="w-96 h-96 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-2xl">
               <div className="text-center">
                 <div className="w-32 h-32 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
                   <img src="logo.png" className="rounded-full" />
                 </div>
-              
               </div>
             </div>
-            </div>
           </div>
+        </div>
 
         {/* Right Side - Login Form */}
         <div className="w-full max-w-md lg:max-w-lg">
@@ -205,8 +206,11 @@ export default function LoginPage() {
             {/* Logo and Header */}
             <div className="text-center mb-8">
               <div className="flex items-center justify-center mb-4">
-                <Home className="font-bold text-green-950" onClick={()=>navigate('/')}/>
-               
+                <Home
+                  className="font-bold text-green-950"
+                  onClick={() => navigate("/")}
+                />
+
                 {/* <span className="text-2xl font-bold text-gray-800">OpenNest</span> */}
               </div>
               <h1 className="text-3xl font-bold text-blue-400 mb-2">Sign in</h1>
@@ -241,9 +245,12 @@ export default function LoginPage() {
                     className="w-full px-4 py-4 bg-gray-50 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all duration-200"
                     placeholder="you@example.com"
                   />
-                  {errorsFromBackend.email && errorsFromBackend.email.length > 0 && (
-                    <p className="mt-1 text-sm text-red-600">{errorsFromBackend.email[0]}</p>
-                  )}
+                  {errorsFromBackend.email &&
+                    errorsFromBackend.email.length > 0 && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errorsFromBackend.email[0]}
+                      </p>
+                    )}
                 </div>
 
                 <div className="mb-6">
@@ -278,9 +285,12 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </div>
-                  {errorsFromBackend.password && errorsFromBackend.password.length > 0 && (
-                    <p className="mt-1 text-sm text-red-600">{errorsFromBackend.password[0]}</p>
-                  )}
+                  {errorsFromBackend.password &&
+                    errorsFromBackend.password.length > 0 && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errorsFromBackend.password[0]}
+                      </p>
+                    )}
                 </div>
               </form>
 
@@ -297,7 +307,9 @@ export default function LoginPage() {
 
               {errorsFromBackend.commonError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{errorsFromBackend.commonError}</p>
+                  <p className="text-sm text-red-600">
+                    {errorsFromBackend.commonError}
+                  </p>
                 </div>
               )}
 
