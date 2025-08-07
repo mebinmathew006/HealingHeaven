@@ -542,14 +542,53 @@ async def doctor_verification_update(
             detail=f"Internal server error: {str(e)}"
         )
 
-@router.get("/admin_view_users")
+@router.get("/admin_view_users",)
 async def admin_view_users(
-    current_user_id: str = Depends(get_current_user)
-    ,session: AsyncSession = Depends(get_session)
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    search: str = Query(None)
     ):
     try:
-        result = await crud.get_all_users(session)
-        return result
+        offset = (page - 1) * limit
+        total = await crud.count_all_users(session)
+        result = await crud.get_all_users(session,search,limit, skip=offset)
+        next_url = f"/admin_view_users?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/admin_view_users?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve users"
+        )
+        
+@router.get("/admin_view_psychologist")
+async def admin_view_psychologist(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    search: str = Query(None),
+    current_user_id: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
+    try:
+        offset = (page - 1) * limit
+        total = await crud.count_all_users(session)
+        result = await crud.get_all_psychologist(session,search,limit, skip=offset)
+        next_url = f"/admin_view_psychologist?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/admin_view_psychologist?page={page - 1}&limit={limit}" if page > 1 else None
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": result
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -568,19 +607,7 @@ async def doctor_profile_images(session: AsyncSession = Depends(get_session)):
             detail="Failed to retrieve users"
         )
         
-@router.get("/admin_view_psychologist")
-async def admin_view_psychologist(
-    current_user_id: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-    ):
-    try:
-        result = await crud.get_all_psychologist(session)
-        return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve users"
-        )
+
         
 @router.patch('/toggle_user_status/{user_id}')
 async def toggle_user_status(

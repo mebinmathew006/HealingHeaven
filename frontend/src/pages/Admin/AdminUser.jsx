@@ -6,7 +6,6 @@ import {
   ShieldOff,
   Mail,
   Calendar,
-  MoreVertical,
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
@@ -19,6 +18,7 @@ function AdminUser() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeSection, setActiveSection] = useState("account");
 
   // Pagination handlers
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,30 +30,31 @@ function AdminUser() {
   const [loadingMore, setLoadingMore] = useState(false);
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    fetchUsers(page);
+    fetchUsers(page,searchTerm);
   };
   const handleNextPage = () => {
     if (hasNext) {
       const nextPage = currentPage + 1;
       setCurrentPage(nextPage);
-      fetchUsers(nextPage);
+      fetchUsers(nextPage,searchTerm);
     }
   };
   const handlePreviousPage = () => {
     if (hasPrevious) {
       const prevPage = currentPage - 1;
       setCurrentPage(prevPage);
-      fetchUsers(prevPage);
+      fetchUsers(prevPage,searchTerm);
     }
   };
   // --------------------
 
-  const fetchUsers = async (page = 1) => {
+  const fetchUsers = async (page = 1,searchTerm) => {
     setLoadingMore(page !== 1);
     setLoading(page === 1);
+    const search = searchTerm || ''
     try {
       const response = await axiosInstance.get(
-        `users/admin_view_users?page=${page}&limit=${limit}`
+        `users/admin_view_users?page=${page}&limit=${limit}&search=${search}`
       );
       setUsers(response.data);
     } catch (error) {
@@ -64,7 +65,10 @@ function AdminUser() {
     }
   };
 
-  const [activeSection, setActiveSection] = useState("account");
+  const searchUser = async (value,page = 1) => {
+    setSearchTerm(value)
+    fetchUsers(1, value); 
+  };
 
   const handleBlockToggle = async (userId) => {
     try {
@@ -108,20 +112,9 @@ function AdminUser() {
                       type="text"
                       placeholder="Search by name or email..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => searchUser(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                  </div>
-                  <div>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="blocked">Blocked</option>
-                    </select>
                   </div>
                 </div>
               </div>
@@ -151,9 +144,9 @@ function AdminUser() {
                       </th>
                     </tr>
                   </thead>
-                  {users && (
+                  {users.results && (
                     <tbody>
-                      {users.map((user, index) => (
+                      {users.results.map((user, index) => (
                         <tr
                           key={index}
                           className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -221,16 +214,16 @@ function AdminUser() {
               </div>
 
               {/* Stats */}
-              {Array.isArray(users) ? (
+              {Array.isArray(users.results) ? (
                 <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-600">
-                  <div>Total Users: {users.length}</div>
+                  <div>Total Users: {users.results.length}</div>
                   <div>
-                    Active: {users.filter((u) => u.is_active == true).length}
+                    Active: {users.results.filter((u) => u.is_active == true).length}
                   </div>
                   <div>
-                    Blocked: {users.filter((u) => u.is_active == false).length}
+                    Blocked: {users.results.filter((u) => u.is_active == false).length}
                   </div>
-                  {users && <div>Showing:{users.length}</div>}
+                  {users && <div>Showing:{users.results.length}</div>}
                 </div>
               ) : (
                 <div>

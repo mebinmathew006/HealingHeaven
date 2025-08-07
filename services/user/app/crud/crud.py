@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload,contains_eager
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from datetime import date 
+from sqlalchemy.sql import or_
+
 
 async def get_user_by_email(session: AsyncSession, email: str):
     try:
@@ -421,7 +423,9 @@ async def doctor_profile_update(
     exp_url: str
 ):
     try:
-        result = await session.execute(select(PsychologistProfile).where(PsychologistProfile.user_id == user_id))
+        result = await session.execute(
+            select(PsychologistProfile)
+            .where(PsychologistProfile.user_id == user_id))
         profile = result.scalar_one_or_none()
         if profile:
             
@@ -450,14 +454,34 @@ async def doctor_profile_update(
         await session.rollback()
         # Log or raise error
         print(f"Database error occurred: {e}")
-        
     
-    
-async def get_all_users(session: AsyncSession):
+async def get_all_users(session: AsyncSession, search: str, limit: int = 8, skip: int = 0):
     try:
-        # result = await session.execute( select(UserProfile).join(User).options(joinedload(UserProfile.user)).where(User.role == 'patient'))
-        result = await session.execute( select(User).where(User.role == 'patient'))
+        stmt = select(User).where(User.role == 'patient')
+        if search:
+            stmt = stmt.where(
+                or_(
+                    User.name.ilike(f"%{search}%"),
+                    User.email_address.ilike(f"%{search}%")
+                )
+            )
+        stmt = stmt.offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        
         return result.scalars().all()
+    
+    except SQLAlchemyError:
+        await session.rollback()
+        return []
+
+async def count_all_users(session: AsyncSession):
+    try:
+        result = await session.execute(
+        select(func.count())
+        .select_from(User)
+        .where(User.role == 'patient')
+    )
+        return result.scalar_one()
     except SQLAlchemyError as e:
         await session.rollback()
         
@@ -470,11 +494,40 @@ async def doctor_profile_images_crud(session: AsyncSession):
         return []
         
     
-async def get_all_psychologist(session: AsyncSession):
-    try:
-        result = await session.execute( select(User).where(User.role == 'doctor'))
-        return result.scalars().all()
-    except SQLAlchemyError as e:
-        await session.rollback()
-        print(f"Database error occurred: {e}")
+# async def get_all_psychologist(session: AsyncSession,search :str, limit: int = 8, skip: int = 0):
+        
+#     try:
+#         if search:
+#             stmt = select(User).where(User.role == 'doctor')
+#             stmt = stmt.where(
+#                 or_(
+#                     User.name.ilike(f"%{search}%"),
+#                     User.email_address.ilike(f"%{search}%")
+#                 )
+#             )
+#             stmt = stmt.offset(skip).limit(limit)
+#             result = await session.execute(stmt)
+            
+#             return result.scalars().all()
+#     except SQLAlchemyError as e:
+#         await session.rollback()
+#         print(f"Database error occurred: {e}")
     
+async def get_all_psychologist(session: AsyncSession, search: str, limit: int = 8, skip: int = 0):
+    try:
+        stmt = select(User).where(User.role == 'doctor')
+        if search:
+            stmt = stmt.where(
+                or_(
+                    User.name.ilike(f"%{search}%"),
+                    User.email_address.ilike(f"%{search}%")
+                )
+            )
+        stmt = stmt.offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        
+        return result.scalars().all()
+    
+    except SQLAlchemyError:
+        await session.rollback()
+        return []

@@ -6,11 +6,12 @@ import {
   ShieldOff,
   Mail,
   Calendar,
-  BookOpenText 
+  BookOpenText,
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
+import Pagination from "../../components/Pagination";
 
 function AdminPsychologist() {
   const [activeSection] = useState("psychologists");
@@ -21,12 +22,51 @@ function AdminPsychologist() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const fetchPsychologist = async () => {
+  // Pagination handlers
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalCount = users?.count || 0;
+  const limit = 8;
+  const hasNext = !!users?.next;
+  const hasPrevious = !!users?.previous;
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchPsychologist(page);
+  };
+  const handleNextPage = () => {
+    if (hasNext) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchPsychologist(nextPage);
+    }
+  };
+  const handlePreviousPage = () => {
+    if (hasPrevious) {
+      const prevPage = currentPage - 1;
+      setCurrentPage(prevPage);
+      fetchPsychologist(prevPage);
+    }
+  };
+  // --------------------
+ const searchUser = async (value,page = 1) => {
+    setSearchTerm(value)
+    fetchPsychologist(1, value); 
+  };
+  const fetchPsychologist = async (page = 1,searchTerm) => {
+    setLoadingMore(page !== 1);
+    setLoading(page === 1);
+    const search = searchTerm || ''
     try {
-      const response = await axiosInstance.get("users/admin_view_psychologist");
+      const response = await axiosInstance.get(
+        `users/admin_view_psychologist?page=${page}&limit=${limit}&search=${search}`
+      );
       setUsers(response.data);
     } catch (error) {
-
+      console.log(error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -61,10 +101,9 @@ function AdminPsychologist() {
           <div className="space-y-8">
             <div className="p-6 bg-white rounded-lg shadow-lg">
               <div className="mb-6 ">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Psychologist Management
-                  </h2>
-                 
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  Psychologist Management
+                </h2>
 
                 {/* Filters */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -73,11 +112,11 @@ function AdminPsychologist() {
                       type="text"
                       placeholder="Search by name or email..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => searchUser(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  <div>
+                  {/* <div>
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
@@ -87,7 +126,7 @@ function AdminPsychologist() {
                       <option value="active">Active</option>
                       <option value="blocked">Blocked</option>
                     </select>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -119,9 +158,9 @@ function AdminPsychologist() {
                       </th>
                     </tr>
                   </thead>
-                  {users && (
+                  {users.results && (
                     <tbody>
-                      {users.map((user, index) => (
+                      {users.results.map((user, index) => (
                         <tr
                           key={index}
                           className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -185,10 +224,11 @@ function AdminPsychologist() {
                           <td className="py-4 px-4">
                             <div className="flex items-center space-x-2">
                               <Link
-                                 to={`/pending_psychologist/${user.id}`}
-                                className="px-3 py-1 rounded-md text-sm font-medium transition-colorsbg-green-100 text-white hover:bg-green-800 bg-green-700">
-                                    <BookOpenText  className="w-4 h-4 inline mr-1 " />
-                                    View
+                                to={`/pending_psychologist/${user.id}`}
+                                className="px-3 py-1 rounded-md text-sm font-medium transition-colorsbg-green-100 text-white hover:bg-green-800 bg-green-700"
+                              >
+                                <BookOpenText className="w-4 h-4 inline mr-1 " />
+                                View
                               </Link>
                             </div>
                           </td>
@@ -200,16 +240,16 @@ function AdminPsychologist() {
               </div>
 
               {/* Stats */}
-              {Array.isArray(users) ? (
+              {Array.isArray(users.results) ? (
                 <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-600">
-                  <div>Total Users: {users.length}</div>
+                  <div>Total Users: {users.results.length}</div>
                   <div>
-                    Active: {users.filter((u) => u.is_active == true).length}
+                    Active: {users.results.filter((u) => u.is_active == true).length}
                   </div>
                   <div>
-                    Blocked: {users.filter((u) => u.is_active == false).length}
+                    Blocked: {users.results.filter((u) => u.is_active == false).length}
                   </div>
-                  {users && <div>Showing:{users.length}</div>}
+                  {users.results && <div>Showing:{users.results.length}</div>}
                 </div>
               ) : (
                 <div>
@@ -220,6 +260,19 @@ function AdminPsychologist() {
               )}
             </div>
           </div>
+          {totalCount > limit && (
+              <Pagination
+                currentPage={currentPage}
+                totalCount={totalCount}
+                limit={limit}
+                hasNext={hasNext}
+                hasPrevious={hasPrevious}
+                loading={loadingMore}
+                onPageChange={handlePageChange}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+              />
+            )}
         </div>
       </div>
     </div>
