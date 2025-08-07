@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 function AdminUser() {
   useEffect(() => {
@@ -19,11 +20,48 @@ function AdminUser() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const fetchUsers = async () => {
+  // Pagination handlers
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalCount = users?.count || 0;
+  const limit = 8;
+  const hasNext = !!users?.next;
+  const hasPrevious = !!users?.previous;
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchUsers(page);
+  };
+  const handleNextPage = () => {
+    if (hasNext) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchUsers(nextPage);
+    }
+  };
+  const handlePreviousPage = () => {
+    if (hasPrevious) {
+      const prevPage = currentPage - 1;
+      setCurrentPage(prevPage);
+      fetchUsers(prevPage);
+    }
+  };
+  // --------------------
+
+  const fetchUsers = async (page = 1) => {
+    setLoadingMore(page !== 1);
+    setLoading(page === 1);
     try {
-      const response = await axiosInstance.get("users/admin_view_users");
+      const response = await axiosInstance.get(
+        `users/admin_view_users?page=${page}&limit=${limit}`
+      );
       setUsers(response.data);
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   };
 
   const [activeSection, setActiveSection] = useState("account");
@@ -202,9 +240,23 @@ function AdminUser() {
                 </div>
               )}
             </div>
+            {totalCount > limit && (
+              <Pagination
+                currentPage={currentPage}
+                totalCount={totalCount}
+                limit={limit}
+                hasNext={hasNext}
+                hasPrevious={hasPrevious}
+                loading={loadingMore}
+                onPageChange={handlePageChange}
+                onNextPage={handleNextPage}
+                onPreviousPage={handlePreviousPage}
+              />
+            )}
           </div>
         </div>
       </div>
+      
     </div>
   );
 }

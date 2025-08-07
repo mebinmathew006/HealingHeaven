@@ -1,5 +1,5 @@
 from sqlalchemy.future import select
-from sqlalchemy import update
+from sqlalchemy import update,func
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.users import User,PsychologistProfile,UserProfile
 from schemas.users import UserCreate,UserWithOptionalProfileOut,DoctorVerificationOut,RevokeDetails
@@ -261,16 +261,42 @@ async def update_user_password(session: AsyncSession,email:str,password :str):
         await session.rollback()
     
     
-async def get_all_psychologist_with_profile(session:AsyncSession):
+async def get_all_psychologist_with_profile(session: AsyncSession, limit: int = 8, skip: int = 0):
     try:
-        result = await session.execute(select(PsychologistProfile).options(joinedload(PsychologistProfile.user))
-                                   .where(PsychologistProfile.is_verified == 'verified').order_by(PsychologistProfile.is_available.desc()) )
+        result = await session.execute(
+            select(PsychologistProfile)
+            .join(PsychologistProfile.user)  
+            .options(joinedload(PsychologistProfile.user))
+            .where(
+                PsychologistProfile.is_verified == 'verified',
+                User.is_active == True
+            )
+            .order_by(PsychologistProfile.is_available.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         return result.scalars().all()
-    except Exception :
+    except SQLAlchemyError as e:
         await session.rollback()
+        raise e 
     
+async def count_all_psychologists(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.count())
+        .select_from(PsychologistProfile)
+        .join(PsychologistProfile.user)
+        .where(
+            PsychologistProfile.is_verified == 'verified',
+            User.is_active == True
+        )
+    )
+    return result.scalar_one()
 
-async def update_user_and_profile(session: AsyncSession, user_id: int, update_data: UserWithOptionalProfileOut):
+async def update_user_and_profile(
+    session: AsyncSession, 
+    user_id: int, 
+    update_data: UserWithOptionalProfileOut
+    ):
     try:
         
         user = await session.get(User, user_id)
@@ -306,7 +332,11 @@ async def update_user_and_profile(session: AsyncSession, user_id: int, update_da
         await session.rollback()
         
 
-async def update_psychologist_and_profile(session: AsyncSession, user_id: int, update_data: DoctorVerificationOut):
+async def update_psychologist_and_profile(
+    session: AsyncSession, 
+    user_id: int, 
+    update_data: DoctorVerificationOut
+    ):
     try:
         user = await session.get(User, user_id)
         if not user:
@@ -317,7 +347,9 @@ async def update_psychologist_and_profile(session: AsyncSession, user_id: int, u
         user.mobile_number = update_data.user.mobile_number
 
         # Fetch the profile
-        result = await session.execute(select(PsychologistProfile).where(PsychologistProfile.user_id == user_id))
+        result = await session.execute(
+            select(PsychologistProfile)
+            .where(PsychologistProfile.user_id == user_id))
         profile = result.scalar_one_or_none()
 
         if profile:
@@ -335,8 +367,6 @@ async def update_psychologist_and_profile(session: AsyncSession, user_id: int, u
     except Exception :
         await session.rollback()
     
-
-
 async def doctor_profile_creation(
     session: AsyncSession,
     user_id: int,

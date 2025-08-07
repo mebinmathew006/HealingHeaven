@@ -1,14 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
-  MapPin,
-  Phone,
-  Mail,
   Star,
   Award,
   GraduationCap,
-  Users,
   CheckCircle,
-  X,
   MessageSquare,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -24,20 +19,15 @@ const DoctorDetailsPage = ({}) => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [feedbacksLoading, setFeedbacksLoading] = useState(true);
   const location = useLocation();
-  const { id, rating } = location.state;
+  const { psychologistsData } = location.state;
+  const rating = psychologistsData.rating;
+  const id = psychologistsData.user.id;
   const userid = useSelector((state)=>state.userDetails.id)
 
   useEffect(() => {
-    fetchDoctor();
+    setDoctor(psychologistsData);
     fetchDoctorFeedbacks();
   }, []);
-
-  async function fetchDoctor() {
-    const response = await axiosInstance.get(
-      `users/get_psycholgist_details/${id}`
-    );
-    setDoctor(response.data);
-  }
 
   async function fetchDoctorFeedbacks() {
     try {
@@ -148,20 +138,7 @@ const DoctorDetailsPage = ({}) => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-700">
-                            {doctor?.user?.email_address}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-gray-500" />
-                          <span className="text-gray-700">
-                            {doctor?.user?.mobile_number}
-                          </span>
-                        </div>
-                      </div>
+                      
                     </div>
                   </div>
                 </div>

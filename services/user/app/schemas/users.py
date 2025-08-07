@@ -1,8 +1,8 @@
 # Pydantic schemas
 
 from pydantic import BaseModel, EmailStr, Field,validator
-from typing import Optional
-from datetime import date, datetime
+from typing import Optional,List
+from datetime import date
 import re
 
 class GoogleLoginSchema(BaseModel):
@@ -71,6 +71,13 @@ class UserOut(BaseModel):
         "from_attributes": True
     }
     
+class UserOutForPublic(BaseModel):
+    id: int
+    name: str
+    model_config = {
+        "from_attributes": True
+    }
+    
 class OtpVerification(BaseModel):
     otp:str
     email : EmailStr
@@ -95,9 +102,13 @@ class ForgetPasswordOTPSchema(BaseModel):
     
 class PsychologistProfileOut(BaseModel):
     id: int
-    user: UserOut
+    fees: int
+    user: UserOutForPublic
     specialization: Optional[str]
     profile_image: Optional[str]
+    experience: Optional[str]
+    about_me: Optional[str]
+    qualification: Optional[str]
     is_verified: Optional[str]
     is_available: Optional[bool]
     rating: Optional[float]
@@ -106,6 +117,11 @@ class PsychologistProfileOut(BaseModel):
         "from_attributes": True
     }
     
+class PaginatedPsychologistResponse(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: List[PsychologistProfileOut]
 class UserProfileOut(BaseModel):
     id: int
     user: UserOut

@@ -91,7 +91,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-white via-blue-50 to-green-50 backdrop-blur-md border-b border-gray-200/50 py-4 px-6 flex items-center justify-between shadow-lg shadow-blue-100/50 relative">
+    <nav className="bg-gradient-to-r from-white via-blue-50 to-green-50 backdrop-blur-md border-b border-gray-200/50 py-4 px-6 flex items-center justify-between shadow-lg shadow-blue-100/50 relative z-40">
       {/* Logo Section */}
       <div className="flex items-center">
         <div className="relative">
@@ -157,7 +157,7 @@ function Navbar() {
 
             {/* Notification Dropdown */}
             {isNotificationDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden">
+              <div className="absolute right-0 mt-3 w-80 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 z-[60] overflow-hidden">
                 <div className="p-4 border-b border-gray-200/50 bg-gradient-to-r from-green-50 to-blue-50">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-gray-800">Notifications</h3>
@@ -257,10 +257,10 @@ function Navbar() {
               {/* Profile Dropdown */}
               {isProfileDropdownOpen &&
                 (userDetails.id ? (
-                  <div className="absolute right-0 mt-3 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 py-2 z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-3 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[60] overflow-hidden">
                     <Link
                       to={"/user_profile"}
-                      className="flex items-center px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 hover:text-green-700 transition-all duration-200 font-medium"
+                      className="flex items-center px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 hover:text-green-700 transition-all duration-200 font-medium relative z-[61]"
                       onClick={handleProfileClick}
                     >
                       <User size={16} className="mr-3" />
@@ -268,17 +268,17 @@ function Navbar() {
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full text-left px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-600 transition-all duration-200 font-medium"
+                      className="flex items-center w-full text-left px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-600 transition-all duration-200 font-medium relative z-[61]"
                     >
                       <LogOut size={16} className="mr-3" />
                       Logout
                     </button>
                   </div>
                 ) : (
-                  <div className="absolute right-0 mt-3 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 py-2 z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-3 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[60] overflow-hidden">
                     <Link
                       to={"/login"}
-                      className="flex items-center px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 hover:text-green-700 transition-all duration-200 font-medium"
+                      className="flex items-center px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 hover:text-green-700 transition-all duration-200 font-medium relative z-[61]"
                     >
                       <User size={16} className="mr-3" />
                       Sign In
@@ -307,7 +307,7 @@ function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-md shadow-xl border-t border-gray-200/50 z-40 md:hidden">
+        <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-md shadow-xl border-t border-gray-200/50 z-50 md:hidden">
           <div className="flex flex-col p-4 space-y-3">
             <Link className="text-gray-800 hover:text-green-600 py-3 px-2 rounded-lg hover:bg-gradient-to-r hover:from-green-50 hover:to-blue-50 transition-all font-medium" to={"/"}>
               Home

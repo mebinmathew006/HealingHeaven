@@ -21,6 +21,7 @@ from asyncio import gather
 import logging
 from fastapi import Request
 import os
+from fastapi import Query
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 logger = logging.getLogger("uvicorn.error")
@@ -247,11 +248,17 @@ async def verify_password_otp(
 
     
     
-@router.get('/view_psychologist', response_model=List[users.PsychologistProfileOut])
-async def view_psychologist(session: AsyncSession = Depends(get_session)):
+@router.get('/view_psychologist', response_model=users.PaginatedPsychologistResponse)
+async def view_psychologist(
+    session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+):
     try:
+        offset = (page - 1) * limit
         # Get psychologist data
-        data = await crud.get_all_psychologist_with_profile(session)
+        data = await crud.get_all_psychologist_with_profile(session,limit,skip=offset)
+        total = await crud.count_all_psychologists(session)
         if not data:
             raise HTTPException(status_code=404, detail="No psychologists found")
 
@@ -278,6 +285,10 @@ async def view_psychologist(session: AsyncSession = Depends(get_session)):
                     profile_image=p.profile_image,
                     is_verified=p.is_verified,
                     is_available=p.is_available,
+                    experience =p.experience,
+                    fees = p.fees,
+                    about_me =p.about_me,
+                    qualification =p.qualification,
                     user=p.user,
                     rating=processed_ratings[i]
                 )
@@ -289,7 +300,15 @@ async def view_psychologist(session: AsyncSession = Depends(get_session)):
         if not enriched_ratings:
             raise HTTPException(status_code=404, detail="No valid psychologist profiles found")
 
-        return enriched_ratings
+        next_url = f"/view_psychologist?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/view_psychologist?page={page - 1}&limit={limit}" if page > 1 else None
+
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": enriched_ratings
+        }
 
     except HTTPException as http_exc:
         logger.error("HTTP error while fetching psychologists: %s", str(http_exc))
@@ -300,8 +319,7 @@ async def view_psychologist(session: AsyncSession = Depends(get_session)):
             status_code=500,
             detail="Internal server error while fetching psychologists."
         )
-
-
+        
 @router.patch('/update_availability/{user_id}/{isAvailable}')
 async def update_availability(
     user_id:int,
