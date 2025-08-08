@@ -1,7 +1,7 @@
 import httpx
 PAYMENT_SERVICE_URL = "http://payment-service:8002"
 
-async def fetch_money_from_wallet(data: dict) -> dict:
+async def fetch_money_from_wallet(data: dict,fees :int) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(f"{PAYMENT_SERVICE_URL}/fetch_money_from_wallet",json=data)

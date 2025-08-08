@@ -123,7 +123,7 @@ const WalletPage = () => {
         handler: async (response) => {
           try {
             const paymentResponse = await axiosInstance.post(
-              "/payments/add_money_to_wallet",
+              "/payments/add_money_to_wallet_from_razorpay",
               {
                 user_id: userId,
                 totalAmount: finalTotal,

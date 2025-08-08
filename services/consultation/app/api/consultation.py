@@ -3,7 +3,7 @@ from typing import List
 from dependencies.database import get_session
 import crud.crud as crud
 from fastapi.logger import logger
-from datetime import datetime 
+from datetime import datetime ,date
 from infra.external.user_service import (get_user_details, get_doctor_details, get_minimal_user_details, 
                                          change_doctor_availability, check_doctor_availability)
 from fastapi import ( 
@@ -33,6 +33,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 import subprocess
 from pathlib import Path
+
 import json
 from dependencies.get_current_user import get_current_user,get_current_user_ws
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +51,7 @@ from schemas.consultation import (
         MappingResponseUser, CompliantSchemaa, UpdateConsultationSchema,
         CreateFeedbackSchema, CreateNotificationSchema,PaginatedNotificationResponse,
         CompliantPaginatedResponse, UpdateComplaintSchema,UserNameWithProfileImage,
-        UserProfileImage,TokenRequest
+        UserProfileImage,TokenRequest,AdminPaginatedConsultationResponse
         )
 from crud.crud import ( 
         count_consultations, get_complaints_crud, register_complaint_crud, consultation_for_user, 
@@ -58,10 +59,12 @@ from crud.crud import (
         admin_dashboard_details_crud, save_chat_message_with_attachments, get_doctor_fee_after_platform_fee,
         get_psychologist_rating_crud, get_feedbacks_crud,count_consultations_by_doctor_crud, consultation_for_doctor,
         consultation_details_with_id ,create_notification,create_consultation, get_all_consultation, 
-        get_doctor_consultations, get_all_mapping_for_chat ,get_chat_messages_using_cons_id,
-        get_all_mapping_for_chat_user, update_analysis_consultation,save_recording_database, create_feedback,
+        get_doctor_consultations ,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user, 
+        update_analysis_consultation,save_recording_database, create_feedback,get_all_mapping_for_chat,
         count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd,
-        delete_partial_consultation, verify_user_consultation
+        delete_partial_consultation, verify_user_consultation,count_all_consultation,validate_doctor,
+        validate_both_owns_consultation,validate_user_for_consultaion_mapping,
+        validate_user_owns_consultation,validate_doctor_owns_consultation
         )
 
 
@@ -72,7 +75,7 @@ logger = logging.getLogger("uvicorn.error")
 @router.post("/create_consultation")
 async def create_consultation_route(
     data: CreateConsultationSchema,
-    current_user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     doctor_locked = False
@@ -87,97 +90,135 @@ async def create_consultation_route(
         lock_acquired = await redis_client.set(lock_key, lock_token, ex=10, nx=True)
         if not lock_acquired:
             raise HTTPException(status_code=409, detail="Doctor is currently busy. Try again.")
-        
         # Now check availability after locking (still helpful as defense)
         response = await check_doctor_availability(data.dict())
-        
-        logger.info(f"[{current_user_id}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")
-        
+        logger.info(f"[{current_user}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")
         if response == False:
             raise HTTPException(status_code=409, detail="Doctor is not available")
-        
-
         # Mark doctor as unavailable
         response = await change_doctor_availability(data.dict(), False)
         if not response.get("status"):
             raise HTTPException(status_code=409, detail="Doctor is not available")
         doctor_locked = True
-
         # Create consultation
         consultation_id = await create_consultation(session, data)
         consultation_created = True
-
         # Charge wallet
-        return await fetch_money_from_wallet(data.dict())
-
+        # fees = await fetch_fees_from_doctor(data.psychologist_id)
+        return await fetch_money_from_wallet(data.dict(),fees)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating consultation: {e}")
-
         if consultation_created and consultation_id:
             await delete_partial_consultation(session, consultation_id)
-
         if doctor_locked:
             await change_doctor_availability(data, True)
-
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something went wrong")
-
     finally:
         # Release the lock only if we still own it
         stored_token = await redis_client.get(lock_key)
         if stored_token == lock_token:
             await redis_client.delete(lock_key)
-
     
 @router.post("/register_complaint")
-async def register_complaint_route(data:CompliantSchemaa,current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
+async def register_complaint_route(data:CompliantSchemaa,current_user: str = Depends(get_current_user),session: AsyncSession = Depends(get_session)
 ):
     try:
+        if not await validate_user_owns_consultation(session, data.consultation_id, int(current_user["user_id"])
+):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to file a complaint for this consultation"
+            )
         complaint = await register_complaint_crud(session, data)
         return complaint
-
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating complaint: {e}")
         raise HTTPException(status_code=400, detail="Failed to create complaint")
     
+    
 @router.post("/add_feedback")
-async def add_feedback(data: FeedbackCreationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def add_feedback(data: FeedbackCreationSchema,current_user: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
+        if not await validate_user_owns_consultation(session, data.consultation_id, int(current_user["user_id"])
+):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to give feedback for this consultation"
+            )
         return await create_feedback(session, data)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.info(f"Error creating feedback: {e}")
         raise HTTPException(status_code=400, detail="Failed to create feedback")
     
     
 @router.post("/create_new_notification")
-async def create_new_notification(data: CreateNotificationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def create_new_notification(
+    data: CreateNotificationSchema,
+    current_user: str = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session)
+    ):
+    
     try:
-        return await create_notification(session, data)
+        role = current_user["role"]
+        if role != 'admin':
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        await create_notification(session, data)
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": "New Notification Created successfully"
+                }, status_code=201
+            )
+    except Exception:
+        raise
     except Exception as e:
         logger.info(f"Error creating notification: {e}")
         raise HTTPException(status_code=400, detail="Failed to create notification")
     
 @router.put("/set_analysis_from_doctor")
-async def set_analysis_from_doctor(data: UpdateConsultationSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def set_analysis_from_doctor(data: UpdateConsultationSchema,current_user: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
+        if not await validate_doctor_owns_consultation(session, data.consultation_id, int(current_user["user_id"])
+):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized"
+            )
         await update_analysis_consultation(session, data)
         income = await get_doctor_fee_after_platform_fee(session,data.consultation_id)
-        data={'user_id':current_user_id,'totalAmount':income}
+        data={'user_id':current_user,'totalAmount':income}
         await add_money_to_wallet(data)
-
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.put("/update_consultation_status/{status}/{consultation_id}")
-async def update_consultation_status_route(status: str,consultation_id:int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def update_consultation_status_route(status: str,consultation_id:int,current_user: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
+        if not await validate_both_owns_consultation(session, consultation_id, int(current_user["user_id"])
+):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized"
+            )
         return await update_consultation_status(session,status,consultation_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
     
 @router.get("/get_all_notifications", response_model=List[NotificationResponse])
-async def get_all_notifications_route(current_user_id: str = Depends(get_current_user),
+async def get_all_notifications_route(current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     Notification = await get_all_notifications(session)
@@ -185,20 +226,49 @@ async def get_all_notifications_route(current_user_id: str = Depends(get_current
         raise HTTPException(status_code=404, detail="Notifications not found")
     return Notification
 
-@router.get("/get_consultation", response_model=List[ConsultationResponse])
-async def get_consultation(current_user_id: str = Depends(get_current_user),
+@router.get("/get_consultation", response_model=AdminPaginatedConsultationResponse)
+async def get_consultation(current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
 ):
-    consultation = await get_all_consultation(session)
-    if not consultation:
-        raise HTTPException(status_code=404, detail="Consultation not found")
-    return consultation
+    role = current_user["role"]
+    if role != 'admin':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+    try:
+        offset = (page - 1) * limit
+        consultation = await get_all_consultation(session,start_date,end_date,limit=limit, skip=offset)
+        if not consultation:
+            logger.info(f"No consultations found for date range: {start_date} to {end_date}")
+            return {
+                "count": 0,
+                "next": None,
+                "previous": None,
+                "results": []
+            }
+        total = await count_all_consultation(session,start_date,end_date)
+        next_url = f"/get_consultation?page={page + 1}&limit={limit}" if offset + limit < total else None
+        prev_url = f"/get_consultation?page={page - 1}&limit={limit}" if page > 1 else None
+        return {
+            "count": total,
+            "next": next_url,
+            "previous": prev_url,
+            "results": consultation
+        }
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=500, detail="Unexpected Error Occured")
 
 @router.get("/get_consultation_mapping_for_chat/{doctorId}", response_model=List[MappingResponse])
-async def get_consultation(doctorId:int,current_user_id: str = Depends(get_current_user),
+async def get_consultation(doctorId:int,current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        user_id = current_user["user_id"]
+        if int(user_id) != int(doctorId):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         consultation = await get_all_mapping_for_chat(session,doctorId)
         
         if not consultation:
@@ -214,16 +284,19 @@ async def get_consultation(doctorId:int,current_user_id: str = Depends(get_curre
             ))
 
         return enriched_consultations
-
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/get_consultation_mapping_for_user_chat/{userId}", response_model=List[MappingResponseUser])
-async def get_consultation_mapping_for_user_chat(userId:int,current_user_id: str = Depends(get_current_user),
+async def get_consultation_mapping_for_user_chat(userId:int,current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        
+        user_id = current_user["user_id"]
+        if int(user_id) != int(userId):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         consultation = await get_all_mapping_for_chat_user(session,userId)
     
         if not consultation:
@@ -240,20 +313,30 @@ async def get_consultation_mapping_for_user_chat(userId:int,current_user_id: str
 
         return enriched_consultations
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
     
     
 @router.get("/get_consulted_user_details/{doctorId}", response_model=List[ConsultationResponse])
-async def get_consultation(doctorId:int,current_user_id: str = Depends(get_current_user),
+async def get_consultation(doctorId:int,current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    consultation = await get_doctor_consultations(session,doctorId)
-    if not consultation:
-        raise HTTPException(status_code=404, detail="Consultation not found")
-    return consultation
-
+    try:
+        user_id = current_user["user_id"]
+        if int(user_id) != int(doctorId):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
+        consultation = await get_doctor_consultations(session,doctorId)
+        if not consultation:
+            raise HTTPException(status_code=404, detail="Consultation not found")
+        return consultation
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/turn-credentials")
@@ -266,22 +349,33 @@ async def get_turn_credentials():
 
 @router.get('/get_chat_messages/{consultation_id}')
 async def get_chat_messages(
-    consultation_id: int,current_user_id: str = Depends(get_current_user),
+    consultation_id: int,current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
     try:
+        user_id = int(current_user["user_id"])
+        validate_user= await validate_user_for_consultaion_mapping(session,user_id)
+        if not validate_user:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         messages = await get_chat_messages_using_cons_id(session, consultation_id)
         return messages
+    except HTTPException :
+        raise
     except Exception as e:
         logger.error(f"Error fetching messages: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch messages")
 
     
 @router.get('/get_complaints/{user_id}',response_model=List[CompliantSchema])
-async def get_complaints_route(user_id:int,current_user_id: str = Depends(get_current_user),session : AsyncSession = Depends(get_session)):
+async def get_complaints_route(user_id:int,current_user: str = Depends(get_current_user),session : AsyncSession = Depends(get_session)):
     try:
+        userId = current_user["user_id"]
+        if int(user_id) != int(userId):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         complaints = await get_complaints_crud(session,user_id)
         return complaints
+    except HTTPException :
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -289,10 +383,14 @@ async def get_complaints_route(user_id:int,current_user_id: str = Depends(get_cu
 async def get_consultation_for_user(
     user_id: int,
     page: int = Query(1, ge=1),
-    limit: int = Query(10, le=100),current_user_id: str = Depends(get_current_user),
+    limit: int = Query(10, le=100),current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        userId = current_user["user_id"]
+        if int(user_id) != int(userId):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
         total = await count_consultations(session, user_id)
         offset = (page - 1) * limit
         consultations = await consultation_for_user(session, user_id, skip=offset, limit=limit)
@@ -327,7 +425,8 @@ async def get_consultation_for_user(
             "previous": prev_url,
             "results": enriched
         }
-
+    except HTTPException :
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -335,10 +434,13 @@ async def get_consultation_for_user(
 @router.get("/get_compliant_consultation/{consultations_id}", response_model=ConsultationResponseUserCompliant)
 async def get_compliant_consultation(
     consultations_id: int,
-    current_user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        role = current_user["role"]
+        if role != 'admin':
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         # Get consultation details
         consultation = await consultation_details_with_id(session, consultations_id)
         if not consultation:
@@ -403,10 +505,14 @@ async def doctor_get_consulations_route(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     ordering: Optional[str] = Query(None, description="Sort field. Use '-' prefix for descending order"),
-    current_user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
+        user_id = current_user["user_id"]
+        if int(user_id) != int(doctor_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
         total = await count_consultations_by_doctor_crud(session, doctor_id)
         offset = (page - 1) * limit
         consultations = await consultation_for_doctor(session, doctor_id, skip=offset, limit=limit, ordering=ordering)
@@ -443,7 +549,10 @@ async def doctor_get_consulations_route(
             "previous": prev_url,
             "results": enriched
         }
-
+    except HTTPException as ex:
+        logger.error(ex)
+        raise
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -464,7 +573,8 @@ async def upload_recording(
     roomId: str = Form(...),
     userId: str = Form(...),
     isFinal: str = Form(...),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: str = Depends(get_current_user),
 ):
     try:
         is_final = isFinal.lower() == 'true'
@@ -585,7 +695,7 @@ async def upload_recording(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/recordings/{filename}")
-async def get_recording(filename: str):
+async def get_recording(filename: str,current_user: str = Depends(get_current_user)):
     try:
         file_path = os.path.join(RECORDINGS_DIR, filename)
         
@@ -645,10 +755,16 @@ def generate_zego_token(user_id: str, room_id: str) -> dict:
     }
 
 @router.post("/generate-token")
-async def generate_token(data :TokenRequest):
+async def generate_token(data :TokenRequest,current_user: str = Depends(get_current_user)):
     try:
+        user_id = int(current_user["user_id"])
+        if int(user_id) != int(data.user_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
         token_data = generate_zego_token(data.user_id, data.room_id)
         return token_data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
         
@@ -656,7 +772,7 @@ async def generate_token(data :TokenRequest):
 async def get_notifications_route(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
-    current_user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     try:
@@ -676,9 +792,13 @@ async def get_notifications_route(
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get("/get_compliants", response_model=CompliantPaginatedResponse)
-async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query(10, le=100),current_user_id: str = Depends(get_current_user),session: AsyncSession = Depends(get_session),
+async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query(10, le=100),current_user: str = Depends(get_current_user),session: AsyncSession = Depends(get_session),
 ):
     try:
+        role = current_user["role"]
+        if role != 'admin':
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
         total = await count_compliants(session)
         offset = (page - 1) * limit
         compliants = await get_compliants_crud(session, skip=offset, limit=limit)
@@ -690,35 +810,48 @@ async def get_notifications_route( page: int = Query(1, ge=1),limit: int = Query
             "previous": prev_url,
             "results": compliants
         }
+    except Exception:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/update_complaints/{complaint_id}")
-async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def update_complaints_route(complaint_id :int ,data: UpdateComplaintSchema,current_user: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
+        role = current_user["role"]
+        if role != 'admin':
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
         return await update_complaints_curd(session, data,complaint_id)
+    except Exception:
+        raise
     except Exception as e:
         logger.info(f"Error creating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
 
-@router.get('/get_psycholgist_rating/{psychologist_id}')
-async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
-    try:
-        avg_rating = await get_psychologist_rating_crud(session, psychologist_id)
-        return  avg_rating if avg_rating is not None else 0.0
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.get('/doctor_dashboard_details/{psychologist_id}/{selectedYear}')
-async def doctor_dashboard_details_route(psychologist_id: int,selectedYear:int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def doctor_dashboard_details_route(psychologist_id: int,selectedYear:int,current_user: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
     try:
+        user_id = current_user["user_id"]
+        if int(user_id) != int(psychologist_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+
         data = await doctor_dashboard_details_crud(session, psychologist_id,selectedYear)
         return data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
 @router.get('/admin_dashboard_details/{year}')
-async def admin_dashboard_details_route(year:int,current_user_id: str = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+async def admin_dashboard_details_route(
+    year:int,
+    current_user: str = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session)
+    ):
+    role = current_user["role"]
+    if role != 'admin':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
     try:
         data = await admin_dashboard_details_crud(session,year)
         return data
@@ -759,6 +892,17 @@ async def get_feedbacks_route(psychologist_id: int, session: AsyncSession = Depe
         logger.error(f"Error fetching feedbacks: {str(e)}", exc_info=True)  
         raise HTTPException(status_code=500, detail="Failed to fetch feedbacks")
 
+
+# inter service route------------------------------------------------------------------------
+
+@router.get('/get_psycholgist_rating/{psychologist_id}')
+async def get_psychologist_rating_route(psychologist_id: int, session: AsyncSession = Depends(get_session)):
+    try:
+        avg_rating = await get_psychologist_rating_crud(session, psychologist_id)
+        return  avg_rating if avg_rating is not None else 0.0
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 # ***************************************VideocallSignaling***********************************************
 
@@ -883,12 +1027,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     
 
 # # ***************************************Chat***********************************************
-# # In-memory storage 
-# chat_endpoints.py - Enhanced WebSocket and File Upload Endpoints
-# Configuration
-
-
-
 
 # Constants and configurations
 UPLOAD_DIR = Path("uploads/chat_files")
@@ -1065,14 +1203,14 @@ async def chat_websocket(
     
     await websocket.accept()
     try:
-        current_user_id = await get_current_user_ws(websocket)
-        logger.info(f'[websocket] some error occured {current_user_id}')
+        current_user = await get_current_user_ws(websocket)
+        logger.info(f'[websocket] some error occured {current_user}')
         
-        if not current_user_id:
+        if not current_user:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         
-        verify_user = await verify_user_consultation(session, consultation_id, current_user_id)
+        verify_user = await verify_user_consultation(session, consultation_id, current_user)
         if not verify_user:
                 await websocket.send_json({"error": "Invalid consultation ID"})
                 await websocket.close(code=status.WS_1008_POLICY_VIOLATION)

@@ -29,30 +29,32 @@ const AdminComplaint = () => {
   const [consultationData, setConsultationData] = useState(null);
   const [consultationLoading, setConsultationLoading] = useState(false);
 
-  // Pagination state
-  const [currentPage] = useState(1);
-  const [totalCount] = useState(0);
-  const [hasNext] = useState(false);
-  const [hasPrevious] = useState(false);
-  const [limit] = useState(10); // Items per page
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  const handleNextPage = () => {
-    if (hasNext && !loadingMore) {
-      getConsultations(currentPage + 1, false);
-    }
-  };
- 
-  const handlePreviousPage = () => {
-    if (hasPrevious && !loadingMore) {
-      getConsultations(currentPage - 1, false);
-    }
-  };
-  const handlePageChange = (page) => {
-    if (page !== currentPage && !loadingMore) {
-      getConsultations(page, false);
-    }
-  };
+  // Pagination handlers
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalCount = complaints?.count || 0;
+    const limit = 10;
+    const hasNext = !!complaints?.next;
+    const hasPrevious = !!complaints?.previous;
+    const [loadingMore, setLoadingMore] = useState(false);
+    const handlePageChange = (page) => {
+      setCurrentPage(page);
+      fetchComplaints(page);
+    };
+    const handleNextPage = () => {
+      if (hasNext) {
+        const nextPage = currentPage + 1;
+        setCurrentPage(nextPage);
+        fetchComplaints(page=nextPage);
+      }
+    };
+    const handlePreviousPage = () => {
+      if (hasPrevious) {
+        const prevPage = currentPage - 1;
+        setCurrentPage(prevPage);
+        fetchComplaints(page=prevPage);
+      }
+    };
+    // --------------------
 
   useEffect(() => {
     fetchComplaints();
@@ -89,7 +91,7 @@ const AdminComplaint = () => {
         `/consultations/get_compliants?page=${page}&limit=${limit}`
       );
       console.log(response.data.results)
-      setComplaints(response.data.results);
+      setComplaints(response.data);
       setLoading(false);
       setLoadingMore(false);
     } catch (error) {
@@ -100,7 +102,7 @@ const AdminComplaint = () => {
   };
 
   const statusOptions = [
-    "Pending",
+    "pending",
     "In Progress",
     "Resolved",
     "Rejected",
@@ -144,35 +146,14 @@ const AdminComplaint = () => {
     setEditingStatus("");
   };
 
-  // Video handling functions
- const handleViewVideo = async (complaint) => {
-  if (!complaint.video) {
-    toast.info("No video available for this complaint", {position:'bottom-center'});
-    return;
-  }
   
-  setVideoLoading(true);
-  setSelectedVideo({
-    id: complaint.id,
-    subject: complaint.subject,
-    video_url: `${baseurl}${complaint.video}`, // Construct full URL
-    type: complaint.type
-  });
-  setShowVideoModal(true);
-  setVideoLoading(false);
-};
-
   const closeVideoModal = () => {
     setShowVideoModal(false);
     setSelectedVideo(null);
   };
 
-  // Check if complaint has video
-  const hasVideo = (complaint) => {
-  return complaint.video !== null && complaint.video !== undefined && complaint.video.trim() !== '';
-};
 
-  const filteredComplaints = complaints.filter((complaint) => {
+  const filteredComplaints = complaints.results && complaints.results.filter((complaint) => {
     const matchesSearch =
       complaint.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
       complaint.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -210,16 +191,7 @@ const AdminComplaint = () => {
           {/* Filters */}
           <div className="bg-white rounded-lg shadow mb-6 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search complaints..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
+             
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <select
@@ -241,7 +213,7 @@ const AdminComplaint = () => {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             {statusOptions.map((status) => {
-              const count = complaints.filter(
+              const count = complaints.results.filter(
                 (c) => c.status === status
               ).length;
               return (
@@ -388,8 +360,7 @@ const AdminComplaint = () => {
               onNextPage={handleNextPage}
               onPreviousPage={handlePreviousPage}
             />
-            Showing {filteredComplaints.length} of {complaints.length}{" "}
-            complaints
+            
           </div>
         </div>
 

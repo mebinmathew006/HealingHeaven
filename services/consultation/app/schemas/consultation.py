@@ -13,7 +13,7 @@ class UpdateConsultationSchema(BaseModel):
 class CreateConsultationSchema(BaseModel):
     user_id: int
     psychologist_id: int
-    psychologist_fee: int
+
     
 class UserOut(BaseModel):
     id: int
@@ -213,6 +213,12 @@ class PaginatedConsultationResponse(BaseModel):
     next: Optional[str]
     previous: Optional[str]
     results: List[ConsultationResponseUser]
+    
+class AdminPaginatedConsultationResponse(BaseModel):
+    count: int
+    next: Optional[str]
+    previous: Optional[str]
+    results: List[ConsultationResponse]
     
 class PaginatedNotificationResponse(BaseModel):
     count: int

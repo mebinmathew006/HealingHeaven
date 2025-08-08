@@ -487,31 +487,12 @@ async def count_all_users(session: AsyncSession):
         
 async def doctor_profile_images_crud(session: AsyncSession):
     try:
-        result = await session.execute(select(PsychologistProfile.profile_image).limit(9))
+        result = await session.execute(select(PsychologistProfile.profile_image).join(User).where(PsychologistProfile.is_verified=='verified',User.is_active==True).limit(9))
         return result.scalars().all()
     except SQLAlchemyError as e:
         await session.rollback()
         return []
         
-    
-# async def get_all_psychologist(session: AsyncSession,search :str, limit: int = 8, skip: int = 0):
-        
-#     try:
-#         if search:
-#             stmt = select(User).where(User.role == 'doctor')
-#             stmt = stmt.where(
-#                 or_(
-#                     User.name.ilike(f"%{search}%"),
-#                     User.email_address.ilike(f"%{search}%")
-#                 )
-#             )
-#             stmt = stmt.offset(skip).limit(limit)
-#             result = await session.execute(stmt)
-            
-#             return result.scalars().all()
-#     except SQLAlchemyError as e:
-#         await session.rollback()
-#         print(f"Database error occurred: {e}")
     
 async def get_all_psychologist(session: AsyncSession, search: str, limit: int = 8, skip: int = 0):
     try:

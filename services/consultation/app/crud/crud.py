@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from schemas.consultation import CompliantSchemaa,CreateConsultationSchema,UpdateConsultationSchema,CreateFeedbackSchema,CreateNotificationSchema,UpdateComplaintSchema
 from models.consultation import Consultation,Payments,ConsultationMapping,Chat,Feedback,Notification,Complaint,ChatAttachment
-from datetime import datetime
+from datetime import datetime,time
 import calendar
 from typing import Optional,List,Dict
 from fastapi import HTTPException
@@ -112,7 +112,7 @@ async def create_notification(session: AsyncSession, data: CreateNotificationSch
 
     except SQLAlchemyError as e:
         await session.rollback()
-        # Log error or raise appropriate exception
+        
         raise e
     
     
@@ -136,12 +136,35 @@ async def save_recording_database(session: AsyncSession, video_url:str,consultat
     consultation.video=video_url
     await session.commit()
     
-async def get_all_consultation(session: AsyncSession):
-    result = await session.execute(
-        select(Consultation)
-        .options(selectinload(Consultation.payments))
-    )
+async def get_all_consultation(session: AsyncSession, start_date=None, end_date=None, skip: int = 0, limit: int = 10):
+    query = select(Consultation).options(selectinload(Consultation.payments))
+
+    
+
+    if start_date and end_date:
+        start_datetime = datetime.combine(start_date, time.min)
+        end_datetime = datetime.combine(end_date, time.max)
+        query = query.where(
+            Consultation.created_at >= start_datetime,
+            Consultation.created_at <= end_datetime
+        )
+
+    query = query.order_by(Consultation.created_at.desc()).limit(limit).offset(skip)
+
+    result = await session.execute(query)
     return result.scalars().all()
+
+async def count_all_consultation(session: AsyncSession,start_date=None,end_date=None):
+    query =select(func.count()).select_from(Consultation)
+    if start_date and end_date:
+        start_datetime = datetime.combine(start_date, time.min)
+        end_datetime = datetime.combine(end_date, time.max)
+        query = query.where(
+            Consultation.created_at >= start_datetime,
+            Consultation.created_at <= end_datetime
+        )
+    result = await session.execute(query)
+    return result.scalar_one()
 
 async def get_all_notifications(session: AsyncSession):
     result = await session.execute(
@@ -223,6 +246,7 @@ async def get_notifications_crud(session: AsyncSession,  skip: int, limit: int):
 async def get_compliants_crud(session: AsyncSession,  skip: int, limit: int):
     result = await session.execute(
         select(Complaint)
+        .order_by(desc(Complaint.created_at))
         .offset(skip)
         .limit(limit)
     )
@@ -401,6 +425,95 @@ async def count_compliants(session: AsyncSession):
     )
     return result.scalar()
 
+async def validate_user_for_consultaion_mapping(session: AsyncSession, user_id: int) -> bool:
+    try:
+        result = await session.execute(
+            select(ConsultationMapping).where(
+                or_(
+                    ConsultationMapping.user_id == user_id,
+                    ConsultationMapping.psychologist_id == user_id
+                )
+            )
+        )
+        
+        return bool(result.scalar())
+    except Exception as e:
+        logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
+        return False
+        
+async def validate_user_owns_consultation(session: AsyncSession,consultation_id: int,  user_id: int) -> bool:
+    try:
+        result = await session.execute(
+            select(Consultation).where(
+                (Consultation.id == consultation_id) &
+                (
+                    Consultation.user_id == user_id
+                )
+            )
+        )
+        
+        return bool(result.scalar())
+    except Exception as e:
+        logger.error(f"Error validating consultation for user {user_id}: {e}")
+        return False
+    
+async def validate_doctor_owns_consultation(session: AsyncSession,consultation_id :int, user_id: int) -> bool:
+    try:
+        result = await session.execute(
+            select(Consultation).where(
+                (Consultation.id == consultation_id) &
+                (
+                    Consultation.psychologist_id == user_id
+                )
+            )
+        )
+        
+        return bool(result.scalar())
+    except Exception as e:
+        logger.error(f"Error validating consultation for user {user_id}: {e}")
+        return False
+    
+async def validate_both_owns_consultation(
+    session: AsyncSession,
+    consultation_id: int,
+    user_id: int
+) -> bool:
+    try:
+        result = await session.execute(
+            select(Consultation).where(
+                (Consultation.id == consultation_id) &
+                (
+                    (Consultation.user_id == user_id) |
+                    (Consultation.psychologist_id == user_id)
+                )
+            )
+        )
+        return bool(result.scalar())
+    except Exception as e:
+        logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
+        return False
+    
+async def validate_doctor(
+    session: AsyncSession,
+    psychologist_id: int,
+    user_id: int
+) -> bool:
+    try:
+        result = await session.execute(
+            select(Psy).where(
+                (Consultation.id == consultation_id) &
+                (
+                    (Consultation.user_id == user_id) |
+                    (Consultation.psychologist_id == user_id)
+                )
+            )
+        )
+        return bool(result.scalar())
+    except Exception as e:
+        logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
+        return False
+
+        
 async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id: int):
     try:
         consultation_exists = await session.execute(
