@@ -14,8 +14,6 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "react-toastify";
-
-// Consultation List View
 export default function ConsultationsList({
   consultationData,
   getStatusColor,

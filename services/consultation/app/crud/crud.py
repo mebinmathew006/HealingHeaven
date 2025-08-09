@@ -17,7 +17,7 @@ from utils.time import utc_to_ist
 logger = logging.getLogger("uvicorn.error")
 
 
-async def create_consultation(session: AsyncSession, data: CreateConsultationSchema):
+async def create_consultation(session: AsyncSession, data: CreateConsultationSchema,fees:int):
     try:
         async with session.begin():
             # Create consultation
@@ -33,7 +33,7 @@ async def create_consultation(session: AsyncSession, data: CreateConsultationSch
             # Create payment linked to consultation
             payment = Payments(
                 consultation_id=consultation.id,
-                psychologist_fee=data.psychologist_fee,
+                psychologist_fee=fees,
                 payment_status="paid"
             )
             session.add(payment)

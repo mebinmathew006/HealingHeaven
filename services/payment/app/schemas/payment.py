@@ -18,6 +18,7 @@ class WalletTransactionOut(BaseModel):
     id: int
     wallet_id: int
     transaction_amount: int
+    created_at :Optional[datetime]
 
     model_config = {
         "from_attributes": True

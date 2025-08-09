@@ -114,7 +114,7 @@ const UserProfile = () => {
       console.log("Saving profile data:", formData);
 
       const response = await axiosInstance.put(
-        `/users/update_user_details/${userId}`,
+        `/users/users/${userId}`,
         formData
       );
       setIsEditing(false);

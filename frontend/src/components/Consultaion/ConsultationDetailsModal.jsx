@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { X, User, Clock, Calendar, Video, FileText, Play, Download, Loader2 } from "lucide-react";
-import { Edit2, Save, X as CloseIcon, Filter, Search, Play as PlayIcon, Eye } from "lucide-react";
-import AdminSidebar from "../../components/AdminSidebar";
-import axiosInstance from "../../axiosconfig";
-import Pagination from "../../components/Pagination";
+import React, { useState } from "react";
+import { X, User, Calendar, Video, FileText, Play, Download, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import { getCompliantConsultation } from "../../services/consultationService";
 
 const ConsultationDetailsModal = ({ 
   isOpen, 
@@ -30,12 +25,7 @@ const ConsultationDetailsModal = ({
     });
   };
 
-  const formatDuration = (duration) => {
-    if (!duration) return "N/A";
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+ 
 
   const getStatusColor = (status) => {
     const colors = {

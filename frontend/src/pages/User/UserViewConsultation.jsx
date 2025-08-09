@@ -13,7 +13,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
 import UserSidebar from "../../components/UserSidebar";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import ConsultationsList from "./ConsultationsList";
@@ -47,9 +46,7 @@ const UserViewConsultation = () => {
       }
       
       const response = await consultationDetailsUser(userId,page,limit)
-      //  axiosInstance.get(
-      //   `/consultations/get_consultation_for_user/${userId}?page=${page}&limit=${limit}`
-      // );
+      
       
       console.log("Consultation response:", response.data);
       

@@ -4,8 +4,10 @@ from dependencies.database import get_session
 import crud.crud as crud
 from fastapi.logger import logger
 from datetime import datetime ,date
-from infra.external.user_service import (get_user_details, get_doctor_details, get_minimal_user_details, 
-                                         change_doctor_availability, check_doctor_availability)
+from infra.external.user_service import (
+                    get_user_details, get_doctor_details, get_minimal_user_details, 
+                    change_doctor_availability, check_doctor_availability,fetch_fees_from_doctor
+                    )
 from fastapi import ( 
                      UploadFile, File, Form,Request,WebSocket, 
                      WebSocketDisconnect,APIRouter, Depends, 
@@ -76,7 +78,7 @@ logger = logging.getLogger("uvicorn.error")
 async def create_consultation_route(
     data: CreateConsultationSchema,
     current_user: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_session)
 ):
     doctor_locked = False
     consultation_created = False
@@ -86,34 +88,49 @@ async def create_consultation_route(
     lock_token = str(uuid.uuid4())
 
     try:
+        user_id = current_user["user_id"]
+        if int(user_id) != data.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        
         # First acquire Redis lock — no availability check before this!
         lock_acquired = await redis_client.set(lock_key, lock_token, ex=10, nx=True)
         if not lock_acquired:
             raise HTTPException(status_code=409, detail="Doctor is currently busy. Try again.")
-        # Now check availability after locking (still helpful as defense)
+        # Now check availability after locking 
         response = await check_doctor_availability(data.dict())
         logger.info(f"[{current_user}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")
         if response == False:
-            raise HTTPException(status_code=409, detail="Doctor is not available")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Doctor is not available")
         # Mark doctor as unavailable
         response = await change_doctor_availability(data.dict(), False)
         if not response.get("status"):
-            raise HTTPException(status_code=409, detail="Doctor is not available")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Doctor is not available")
         doctor_locked = True
         # Create consultation
-        consultation_id = await create_consultation(session, data)
+        fees = await fetch_fees_from_doctor(data.psychologist_id)
+        consultation_id = await create_consultation(session, data,fees)
         consultation_created = True
         # Charge wallet
-        # fees = await fetch_fees_from_doctor(data.psychologist_id)
-        return await fetch_money_from_wallet(data.dict(),fees)
+        await fetch_money_from_wallet(data.dict(),fees)
+        
+        return JSONResponse(
+            content={
+                "status": "success",
+                "consultation_id":consultation_id,
+                }, status_code=201
+            )
     except HTTPException:
+        if consultation_created and consultation_id:
+            await delete_partial_consultation(session, consultation_id)
+        if doctor_locked:
+            await change_doctor_availability(data.dict(), True)
         raise
     except Exception as e:
         logger.error(f"Error creating consultation: {e}")
         if consultation_created and consultation_id:
             await delete_partial_consultation(session, consultation_id)
         if doctor_locked:
-            await change_doctor_availability(data, True)
+            await change_doctor_availability(data.dict(), True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something went wrong")
     finally:
         # Release the lock only if we still own it
@@ -695,7 +712,7 @@ async def upload_recording(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/recordings/{filename}")
-async def get_recording(filename: str,current_user: str = Depends(get_current_user)):
+async def get_recording(filename: str):
     try:
         file_path = os.path.join(RECORDINGS_DIR, filename)
         
@@ -758,8 +775,12 @@ def generate_zego_token(user_id: str, room_id: str) -> dict:
 async def generate_token(data :TokenRequest,current_user: str = Depends(get_current_user)):
     try:
         user_id = int(current_user["user_id"])
-        if int(user_id) != int(data.user_id):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
+        match = re.search(r'\d+', data.user_id)
+        if not match or int(user_id) != int(match.group()):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not authorized"
+            )
         
         token_data = generate_zego_token(data.user_id, data.room_id)
         return token_data

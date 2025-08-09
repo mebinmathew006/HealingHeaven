@@ -33,7 +33,7 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     
    try {
-    const response = await publicaxiosconfig.post('/users/forgetpassword',{email:email})
+    const response = await publicaxiosconfig.post('/users/password-reset',{email:email})
       setIsSubmitting(false);
       navigate('/verify_otp_password',{state:email})  
    } catch (error) {

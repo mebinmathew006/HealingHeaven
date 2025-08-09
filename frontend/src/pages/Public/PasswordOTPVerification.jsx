@@ -147,7 +147,7 @@ export default function PasswordOTPVerification() {
       console.log(email, password, otpValue);
 
       const response = await publicaxiosconfig.post(
-        "/users/forget_password_otp_verify",
+        "/users/password-reset/verify-otp",
         { email: email, password: password, otp: otpValue }
       );
 
@@ -188,7 +188,7 @@ export default function PasswordOTPVerification() {
     if (resendTimer > 0) return; // Prevent resending if timer not expired
 
     try {
-      const res = await publicaxiosconfig.post("/users/forgetpassword", {
+      const res = await publicaxiosconfig.post("/users/password-reset", {
         email,
       });
       if (res.status === 200) {

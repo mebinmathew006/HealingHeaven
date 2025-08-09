@@ -493,6 +493,14 @@ async def doctor_profile_images_crud(session: AsyncSession):
         await session.rollback()
         return []
         
+async def doctor_fees_crud(session: AsyncSession,user_id:int):
+    try:
+        result = await session.execute(select(PsychologistProfile.fees).join(User).where(PsychologistProfile.user_id==user_id))
+        return result.scalar()
+    except SQLAlchemyError as e:
+        await session.rollback()
+        return []
+        
     
 async def get_all_psychologist(session: AsyncSession, search: str, limit: int = 8, skip: int = 0):
     try:

@@ -126,7 +126,7 @@ export default function LoginPage() {
           position: "bottom-center",
         });
         try {
-          await publicaxiosconfig.post("/users/forgetpassword", {
+          await publicaxiosconfig.post("/users/password-reset", {
             email: userEmail,
           });
           navigate("/verify_otp", { state: userEmail });

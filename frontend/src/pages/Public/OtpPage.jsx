@@ -21,7 +21,7 @@ const resendOtp = async (e) => {
     if (timer > 0) return; // Prevent resending if timer not expired
 
     try {
-      const res = await publicaxiosconfig.post("/users/forgetpassword", {
+      const res = await publicaxiosconfig.post("/users/password-reset", {
         email,
       });
       if (res.status === 200) {
@@ -91,7 +91,7 @@ const resendOtp = async (e) => {
     // api verification
     try {
       const otpValue = otp.join("");
-      await publicaxiosconfig.post("users/email_otp_verify", {
+      await publicaxiosconfig.post("users/email-verification", {
         otp: otpValue,
         email: email,
       });

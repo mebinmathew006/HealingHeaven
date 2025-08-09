@@ -28,6 +28,48 @@ logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["users"])
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
+
+
+@router.post("/users", response_model=users.UserOut)
+async def create_user(
+    user: users.UserCreate,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session)
+    ):
+    try:
+        db_user = await crud.get_user_by_email(session, user.email_address)
+        if db_user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+        new_user = await crud.create_user(session, user)
+        otp = otp_generate()
+        await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
+        send_otp_email.delay(user.email_address, otp)
+        return new_user
+    except Exception as e:
+        logger.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something Went Wrong")
+
+@router.put("/users/{user_id}")
+async def update_user_details(
+    user_id: int, 
+    user_and_profile: users.UserWithOptionalProfileOut,
+    current_user: str = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session)
+    ):
+    if int(current_user['user_id']) != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot update another user's details"
+        )
+    try:
+        updated_user = await crud.update_user_and_profile(session, user_id, user_and_profile)
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error updating user: {e}")
+        raise HTTPException(status_code=400, detail="Failed to update user")
+    
 @router.post("/google-login")
 async def google_login(
     data: users.GoogleLoginSchema, 
@@ -78,47 +120,6 @@ async def google_login(
         max_age=60 * 60 * 24 * 7 
     )
     return response
-
-@router.post("/signup", response_model=users.UserOut)
-async def create_user(
-    user: users.UserCreate,
-    background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_session)
-    ):
-    try:
-        db_user = await crud.get_user_by_email(session, user.email_address)
-        if db_user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-        new_user = await crud.create_user(session, user)
-        otp = otp_generate()
-        await redis_client.set(f"otp:{user.email_address}", otp, ex=300)
-        send_otp_email.delay(user.email_address, otp)
-        return new_user
-    except Exception as e:
-        logger.error(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something Went Wrong")
-
-@router.put("/update_user_details/{user_id}")
-async def update_user_details(
-    user_id: int, 
-    user_and_profile: users.UserWithOptionalProfileOut,
-    current_user: str = Depends(get_current_user), 
-    session: AsyncSession = Depends(get_session)
-    ):
-    if int(current_user) != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot update another user's details"
-        )
-    try:
-        updated_user = await crud.update_user_and_profile(session, user_id, user_and_profile)
-        if not updated_user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {"status": "success"}
-    except Exception as e:
-        logger.error(f"Error updating user: {e}")
-        raise HTTPException(status_code=400, detail="Failed to update user")
-    
 @router.put("/update_psychologist_details/{user_id}")
 async def update_psychologist_details(
     user_id: int, 
@@ -127,7 +128,7 @@ async def update_psychologist_details(
     session: AsyncSession = Depends(get_session)
     ):
     try:
-        if int(current_user) != user_id:
+        if int(current_user['user_id']) != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot update another user's details"
@@ -140,7 +141,7 @@ async def update_psychologist_details(
         logger.error(f"Error updating user: {e}")
         raise HTTPException(status_code=400, detail="Failed to update user")
    
-@router.post('/email_otp_verify')
+@router.post('/email-verification')
 async def verify_email_otp(otp_schema:users.OtpVerification,session: AsyncSession = Depends(get_session)):
     stored_otp = await redis_client.get(f"otp:{otp_schema.email}")
     if otp_schema.otp == stored_otp:
@@ -182,7 +183,7 @@ async def login(    login_schema: users.LoginSchema, session: AsyncSession = Dep
             detail="Invalid email or password"
         )
 
-@router.post('/forgetpassword')
+@router.post('/password-reset')
 async def forgetpassword(
     email_schema: users.ForgetPasswordSchema,session: AsyncSession = Depends(get_session)
 ):
@@ -207,7 +208,7 @@ async def forgetpassword(
             detail="Something went wrong. Please try again later."
         )
     
-@router.post('/forget_password_otp_verify')
+@router.post('/password-reset/verify-otp')
 async def verify_password_otp(
     otp_schema: users.ForgetPasswordOTPSchema,
     session: AsyncSession = Depends(get_session)
@@ -228,7 +229,7 @@ async def verify_password_otp(
             detail="Invalid OTP. Please check and try again."
         )
 
-@router.get('/view_psychologist', response_model=users.PaginatedPsychologistResponse)
+@router.get('/psychologists', response_model=users.PaginatedPsychologistResponse)
 async def view_psychologist(
     session: AsyncSession = Depends(get_session),
     page: int = Query(1, ge=1),
@@ -292,30 +293,30 @@ async def view_psychologist(
             detail="Internal server error while fetching psychologists."
         )
         
-@router.patch('/update_availability/{user_id}/{isAvailable}')
+@router.patch('/psychologists/{user_id}/availability')
 async def update_availability(
     user_id:int,
-    isAvailable:bool,
+    is_available:bool,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
     ):
     try :
-        data= await crud.psychologist_availability_update(session,user_id,isAvailable)
+        data= await crud.psychologist_availability_update(session,user_id,is_available)
         return JSONResponse(content={"status": data}, status_code=200)
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")  
     
-@router.patch('/update_psychologist_for_consultaion/{user_id}/{isAvailable}')
-async def update_psychologist_for_consultaion_route(
-    user_id:int,
-    isAvailable:bool,
-    session: AsyncSession = Depends(get_session)
-    ):
-    try :
-        await crud.psychologist_availability_update(session,user_id,isAvailable)
-        return JSONResponse(content={"status": True}, status_code=200)
-    except Exception as e:
-        return JSONResponse(content={"status": True}, status_code=400)
+# @router.patch('/update_psychologist_for_consultaion/{user_id}/{isAvailable}')
+# async def update_psychologist_for_consultaion_route(
+#     user_id:int,
+#     isAvailable:bool,
+#     session: AsyncSession = Depends(get_session)
+#     ):
+#     try :
+#         await crud.psychologist_availability_update(session,user_id,isAvailable)
+#         return JSONResponse(content={"status": True}, status_code=200)
+#     except Exception as e:
+#         return JSONResponse(content={"status": True}, status_code=400)
     
 @router.patch('/update_psychologist_documents/{user_id}')
 async def update_psychologist_documents(
@@ -614,6 +615,7 @@ async def doctor_profile_images(session: AsyncSession = Depends(get_session)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve users"
         )
+
         
 @router.patch('/toggle_user_status/{user_id}')
 async def toggle_user_status(
@@ -747,3 +749,14 @@ async def refresh_token(request: Request,session:AsyncSession= Depends(get_sessi
         "access_token": new_access_token,
         "token_type": "bearer"
     }
+
+@router.get("/get_fees_of_doctor/{psychologist_id}")
+async def get_fees_of_doctor(psychologist_id:int ,session: AsyncSession = Depends(get_session)):
+    try:
+        result = await crud.doctor_fees_crud(session,psychologist_id)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve fees"
+        )

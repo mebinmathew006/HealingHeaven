@@ -62,7 +62,6 @@ async def get_wallet_details_with_transactions(
         userId = current_user["user_id"]
         if int(userId) != user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="User is not authorized")
-        # First get the wallet to get its ID
         wallet = await crud.get_wallet_balance_by_id(session, user_id)
         if not wallet:
             raise HTTPException(status_code=404, detail="Wallet not found")

@@ -112,7 +112,7 @@ useEffect(() => {
   const getNotificationIcon = (type) => {
     switch (type?.toLowerCase()) {
       case "info":
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <Info className="w-5 h-5 text-green-500" />;
       case "success":
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case "warning":
@@ -203,31 +203,11 @@ useEffect(() => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
               <p className="text-gray-600">Stay updated with your latest notifications</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <BellRing className="w-8 h-8 text-blue-600" />
-              <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                {notifications.filter(n => !n.is_read).length} unread
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow mb-6 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search notifications..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
            
           </div>
         </div>
+
+       
 
         {/* Notifications List */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -242,15 +222,15 @@ useEffect(() => {
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                    !notification.is_read ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                  className={`p-6 hover:bg-green-50 transition-colors cursor-pointer ${
+                    !notification.is_read ? 'bg-white border-l-4 ' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-4 flex-1">
                       <div className="flex-shrink-0">
                         {!notification.is_read ? (
-                          <Mail className="w-6 h-6 text-blue-600" />
+                          <Mail className="w-6 h-6 text-green-600" />
                         ) : (
                           <MailOpen className="w-6 h-6 text-gray-400" />
                         )}

@@ -128,7 +128,8 @@ useEffect(() => {
 
     try {
       const response = await axiosInstance.patch(
-        `/users/update_availability/${userId}`
+        `/users/psychologists/${userId}/availability`,
+       
       );
 
       await Swal.fire({

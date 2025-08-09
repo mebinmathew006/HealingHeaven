@@ -9,6 +9,7 @@ export const ParticipantPage = () => {
   const location = useLocation();
   const navigate =useNavigate()
   const { doctorId, psychologist_fee, consultationId } = location?.state || {};
+
   const handleCallEnd = async () => {
     console.log('Call ended');
     await updateStatusConsultation('ended',consultationId)

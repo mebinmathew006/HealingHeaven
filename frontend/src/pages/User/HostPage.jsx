@@ -25,7 +25,7 @@ export const HostPage = () => {
 
   const handleError = (error) => {
     console.error('Video call error:', error);
-    // Show error message to user
+    
   };
 
   return (

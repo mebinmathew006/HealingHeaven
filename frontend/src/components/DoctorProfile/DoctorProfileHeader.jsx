@@ -15,7 +15,7 @@ const DoctorProfileHeader = ({
   fetchDoctor,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const userId = useSelector((state)=>state.userDetails.id)
+  const userId = useSelector((state) => state.userDetails.id);
   const updateDoctorProfileImage = () => {
     setIsOpen(true);
   };
@@ -62,8 +62,10 @@ const DoctorProfileHeader = ({
       if (!result.isConfirmed) return;
 
       const response = await axiosInstance.patch(
-        `/users/update_availability/${userId}/${!isAvailable}`
+        `/users/psychologists/${userId}/availability`,
+        { is_available: !isAvailable }
       );
+
       setIsAvailable(response.data.status);
 
       if (response.data.status) {

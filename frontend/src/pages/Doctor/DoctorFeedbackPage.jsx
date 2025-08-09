@@ -69,9 +69,7 @@ export default function DoctorFeedbackPage() {
           buttonsStyling: false,
           background: "#ffffff",
         });
-        // await axiosInstance.patch(
-        //   `/users/update_availability/${userId}/${false}`
-        // );
+       
         navigate("/doctor_view_consultations");
       } catch (error) {}
     }

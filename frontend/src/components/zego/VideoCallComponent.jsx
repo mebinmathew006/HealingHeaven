@@ -21,7 +21,6 @@ export const VideoCallComponent = ({
   const recordedChunksRef = useRef([]);
   const [isRecording, setIsRecording] = useState(false);
 
- 
 
   const startRecording = async () => {
   try {

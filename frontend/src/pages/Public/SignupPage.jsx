@@ -226,7 +226,7 @@ export default function SignupPage() {
 
     if (validateForm()) {
       try {
-        const response = await publicaxiosconfig.post("users/signup", formData);
+        const response = await publicaxiosconfig.post("users/users", formData);
         toast.success("Signup Successful! Please verify your Email Now!", {
           position: "bottom-center",
         });

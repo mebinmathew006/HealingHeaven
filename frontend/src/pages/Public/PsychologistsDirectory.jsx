@@ -171,7 +171,7 @@ export default function PsychologistsDirectory() {
     setLoadingMore(page !== 1);
     setLoading(page === 1);
     try {
-      const response = await axiosInstance.get(`users/view_psychologist?page=${page}&limit=${limit}`);
+      const response = await axiosInstance.get(`users/psychologists?page=${page}&limit=${limit}`);
 
       setpsychologists(response.data);
       console.log(response.data);

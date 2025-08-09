@@ -70,8 +70,7 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
     setIsProcessing(true);
     const data = {
       user_id: userId,
-      psychologist_id: doctor.id,
-      psychologist_fee: doctor.fees,
+      psychologist_id: doctor.id
     };
 
     try {
@@ -79,6 +78,7 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
         "/consultations/create_consultation",
         data
       );
+      console.log(response.data)
       const consultation_id = response.data.consultation_id;
 
       toast.success("Video Call will Start Now", {
