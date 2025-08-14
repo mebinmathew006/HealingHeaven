@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 
 import { useSelector } from "react-redux";
-import axiosInstance from "../axiosconfig";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import Pagination from "./Pagination";
+import { addMoneyToWalletFromRazorpayRoute, createRazorpayOrderRoute, fetchMoneyFromWalletRoute, getWalletDetailsRoute } from "../services/paymentService";
 
 const WalletPage = () => {
   const [loading, setLoading] = useState(false);
@@ -57,11 +57,7 @@ const WalletPage = () => {
     try {
       setLoadingMore(page !== 1);
       setLoading(page === 1);
-
-      const response = await axiosInstance.get(
-        `/payments/get_wallet_details_with_transactions/${userId}?page=${page}&limit=${limit}`
-      );
-      console.log(response.data)
+      const response = await getWalletDetailsRoute(userId,page,limit);
       setResponseData(response.data)
       setWalletData(response.data.results[0].balance);
       setTransactions(response.data.results[0].wallet_transactions)
@@ -87,10 +83,8 @@ const WalletPage = () => {
       });
 
       if (!result.isConfirmed) return;
-      const response = await axiosInstance.post(
-        `/payments/fetch_money_from_wallet`,
-        { user_id: userId, psychologist_id: 1, psychologist_fee: walletData }
-      );
+      await fetchMoneyFromWalletRoute(userId,walletData)
+      
       toast.success("Money Withdrawn successfully", {
         position: "bottom-center",
       });
@@ -101,18 +95,9 @@ const WalletPage = () => {
   };
   const HandlePayment = async (finalTotal) => {
     try {
-      const razorpayOrderResponse = await axiosInstance.post(
-        "/payments/create_razorpay_order",
-        {
-          user_id: userId,
-          totalAmount: finalTotal,
-        }
-      );
-      console.log(razorpayOrderResponse.data);
-
+      const razorpayOrderResponse = await createRazorpayOrderRoute(userId,finalTotal);
       const { razorpay_order_id, currency, amount } =
         razorpayOrderResponse.data;
-
       const options = {
         key: keyId,
         amount: amount * 100,
@@ -122,14 +107,7 @@ const WalletPage = () => {
         order_id: razorpay_order_id,
         handler: async (response) => {
           try {
-            const paymentResponse = await axiosInstance.post(
-              "/payments/add_money_to_wallet_from_razorpay",
-              {
-                user_id: userId,
-                totalAmount: finalTotal,
-              }
-            );
-
+            const paymentResponse = await addMoneyToWalletFromRazorpayRoute(userId,finalTotal)
             if (paymentResponse.status === 201) {
               toast.success("Payment Successful! Money Added.", {
                 position: "bottom-center",

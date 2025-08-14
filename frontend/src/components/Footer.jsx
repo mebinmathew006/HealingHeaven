@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronDown, Menu, X, Facebook, Twitter, Instagram } from 'lucide-react';
+import {Facebook, Twitter, Instagram } from 'lucide-react';
 function Footer() {
   return (
     <footer className="shadow-2xl bg-gradient-to-br  from-blue-50  to-green-50 border-t border-gray-200">

@@ -100,10 +100,10 @@ async def create_consultation_route(
         response = await check_doctor_availability(data.dict())
         logger.info(f"[{current_user}] Attempting to acquire lock for doctor {data.psychologist_id} and doctor is {response}")
         if response == False:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Doctor is not available")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Seems like doctor is not available")
         # Mark doctor as unavailable
-        response = await change_doctor_availability(data.dict(), False)
-        if not response.get("status"):
+        responses = await change_doctor_availability(data.dict(), False)
+        if not responses.get("status"):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Doctor is not available")
         doctor_locked = True
         # Create consultation

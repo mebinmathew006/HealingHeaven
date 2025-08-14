@@ -237,10 +237,11 @@ async def psychologist_availability_update(session: AsyncSession,user_id:int,isA
     try:
         user =await session.execute( update(PsychologistProfile).where(PsychologistProfile.user_id == user_id).values(is_available=isAvailable).returning(PsychologistProfile.is_available))
         await session.commit()
-        new_value = user.scalar_one()
-        return new_value
+        user.scalar_one()
+        return True
     except SQLAlchemyError as e:
         await session.rollback()
+        return False
         
 async def update_psychologist_documents_crud(session: AsyncSession,user_id:int,url:str,doc_type):
     try:

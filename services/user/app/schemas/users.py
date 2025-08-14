@@ -99,7 +99,9 @@ class ForgetPasswordOTPSchema(BaseModel):
     otp:int
     password :str
     
-    
+class AvailabilityUpdate(BaseModel):
+    is_available: bool
+        
 class PsychologistProfileOut(BaseModel):
     id: int
     fees: int

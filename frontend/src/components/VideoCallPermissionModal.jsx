@@ -3,10 +3,11 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../axiosconfig";
 import { useNotifications } from "../utils/NotificationContext";
 import { useNotificationSound } from "../utils/useNotificationSound";
 import LoginRequiredModal, { ConfirmationStep, ModalFooter, ModalHeader, PermissionsStep } from "./VideoCallPermission/LoginRequiredModal";
+import { getWalletBalanceRoute } from "../services/paymentService";
+import { CreateConsultaionRoute } from "../services/consultationService";
 
 const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
   const [permissions, setPermissions] = useState({
@@ -42,10 +43,8 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
   const getWalletBalance = async () => {
     try {
       if (userId) {
-        const response = await axiosInstance.get(
-          `/payments/get_wallet_balance/${userId}`
-        );
-        setWalletBalance(response.data.balance);
+        const response = await getWalletBalanceRoute(userId)
+        setWalletBalance(response);
       }
     } catch (error) {
       console.error("Error fetching wallet balance:", error);
@@ -74,11 +73,8 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
     };
 
     try {
-      const response = await axiosInstance.post(
-        "/consultations/create_consultation",
-        data
-      );
-      console.log(response.data)
+      const response = await CreateConsultaionRoute(data);
+     
       const consultation_id = response.data.consultation_id;
 
       toast.success("Video Call will Start Now", {

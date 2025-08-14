@@ -296,8 +296,20 @@ async def view_psychologist(
 @router.patch('/psychologists/{user_id}/availability')
 async def update_availability(
     user_id:int,
-    is_available:bool,
+    data: users.AvailabilityUpdate,
     current_user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+    ):
+    try :
+        data= await crud.psychologist_availability_update(session,user_id,data.is_available)
+        return JSONResponse(content={"status": data}, status_code=200)
+    except:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")  
+    
+@router.patch('/update_psychologist_for_consultaion/{user_id}/{is_available}')
+async def update_availability_interservice(
+    user_id:int,
+    is_available:bool,
     session: AsyncSession = Depends(get_session)
     ):
     try :
@@ -305,18 +317,6 @@ async def update_availability(
         return JSONResponse(content={"status": data}, status_code=200)
     except:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="")  
-    
-# @router.patch('/update_psychologist_for_consultaion/{user_id}/{isAvailable}')
-# async def update_psychologist_for_consultaion_route(
-#     user_id:int,
-#     isAvailable:bool,
-#     session: AsyncSession = Depends(get_session)
-#     ):
-#     try :
-#         await crud.psychologist_availability_update(session,user_id,isAvailable)
-#         return JSONResponse(content={"status": True}, status_code=200)
-#     except Exception as e:
-#         return JSONResponse(content={"status": True}, status_code=400)
     
 @router.patch('/update_psychologist_documents/{user_id}')
 async def update_psychologist_documents(

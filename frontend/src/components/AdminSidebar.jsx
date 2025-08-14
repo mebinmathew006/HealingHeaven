@@ -1,8 +1,7 @@
 import React from "react";
 import { User,Home, Hospital, Bell, LogOut, Video, HelpCircle } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
+import {  useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { destroyDetails } from "../store/UserDetailsSlice";
 import useLogout from "../utils/useLogout";
 
 const AdminSidebar = ({ activeSection, onSectionChange }) => {

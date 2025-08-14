@@ -3,8 +3,8 @@ import { Camera } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
-import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
+import { updateAvailabilityRoute } from "../../services/userService";
 
 const DoctorProfileHeader = ({
   formData,
@@ -26,15 +26,7 @@ const DoctorProfileHeader = ({
     profileFormData.append("profile_image", file);
 
     try {
-      await axiosInstance.patch(
-        `users/update_psychologist_profile_image/${userId}`,
-        profileFormData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await psychologistProfileImageRoute(userId,profileFormData);
       toast.success("Profile image updated successfully!", {
         position: "bottom-center",
       });
@@ -61,13 +53,8 @@ const DoctorProfileHeader = ({
 
       if (!result.isConfirmed) return;
 
-      const response = await axiosInstance.patch(
-        `/users/psychologists/${userId}/availability`,
-        { is_available: !isAvailable }
-      );
-
+      const response = await updateAvailabilityRoute(userId,isAvailable);
       setIsAvailable(response.data.status);
-
       if (response.data.status) {
         await Swal.fire({
           title: "You're now available!",
