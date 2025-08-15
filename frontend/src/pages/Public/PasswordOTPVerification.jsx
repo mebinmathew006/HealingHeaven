@@ -9,8 +9,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import publicaxiosconfig from "../../Publicaxiosconfig";
 import { toast } from "react-toastify";
+import { passwordResetRoute } from "../../services/userService";
 
 export default function PasswordOTPVerification() {
   const location = useLocation();
@@ -146,10 +146,8 @@ export default function PasswordOTPVerification() {
       const otpValue = Number(otp.join(""));
       console.log(email, password, otpValue);
 
-      const response = await publicaxiosconfig.post(
-        "/users/password-reset/verify-otp",
-        { email: email, password: password, otp: otpValue }
-      );
+      await verifyOtpRoute(email, password, otpValue);
+      
 
       setIsSubmitting(false);
       setIsSuccess(true);
@@ -188,9 +186,8 @@ export default function PasswordOTPVerification() {
     if (resendTimer > 0) return; // Prevent resending if timer not expired
 
     try {
-      const res = await publicaxiosconfig.post("/users/password-reset", {
-        email,
-      });
+      const res = await passwordResetRoute(email)
+      
       if (res.status === 200) {
         toast.info("New OTP has been sent to your email",{position:'bottom-center'});
         setResendTimer(60); // ⬅ Reset the timer here

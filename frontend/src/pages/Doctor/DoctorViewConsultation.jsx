@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Calendar,
-  Clock,
   User,
   FileText,
   ChevronDown,
@@ -17,15 +16,14 @@ import { useNavigate } from "react-router-dom";
 
 // Assuming these are your actual imports - replace as needed
 import Pagination from "../../components/Pagination";
-import axiosInstance from "../../axiosconfig";
 import DoctorSidebar from "../../components/DoctorSidebar";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { doctorGetConsulationsRoute } from "../../services/consultationService";
 
 const DoctorViewConsultation = () => {
   const navigate = useNavigate();
   const baseUrl = import.meta.env.VITE_BASE_URL;
-  
   // State management
   const [consultationData, setConsultationData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,31 +31,24 @@ const DoctorViewConsultation = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection] = useState("doctor_view_consultations");
   const [error, setError] = useState(null);
-
   // Video modal state
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [currentVideo, setCurrentVideo] = useState(null);
-
   // Sorting state
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-
-  
   const doctorId = useSelector((state) => state.userDetails.id);
-
   // Pagination state derived from API response
   const totalCount = consultationData?.count || 0;
   const limit = 10;
   const hasNext = !!consultationData?.next;
   const hasPrevious = !!consultationData?.previous;
-
   // Sort options
   const sortOptions = [
     { value: "created_at", label: "Date Created", apiField: "created_at" },
     { value: "status", label: "Status", apiField: "status" },
   ];
-
   // Video modal handlers
   const handleViewVideo = (consultation) => {
     if (consultation.video) {
@@ -102,10 +93,7 @@ const DoctorViewConsultation = () => {
       const sortOption = sortOptions.find((option) => option.value === sort);
       const orderingParam =
         order === "desc" ? `-${sortOption.apiField}` : sortOption.apiField;
-
-      const response = await axiosInstance.get(
-        `/consultations/doctor_get_consulations/${doctorId}?page=${page}&limit=${limit}&ordering=${orderingParam}`
-      );
+      const response = await doctorGetConsulationsRoute(doctorId,page,limit,orderingParam);
       setConsultationData(response.data);
       setError(null);
     } catch (err) {

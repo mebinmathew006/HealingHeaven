@@ -1,12 +1,10 @@
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Clock, Shield, Mail } from 'lucide-react';
 import useLogout from '../../utils/useLogout';
 
 function DoctorPendingPage() {
  const logout = useLogout();
- 
-    
     return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">

@@ -1,15 +1,12 @@
 // DoctorNotificationsPage
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Bell,
   Check,
   CheckCheck,
   Trash2,
-  Filter,
   Search,
-  RefreshCw,
 } from "lucide-react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom"; // Added missing import
 import { useNotifications } from "../../utils/NotificationContext";
 import { useNotificationSound } from "../../utils/useNotificationSound";
@@ -19,7 +16,6 @@ const DoctorNotificationsPage = () => {
   const [filter, setFilter] = useState("all"); // all, unread, read
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedNotifications, setSelectedNotifications] = useState([]);
-  const userDetails = useSelector((state) => state.userDetails);
   const navigate = useNavigate(); // Added navigate hook
 
   // Get notification state and functions

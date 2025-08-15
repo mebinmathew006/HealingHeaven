@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import publicaxiosconfig from "../../Publicaxiosconfig";
 import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
 import { toast } from "react-toastify";
+import { loginRoute, passwordResetRoute } from "../../services/userService";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -64,12 +64,7 @@ export default function LoginPage() {
 
   const handleCredentialResponse = async (response) => {
     try {
-      const backendResponse = await publicaxiosconfig.post(
-        "/users/google-login",
-        {
-          credential: response.credential, // Send the credential token to your backend
-        }
-      );
+      const backendResponse = await googleLoginRoute(response.credential)
 
       const userDetailsGoogle = backendResponse.data.user;
       dispatch(setUserDetails(userDetailsGoogle));
@@ -98,11 +93,7 @@ export default function LoginPage() {
 
   const loginSubmitHandler = async (data) => {
     try {
-      const response = await publicaxiosconfig.post("/users/login", {
-        email: email,
-        password: password,
-      });
-
+      const response = await loginRoute(email,password)
       // setting the user details in redux store
       const userDetails = response.data.user;
       const userEmail = response.data.user.email;
@@ -126,9 +117,7 @@ export default function LoginPage() {
           position: "bottom-center",
         });
         try {
-          await publicaxiosconfig.post("/users/password-reset", {
-            email: userEmail,
-          });
+          await passwordResetRoute(userEmail)
           navigate("/verify_otp", { state: userEmail });
         } catch (error) {
           toast.error("Unable to Verifiy your Email.", {

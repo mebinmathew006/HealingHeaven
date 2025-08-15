@@ -8,9 +8,9 @@ import {
   Filter,
   X,
 } from "lucide-react";
-import axiosInstance from "../../axiosconfig";
 import AdminSidebar from "../../components/AdminSidebar";
 import Pagination from "../../components/Pagination";
+import { getConsultationRoute } from "../../services/consultationService";
 
 const AdminConsultationList = () => {
   const [consultations, setConsultations] = useState([]);
@@ -80,12 +80,8 @@ const AdminConsultationList = () => {
       if (endDate) {
         queryParams += `&end_date=${endDate}`;
       }
-
-      const response = await axiosInstance.get(
-        `/consultations/get_consultation?${queryParams}`
-      );
-      console.log(response.data);
-      setConsultations(response.data);
+      const response = await getConsultationRoute(queryParams);
+      setConsultations(response);
     } catch (error) {
       console.log(error);
     } finally {

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import publicaxiosconfig from "../../Publicaxiosconfig";
 import { toast } from "react-toastify";
+import { signupRoute } from "../../services/userService";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -226,7 +226,7 @@ export default function SignupPage() {
 
     if (validateForm()) {
       try {
-        const response = await publicaxiosconfig.post("users/users", formData);
+        await signupRoute(formData);
         toast.success("Signup Successful! Please verify your Email Now!", {
           position: "bottom-center",
         });

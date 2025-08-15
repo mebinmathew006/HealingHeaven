@@ -8,10 +8,13 @@ import {
   Calendar,
   BookOpenText,
 } from "lucide-react";
-import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
 import Pagination from "../../components/Pagination";
+import {
+  adminViewPsychologistRoute,
+  toggleUserStatusRoute,
+} from "../../services/userService";
 
 function AdminPsychologist() {
   const [activeSection] = useState("psychologists");
@@ -20,7 +23,6 @@ function AdminPsychologist() {
   }, []);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   // Pagination handlers
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,19 +51,17 @@ function AdminPsychologist() {
     }
   };
   // --------------------
- const searchUser = async (value,page = 1) => {
-    setSearchTerm(value)
-    fetchPsychologist(1, value); 
+  const searchUser = async (value, page = 1) => {
+    setSearchTerm(value);
+    fetchPsychologist(1, value);
   };
-  const fetchPsychologist = async (page = 1,searchTerm) => {
+  const fetchPsychologist = async (page = 1, searchTerm) => {
     setLoadingMore(page !== 1);
     setLoading(page === 1);
-    const search = searchTerm || ''
+    const search = searchTerm || "";
     try {
-      const response = await axiosInstance.get(
-        `users/admin_view_psychologist?page=${page}&limit=${limit}&search=${search}`
-      );
-      setUsers(response.data);
+      const response = await adminViewPsychologistRoute(page, limit, search);
+      setUsers(response);
     } catch (error) {
       console.log(error);
     } finally {
@@ -72,9 +72,7 @@ function AdminPsychologist() {
 
   const handleBlockToggle = async (userId) => {
     try {
-      const response = await axiosInstance.patch(
-        `/users/toggle_user_status/${userId}`
-      );
+      await toggleUserStatusRoute(userId);
       fetchPsychologist();
       toast.success("User Status Changed Successfully", {
         position: "bottom-center",
@@ -244,10 +242,12 @@ function AdminPsychologist() {
                 <div className="mt-6 flex flex-wrap gap-4 text-sm text-gray-600">
                   <div>Total Users: {users.results.length}</div>
                   <div>
-                    Active: {users.results.filter((u) => u.is_active == true).length}
+                    Active:{" "}
+                    {users.results.filter((u) => u.is_active == true).length}
                   </div>
                   <div>
-                    Blocked: {users.results.filter((u) => u.is_active == false).length}
+                    Blocked:{" "}
+                    {users.results.filter((u) => u.is_active == false).length}
                   </div>
                   {users.results && <div>Showing:{users.results.length}</div>}
                 </div>
@@ -261,18 +261,18 @@ function AdminPsychologist() {
             </div>
           </div>
           {totalCount > limit && (
-              <Pagination
-                currentPage={currentPage}
-                totalCount={totalCount}
-                limit={limit}
-                hasNext={hasNext}
-                hasPrevious={hasPrevious}
-                loading={loadingMore}
-                onPageChange={handlePageChange}
-                onNextPage={handleNextPage}
-                onPreviousPage={handlePreviousPage}
-              />
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalCount={totalCount}
+              limit={limit}
+              hasNext={hasNext}
+              hasPrevious={hasPrevious}
+              loading={loadingMore}
+              onPageChange={handlePageChange}
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+            />
+          )}
         </div>
       </div>
     </div>

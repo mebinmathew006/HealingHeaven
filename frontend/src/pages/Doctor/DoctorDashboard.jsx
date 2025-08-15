@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
 import DoctorSidebar from "../../components/DoctorSidebar";
 import Dashboard from "../Public/Dashboard";
-import axios from "axios";
-import axiosInstance from "../../axiosconfig";
-import { useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { doctorDashboardDetailsRoute } from "../../services/consultationService";
 
 const DoctorDashboard = () => {
   const doctorId = useSelector((state) => state.userDetails.id);
@@ -18,14 +15,11 @@ const DoctorDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get(
-          `/consultations/doctor_dashboard_details/${doctorId}/${selectedYear}`
-        );
-        const serverChartData = response.data.chart_data; // Array of { month, earnings }
+        const response = await doctorDashboardDetailsRoute(doctorId,selectedYear);
+        const serverChartData = response.data.chart_data; 
         const months = [
           "Jan",
           "Feb",
@@ -45,14 +39,12 @@ const DoctorDashboard = () => {
           const match = serverChartData.find((item) => item.month === month);
           return match || { month, earnings: 0 };
         });
-        console.log(graphData)
         setChartData(graphData);
         setEarningsData({
           totalEarnings: response.data.totalEarnings,
           totalSessions: response.data.totalSessions,
           totalPatients: response.data.totalPatients,
         });
-        console.log(response.data);
       } catch (error) {
         console.error("Error fetching earnings data:", error);
       } finally {

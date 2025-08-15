@@ -4,10 +4,8 @@ import {
   Eye,
   Check,
   X,
-  Calendar,
   User,
   FileText,
-  DollarSign,
   Award,
   Briefcase,
   Shield,
@@ -15,9 +13,9 @@ import {
   IndianRupee,
   AlertTriangle,
 } from "lucide-react";
-import axiosInstance from "../../axiosconfig";
 import AdminSidebar from "../../components/AdminSidebar";
 import { toast } from "react-toastify";
+import { changePsychologistVerificationRoute, getPsycholgistDetailsRoute, revokePsychologistVerificationRoute } from "../../services/userService";
 
 // Move RevokeModal outside of main component to prevent re-renders
 const RevokeModal = ({ 
@@ -124,13 +122,8 @@ const AdminPsychoPending = () => {
   const fetchPsychologistData = async () => {
     try {
       setLoading(true);
-      // Replace with your actual API endpoint
-      const response = await axiosInstance.get(
-        `/users/get_psycholgist_details/${userId}`
-      );
-      console.log(response.data);
-
-      setPsychologist(response.data);
+      const response = await getPsycholgistDetailsRoute(userId)
+      setPsychologist(response);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -140,9 +133,7 @@ const AdminPsychoPending = () => {
 
   const handleVerificationToggle = async (status) => {
     try {
-      const response = await axiosInstance.patch(
-        `/users/change_psychologist_verification/${userId}/${status}`
-      );
+      const response = await changePsychologistVerificationRoute(userId,status);
       setUpdating(true);
       toast.success('Status Updated Successfully',{position:'bottom-center'})
       fetchPsychologistData();
@@ -168,14 +159,7 @@ const AdminPsychoPending = () => {
 
     try {
       setUpdating(true);
-      const response = await axiosInstance.put(
-        `/users/revoke_psychologist_verification/${userId}`,
-        {
-          reason: revokeReason.trim(),
-          status: "blocked"
-        }
-      );
-      
+      await revokePsychologistVerificationRoute (userId,revokeReason,"blocked");
       toast.success('Verification Revoked Successfully', {position:'bottom-center'});
       setShowRevokeModal(false);
       setRevokeReason("");

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
 import DoctorVerification from "./DoctorVerification";
 import DoctorPendingPage from "./DoctorPendingPage";
 import DoctorSidebar from "../../components/DoctorSidebar";
@@ -10,6 +9,7 @@ import ProfessionalInfoSection from "../../components/DoctorProfile/Professional
 import StatusAvailabilitySection from "../../components/DoctorProfile/StatusAvailabilitySection";
 import DocumentsSection from "../../components/DoctorProfile/DocumentsSection";
 import { toast } from "react-toastify";
+import { getPsycholgistDetailsRoute, updatePsychologistDetailsRoute, updatePsychologistDocumentsRoute } from "../../services/userService";
 
 const DoctorProfile = () => {
   const [activeSection] = useState("doctor_home_page");
@@ -18,23 +18,18 @@ const DoctorProfile = () => {
   const userId = useSelector((state) => state.userDetails.id);
   const [isAvailable, setIsAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     fetchDoctor();
   }, []);
-
   const fetchDoctor = async () => {
     try {
-      const response = await axiosInstance.get(
-        `/users/get_psycholgist_details/${userId}`
-      );
-      setIsAvailable(response.data.is_available);
-      setFormData(response.data);
+      const response = await getPsycholgistDetailsRoute(userId)
+      setIsAvailable(response.is_available);
+      setFormData(response);
     } catch (error) {
       setFormData({});
     }
   };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (["name", "mobile_number", "email_address", "role"].includes(name)) {
@@ -52,13 +47,9 @@ const DoctorProfile = () => {
       }));
     }
   };
-
   const handleSave = async () => {
     try {
-      await axiosInstance.put(
-        `/users/update_psychologist_details/${userId}`,
-        formData
-      );
+      await updatePsychologistDetailsRoute(userId,formData)
       setIsEditing(false);
       fetchDoctor();
     } catch (error) {
@@ -83,16 +74,7 @@ const DoctorProfile = () => {
     formData.append(fileType, file);
 
     try {
-      await axiosInstance.patch(
-        `/users/update_psychologist_documents/${userId}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
+      await updatePsychologistDocumentsRoute(userId,formData);
       toast.success(`${fileType.replace(/_/g, " ")} updated successfully!`, {
         position: "bottom-center",
       });

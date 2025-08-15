@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, Users, Calendar, TrendingUp } from "lucide-react";
-import DoctorSidebar from "../../components/DoctorSidebar";
 import Dashboard from "../Public/Dashboard";
 import AdminSidebar from "../../components/AdminSidebar";
-import axiosInstance from "../../axiosconfig";
+import { adminDashboardDetailsRoute } from "../../services/consultationService";
 
 const AdminProfile = () => {
   const [activeSection] = useState("admin_dashboard");
@@ -17,11 +15,8 @@ const AdminProfile = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get(
-          `/consultations/admin_dashboard_details/${selectedYear}`
-        );
-
-        const serverChartData = response.data.chart_data; // Array of { month, earnings }
+        const response = await adminDashboardDetailsRoute(selectedYear);
+        const serverChartData = response.data.chart_data; 
         const months = [
           "Jan",
           "Feb",

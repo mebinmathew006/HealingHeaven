@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { X, AlertTriangle, Send } from "lucide-react";
-import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 
 const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
@@ -30,20 +29,9 @@ const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    console.error({
-          ...complaintData,
-          consultation_id: consultationId
-        }),'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh'
+    
     try {
-      const response = await axiosInstance.post(
-        "/consultations/register_complaint",
-        {
-          ...complaintData,
-          consultation_id: consultationId
-        }
-      );
-
-      console.log('Complaint submitted successfully:', response.data);
+      await registerComplaintRoute(complaintData,consultationId);
 
       // Reset form
       setComplaintData({

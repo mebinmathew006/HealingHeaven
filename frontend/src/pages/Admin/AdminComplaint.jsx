@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Edit2, Save, X as CloseIcon, Filter, Search, Play as PlayIcon, Eye, Loader2, X, Calendar, Clock, FileText, User } from "lucide-react";
 import AdminSidebar from "../../components/AdminSidebar";
-import axiosInstance from "../../axiosconfig";
 import Pagination from "../../components/Pagination";
 import { toast } from "react-toastify";
-import { getCompliantConsultation } from "../../services/consultationService";
+import { getCompliantConsultation, getCompliantsRoute, updateComplaintsRoute } from "../../services/consultationService";
 import ConsultationDetailsModal from "../../components/Consultaion/ConsultationDetailsModal";
 
 
@@ -87,11 +86,8 @@ const AdminComplaint = () => {
         setLoadingMore(true);
       }
     try {
-      const response = await axiosInstance.get(
-        `/consultations/get_compliants?page=${page}&limit=${limit}`
-      );
-      console.log(response.data.results)
-      setComplaints(response.data);
+      const response = await getCompliantsRoute(page,limit);
+      setComplaints(response);
       setLoading(false);
       setLoadingMore(false);
     } catch (error) {
@@ -127,10 +123,7 @@ const AdminComplaint = () => {
 
   const handleSave = async (id) => {
     try {
-        console.log(id,editingStatus)
-      // Here you would make an API call to update the complaint status
-      await axiosInstance.patch(`/consultations/update_complaints/${id}`, {editingStatus});
-
+      await updateComplaintsRoute(id,editingStatus);
       setEditingId(null);
       setEditingStatus("");
       fetchComplaints();

@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 import { Loader, LogOut, X, XCircle } from "lucide-react";
 import useLogout from "../../utils/useLogout";
+import { doctorVerificationRoute, doctorVerificationUpdateRoute } from "../../services/userService";
 
 
 export default function DoctorVerification({ fetchDoctor, data }) {
   const [loading, setLoading] = useState(false);
   const [isUpdateMode, setIsUpdateMode] = useState(false);
-  const [viewingDocument, setViewingDocument] = useState(null);
   const logout = useLogout();
   const [formData, setFormData] = useState({
     date_of_birth: "",
@@ -32,8 +31,6 @@ export default function DoctorVerification({ fetchDoctor, data }) {
   });
 
   const [errors, setErrors] = useState({});
-
-  // Initialize form data when component mounts or data changes
   useEffect(() => {
     if (data) {
       setIsUpdateMode(true);
@@ -356,29 +353,10 @@ export default function DoctorVerification({ fetchDoctor, data }) {
     try {
       let response;
       if (isUpdateMode) {
-        // Update existing doctor data
-        response = await axiosInstance.put(
-          `users/doctor_verification_update/${userId}`,
-          formPayload,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        response = await doctorVerificationUpdateRoute (userId,formPayload);
       } else {
-        // Create new doctor data
-        response = await axiosInstance.post(
-          `users/doctor_verification/${userId}`,
-          formPayload,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        response = await doctorVerificationRoute(userId,formPayload);
       }
-
       toast.success(
         isUpdateMode
           ? "Doctor data updated successfully!"

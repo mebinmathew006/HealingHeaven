@@ -7,11 +7,11 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import axiosInstance from "../../axiosconfig";
 import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
 import FeedbackCard from "../../components/FeedbackCard";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { getFeedbacksRoute } from "../../services/consultationService";
 
 const DoctorDetailsPage = ({}) => {
   const [showModal, setShowModal] = useState(false);
@@ -23,18 +23,14 @@ const DoctorDetailsPage = ({}) => {
   const rating = psychologistsData.rating;
   const id = psychologistsData.user.id;
   const userid = useSelector((state)=>state.userDetails.id)
-
   useEffect(() => {
     setDoctor(psychologistsData);
     fetchDoctorFeedbacks();
   }, []);
-
   async function fetchDoctorFeedbacks() {
     try {
       setFeedbacksLoading(true);
-      const response = await axiosInstance.get(
-        `/consultations/get_feedbacks/${id}`
-      );
+      const response = await getFeedbacksRoute(id);
       const feedbackData = Array.isArray(response.data) ? response.data : [];
       setFeedbacks(feedbackData);
     } catch (error) {
@@ -44,18 +40,17 @@ const DoctorDetailsPage = ({}) => {
       setFeedbacksLoading(false);
     }
   }
-
   const handleStartCall = () => {
     console.log("Starting call...");
     setShowModal(false);
   };
-  const handleChatOption = () => {
-    if (!userid){
-      toast.error('Please Login first',{position:'bottom-center'})
-      return
-    }
+  // const handleChatOption = () => {
+  //   if (!userid){
+  //     toast.error('Please Login first',{position:'bottom-center'})
+  //     return
+  //   }
 
-  };
+  // };
 
   const handleVideoCall = () => {
     setShowModal(true);
@@ -207,7 +202,7 @@ const DoctorDetailsPage = ({}) => {
               {/* Right Column */}
               <div className="space-y-6">
                 {/* Quick Book */}
-                {doctor.is_available ? (
+                {doctor.is_available &&
                   <div className="bg-white rounded-xl p-6 shadow-sm">
                     <h3 className="text-xl font-semibold mb-4">Consultation</h3>
                     <div className="space-y-4">
@@ -219,17 +214,7 @@ const DoctorDetailsPage = ({}) => {
                       </button>
                     </div>
                   </div>
-                ): ( <div className="bg-white rounded-xl p-6 shadow-sm">
-                    <h6 className="text-xl font-semibold mb-4">Do you want to connect the therapist through chat ?</h6>
-                    <div className="space-y-4">
-                      <button
-                        onClick={handleChatOption}
-                        className="w-full bg-green-700 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
-                      >
-                        Chat Now
-                      </button>
-                    </div>
-                  </div>)}
+                }
                 {/* Conditionally render modal here */}
                 {showModal && (
                   <VideoCallPermissionModal

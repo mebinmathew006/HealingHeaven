@@ -1,8 +1,8 @@
 import React,{ useState } from 'react';
 import {Link, useNavigate} from 'react-router-dom'
 import { CheckCircle, Mail, ArrowRight, Loader2 } from 'lucide-react';
-import publicaxiosconfig from '../../Publicaxiosconfig';
 import { toast } from 'react-toastify';
+import { passwordResetRoute } from '../../services/userService';
 
 export default function ForgotPassword() {
   const navigate = useNavigate()
@@ -33,7 +33,7 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     
    try {
-    const response = await publicaxiosconfig.post('/users/password-reset',{email:email})
+      await passwordResetRoute(email)
       setIsSubmitting(false);
       navigate('/verify_otp_password',{state:email})  
    } catch (error) {

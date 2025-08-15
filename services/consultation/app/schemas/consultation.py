@@ -34,7 +34,7 @@ class UserNameWithProfileImage(BaseModel):
 class CreateFeedbackSchema(BaseModel):
     id :Optional[int]
     created_at :Optional[datetime]
-    consultation_id: int
+    # consultation_id: int
     rating: int
     user_id: int
     message: str

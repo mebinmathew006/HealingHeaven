@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Bell, Send, AlertCircle, CheckCircle, X } from "lucide-react";
-
 import AdminSidebar from "../../components/AdminSidebar";
-import axiosInstance from "../../axiosconfig";
+import { getAllNotificationsRoute } from "../../services/consultationService";
 
 const AdminNotification = () => {
   const [activeSection, setActiveSection] = useState("notifications");
@@ -16,14 +15,12 @@ const AdminNotification = () => {
   const [alert, setAlert] = useState({ show: false, type: "", message: "" });
 
   useEffect(() => {
-
-    fetchNotifications()
+    fetchNotifications();
   }, []);
 
   const fetchNotifications = async () => {
-   const response = await axiosInstance.get('/consultations/get_all_notifications')
-    setNotifications(response.data)
-    console.log(response.data)
+    const response = await getAllNotificationsRoute();
+    setNotifications(response);
   };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -47,11 +44,7 @@ const AdminNotification = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await axiosInstance.post(
-        "/consultations/create_new_notification",
-        formData
-      );
-
+      await createNewNotificationRoute(formData);
       const newNotification = {
         id: Date.now(),
         title: formData.title,

@@ -1,27 +1,21 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Camera, Save, Edit3, Phone, Calendar } from "lucide-react";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
-import { Upload, X, User, Check, RotateCw } from "lucide-react";
 import { toast } from "react-toastify";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
 import UserSidebar from "../../components/UserSidebar";
+import { getUserDetailsRoute, updateUserProfileImageRoute, updateUserProfileRoute } from "../../services/userService";
 const UserProfile = () => {
-  const [activeSection, setActiveSection] = useState("user_profile");
+  const [activeSection] = useState("user_profile");
   const [formData, setFormData] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const userId = useSelector((state) => state.userDetails.id);
   const [isOpen, setIsOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
 
   const fetchUser = async () => {
     try {
-      const response = await axiosInstance.get(
-        `/users/get_user_details/${userId}`
-      );
-      setFormData(response.data);
-      console.log(response.data);
-      // setCurrentProfileImage(response.data.profile_image);
+      const response = await getUserDetailsRoute(userId);
+      setFormData(response);
     } catch (error) {
       console.log(error);
     }
@@ -39,18 +33,7 @@ const UserProfile = () => {
 
     // upload process
     try {
-      await axiosInstance.patch(
-        `users/update_user_profile_image/${userId}`,
-        profileFormData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      // Update profile image
-      // setCurrentProfileImage(previewUrl);
+      await updateUserProfileImageRoute(userId,profileFormData);
       toast.success("Profile image updated successfully!", {
         position: "bottom-center",
       });
@@ -59,7 +42,6 @@ const UserProfile = () => {
         position: "bottom-center",
       });
     } finally {
-      // setIsUploading(false);
       fetchUser();
     }
   };
@@ -108,19 +90,12 @@ const UserProfile = () => {
       }));
     }
   };
-
   const handleSave = async () => {
     try {
-      console.log("Saving profile data:", formData);
-
-      const response = await axiosInstance.put(
-        `/users/users/${userId}`,
-        formData
-      );
+      await updateUserProfileRoute(userId,formData)
       setIsEditing(false);
     } catch (error) {}
   };
-
   return (
     <div className="flex h-screen bg-gray-100">
       <div>

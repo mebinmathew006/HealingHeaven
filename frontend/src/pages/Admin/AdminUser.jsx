@@ -7,9 +7,9 @@ import {
   Mail,
   Calendar,
 } from "lucide-react";
-import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
 import Pagination from "../../components/Pagination";
+import { adminViewUsersRoute, toggleUserStatusRoute } from "../../services/userService";
 
 function AdminUser() {
   useEffect(() => {
@@ -17,7 +17,6 @@ function AdminUser() {
   }, []);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [activeSection, setActiveSection] = useState("account");
 
   // Pagination handlers
@@ -53,10 +52,8 @@ function AdminUser() {
     setLoading(page === 1);
     const search = searchTerm || ''
     try {
-      const response = await axiosInstance.get(
-        `users/admin_view_users?page=${page}&limit=${limit}&search=${search}`
-      );
-      setUsers(response.data);
+      const response = await adminViewUsersRoute(page,limit,search);
+      setUsers(response);
     } catch (error) {
       console.log(error);
     } finally {
@@ -72,9 +69,7 @@ function AdminUser() {
 
   const handleBlockToggle = async (userId) => {
     try {
-      const response = await axiosInstance.patch(
-        `/users/toggle_user_status/${userId}`
-      );
+      await toggleUserStatusRoute(userId);
       fetchUsers();
       toast.success("User Status Changed Successfully", {
         position: "bottom-center",

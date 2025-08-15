@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
-import axiosInstance from "../../axiosconfig";
 import { toast } from "react-toastify";
+import { getPsycholgistDetailsRoute } from "../../services/userService";
 
 const UserBookingFromChat = () => {
   const [doctor, setDoctor] = useState({});
@@ -19,9 +19,7 @@ const UserBookingFromChat = () => {
 
   async function fetchDoctor() {
     try {
-      const response = await axiosInstance.get(
-        `users/get_psycholgist_details/${doctorId}`
-      );
+      const response = await getPsycholgistDetailsRoute(doctorId);
       setDoctor(response.data);
       setLoading(false);
     } catch (error) {

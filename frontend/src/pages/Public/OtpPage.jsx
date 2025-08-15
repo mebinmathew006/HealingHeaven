@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import publicaxiosconfig from "../../Publicaxiosconfig";
 import { toast } from "react-toastify";
+import { passwordResetRoute } from "../../services/userService";
 
 function OtpPage() {
   const [timer, setTimer] = useState(60);
@@ -21,9 +21,7 @@ const resendOtp = async (e) => {
     if (timer > 0) return; // Prevent resending if timer not expired
 
     try {
-      const res = await publicaxiosconfig.post("/users/password-reset", {
-        email,
-      });
+      const res = await passwordResetRoute(email);
       if (res.status === 200) {
         toast.info("New OTP has been sent to your email",{position:'bottom-center'});
         setTimer(60); // ⬅ Reset the timer here
@@ -91,10 +89,8 @@ const resendOtp = async (e) => {
     // api verification
     try {
       const otpValue = otp.join("");
-      await publicaxiosconfig.post("users/email-verification", {
-        otp: otpValue,
-        email: email,
-      });
+      await emailVerificationRoute(otpValue,email);
+      
       navigate("/verificationsucess");
     } catch (error) {
       console.log(error);

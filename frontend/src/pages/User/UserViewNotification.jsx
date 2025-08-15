@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Bell,
-  BellRing,
   Clock,
   Mail,
   MailOpen,
-  Trash2,
-  Filter,
-  Search,
   Calendar,
   AlertCircle,
   Info,
@@ -15,17 +11,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
 import UserSidebar from "../../components/UserSidebar";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Pagination from "../../components/Pagination";
+import { getNotificationsRoute } from "../../services/consultationService";
 
 const UserViewNotification = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSection] = useState("user_notifications");
   const [selectedNotification, setSelectedNotification] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,38 +33,35 @@ const UserViewNotification = () => {
   const userId = useSelector((state) => state.userDetails.id);
 
   const getNotifications = useCallback(
-  async (page = 1, showLoadingSpinner = true) => {
-    try {
-      if (showLoadingSpinner) setLoading(true);
-      else setLoadingMore(true);
+    async (page = 1, showLoadingSpinner = true) => {
+      try {
+        if (showLoadingSpinner) setLoading(true);
+        else setLoadingMore(true);
 
-      const response = await axiosInstance.get(
-        `/consultations/get_notifications/?page=${page}&limit=${limit}`
-      );
-      setNotifications(response.data.results || []);
-      setTotalCount(response.data.count || 0);
-      setHasNext(!!response.data.next);
-      setHasPrevious(!!response.data.previous);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-      setNotifications([]);
-      setTotalCount(0);
-      setHasNext(false);
-      setHasPrevious(false);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  },
-  [limit] // include other dependencies if used inside
-);
+        const response = await getNotificationsRoute(page, limit);
 
-useEffect(() => {
-  getNotifications(1);
-}, [userId, getNotifications]);
+        setNotifications(response.data.results || []);
+        setTotalCount(response.data.count || 0);
+        setHasNext(!!response.data.next);
+        setHasPrevious(!!response.data.previous);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        setNotifications([]);
+        setTotalCount(0);
+        setHasNext(false);
+        setHasPrevious(false);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [limit]
+  );
 
- 
+  useEffect(() => {
+    getNotifications(1);
+  }, [userId, getNotifications]);
 
   // Pagination handlers
   const handleNextPage = () => {
@@ -124,12 +116,6 @@ useEffect(() => {
     }
   };
 
- 
-
-
-
- 
-
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -156,25 +142,19 @@ useEffect(() => {
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="mb-4 flex items-center text-sm text-gray-500">
               <Calendar className="w-4 h-4 mr-2" />
               {formatDate(notification.created_at)}
             </div>
-            
+
             <div className="prose max-w-none">
               <p className="text-gray-700 leading-relaxed">
                 {notification.message}
               </p>
             </div>
-            
+
             <div className="mt-6 flex justify-end space-x-3">
-              {/* <button
-                onClick={() => deleteNotification(notification.id)}
-                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-              >
-                Delete
-              </button> */}
               <button
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -190,31 +170,33 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-        <div>
-      <UserSidebar activeSection={activeSection} />
+      <div>
+        <UserSidebar activeSection={activeSection} />
+      </div>
 
-        </div>
-      
       <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-100 p-6 overflow-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
-              <p className="text-gray-600">Stay updated with your latest notifications</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Notifications
+              </h1>
+              <p className="text-gray-600">
+                Stay updated with your latest notifications
+              </p>
             </div>
-           
           </div>
         </div>
-
-       
 
         {/* Notifications List */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {notifications.length === 0 ? (
             <div className="text-center py-12">
               <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No notifications found
+              </h3>
               <p className="text-gray-500">You're all caught up!</p>
             </div>
           ) : (
@@ -223,7 +205,7 @@ useEffect(() => {
                 <div
                   key={notification.id}
                   className={`p-6 hover:bg-green-50 transition-colors cursor-pointer ${
-                    !notification.is_read ? 'bg-white border-l-4 ' : ''
+                    !notification.is_read ? "bg-white border-l-4 " : ""
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -237,9 +219,13 @@ useEffect(() => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className={`text-sm font-medium truncate ${
-                            !notification.is_read ? 'text-gray-900' : 'text-gray-700'
-                          }`}>
+                          <h3
+                            className={`text-sm font-medium truncate ${
+                              !notification.is_read
+                                ? "text-gray-900"
+                                : "text-gray-700"
+                            }`}
+                          >
                             {notification.title}
                           </h3>
                           <div className="flex items-center text-xs text-gray-500 ml-2">
@@ -252,7 +238,6 @@ useEffect(() => {
                         </p>
                       </div>
                     </div>
-                    
                   </div>
                 </div>
               ))}

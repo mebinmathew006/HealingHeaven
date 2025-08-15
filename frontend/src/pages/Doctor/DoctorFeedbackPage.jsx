@@ -1,10 +1,10 @@
 import React, { useRef, useState } from "react";
 import { Star, Send, MessageSquare, Bug, Lightbulb, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import DoctorSidebar from "../../components/DoctorSidebar";
+import { setAnalysisFromDoctorRoute } from "../../services/consultationService";
 
 export default function DoctorFeedbackPage() {
   const [formData, setFormData] = useState({
@@ -35,18 +35,8 @@ export default function DoctorFeedbackPage() {
   const handleSubmit = async () => {
     if (validateForm()) {
       try {
-       
-
-        const response = await axiosInstance.put(
-          "/consultations/set_analysis_from_doctor",
-          {
-            ...formData,
-            consultation_id: consultationId,
-            duration: callDuration,
-          }
-        );
+        const response = await setAnalysisFromDoctorRoute(formData,consultationId,callDuration);
         console.log("Feedback submitted:", response.data);
-
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);

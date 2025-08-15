@@ -9,7 +9,6 @@ import {
   Eye,
 } from "lucide-react";
 import UserSidebar from "../../components/UserSidebar";
-import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 
 const UserComplaintView = () => {
@@ -24,9 +23,8 @@ const UserComplaintView = () => {
   
   const fetchComplaint = async ()=>{
     try {
-        const response =await axiosInstance.get(`/consultations/get_complaints/${userId}`)
+        const response =await getComplaintsRoute(userId);
         setComplaints(response.data)
-        console.log(response.data)
     } catch (error) {
         console.log(error)
     }

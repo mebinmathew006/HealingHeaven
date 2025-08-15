@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,9 +10,9 @@ import {
   Star,
 } from "lucide-react";
 import Pagination from "../../components/Pagination";
+import { getPsychologistsRoute } from "../../services/userService";
 
 const PsychologistCard = ({ psychologistsData }) => {
-  const id = psychologistsData.user.id;
   const rating = psychologistsData.rating;
   const name = psychologistsData.user.name;
   const specialty = psychologistsData.specialization;
@@ -23,7 +22,6 @@ const PsychologistCard = ({ psychologistsData }) => {
   const availability = psychologistsData.is_available;
   const imageSrc = psychologistsData.profile_image;
 
-  // Mock data for demonstration
   const userId = useSelector((state) => state.userDetails.id);
   const navigate = useNavigate();
 
@@ -171,8 +169,7 @@ export default function PsychologistsDirectory() {
     setLoadingMore(page !== 1);
     setLoading(page === 1);
     try {
-      const response = await axiosInstance.get(`users/psychologists?page=${page}&limit=${limit}`);
-
+      const response = await getPsychologistsRoute(page,limit);
       setpsychologists(response.data);
       console.log(response.data);
     } catch (error) {

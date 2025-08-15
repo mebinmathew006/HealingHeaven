@@ -1,33 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Search, Filter, MessageSquare, TrendingUp, Users, Calendar, BarChart3 } from 'lucide-react';
+import { Star,MessageSquare, TrendingUp, Users, BarChart3 } from 'lucide-react';
 import { useSelector } from 'react-redux';
-import axiosInstance from '../../axiosconfig';
 import DoctorSidebar from '../../components/DoctorSidebar';
 import FeedbackCard from '../../components/FeedbackCard'; // Import the new component
+import { getFeedbacksRoute } from '../../services/consultationService';
 
 const DoctorViewFeedback = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
-  const [ratingFilter, setRatingFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [ratingFilter] = useState('all');
+  const [searchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy] = useState('newest');
   const doctorId = useSelector((state) => state.userDetails.id);
   const [activeSection] = useState("doctor_view_feedback");
-
-  // Real API call implementation
   const fetchFeedback = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(
-        `/consultations/get_feedbacks/${doctorId}`
-      );
-      console.log(response.data)
-      // Ensure response.data is an array
+      const response = await getFeedbacksRoute(doctorId)
       const feedbackData = Array.isArray(response.data) ? response.data : [];
       setFeedbacks(feedbackData);
       setFilteredFeedbacks(feedbackData);
-      
     } catch (error) {
       console.error("Error fetching feedback:", error);
       // Set empty array on error
@@ -37,16 +30,12 @@ const DoctorViewFeedback = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchFeedback();
   }, []);
-
   useEffect(() => {
     if (!Array.isArray(feedbacks)) return;
-    
     let filtered = feedbacks;
-
     // Filter by rating
     if (ratingFilter !== 'all') {
       filtered = filtered.filter(feedback => feedback.rating === parseInt(ratingFilter));

@@ -1,7 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Star, Send, MessageSquare, Bug, Lightbulb, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axiosInstance from "../../axiosconfig";
 import { useSelector } from "react-redux";
 import Swal from "sweetalert2";
 import { addFeedback } from "../../services/consultationService";

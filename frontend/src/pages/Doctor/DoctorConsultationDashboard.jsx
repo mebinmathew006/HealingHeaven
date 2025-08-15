@@ -17,10 +17,10 @@ import {
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import axiosInstance from "../../axiosconfig";
 import { createSocket } from "../../utils/createSocket";
 import { useWebRTCDoctor } from "../../utils/useWebRTCDoctor";
 import { toast } from "react-toastify";
+import { psychologistsAvailabilityRoute } from "../../services/userService";
 
 const DoctorConsultationDashboard = () => {
 
@@ -127,10 +127,7 @@ useEffect(() => {
     if (!result.isConfirmed) return;
 
     try {
-      const response = await axiosInstance.patch(
-        `/users/psychologists/${userId}/availability`,
-       
-      );
+      await psychologistsAvailabilityRoute(userId);
 
       await Swal.fire({
         title: "You're now Unavailable!",

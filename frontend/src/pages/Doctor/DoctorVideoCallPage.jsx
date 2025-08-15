@@ -1,10 +1,6 @@
-// pages/DoctorVideoCallPage.js
 import React from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-// import { useNotifications } from "../utils/NotificationContext";
-// import VideoCallContainer from "../components/video/VideoCallContainer";
-// import NotificationDropdown from "../components/NotificationDropdown";
 import { useDoctorWebRTC } from "../../utils/useDoctorWebRTC";
 import { useNotifications } from "../../utils/NotificationContext";
 import VideoCallContainer from "../../components/video/VideoCallContainer";
