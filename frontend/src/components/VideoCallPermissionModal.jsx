@@ -96,6 +96,7 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
     } catch (error) {
       toast.error(`Unable to Start Now :${error.response.data.detail}`, { position: "bottom-center" });
       setIsProcessing(false);
+      navigate('/user_view_psychologist')
     }
   };
 
