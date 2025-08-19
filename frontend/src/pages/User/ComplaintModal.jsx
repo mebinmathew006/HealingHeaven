@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, AlertTriangle, Send } from "lucide-react";
 import { toast } from "react-toastify";
+import { registerComplaintRoute } from "../../services/consultationService";
 
 const ComplaintModal = ({ consultationId, isOpen, onClose }) => {
   const [complaintData, setComplaintData] = useState({

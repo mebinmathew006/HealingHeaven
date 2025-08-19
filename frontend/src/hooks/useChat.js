@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../utils/NotificationContext";
 import { useSelector } from "react-redux";
+import { updateAvailabilityRoute } from "../services/userService";
 
 export const useChat = (userId, userType) => {
   const [activeChat, setActiveChat] = useState(null);
@@ -94,9 +95,11 @@ export const useChat = (userId, userType) => {
 
     await sendVideoCallResponse("Doctor accepted video Call");
     toast.success("You will recive a notification if user start the session",{position:'bottom-center'});
+    await updateAvailabilityRoute(userId,false)
+
     setTimeout(() => {
       navigate("/doctor_view_notifications");
-    });
+    }); 
   }, [sendVideoCallResponse, navigate]);
 
   const handleVideoCallRequestforUser = useCallback(async () => {
@@ -511,6 +514,8 @@ export const useChat = (userId, userType) => {
       scrollToBottom();
     }
   }, [messages, scrollToBottom]);
+
+  
 
   return {
     // State

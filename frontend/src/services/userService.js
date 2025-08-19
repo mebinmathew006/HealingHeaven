@@ -1,5 +1,5 @@
 import axiosInstance from "../axiosconfig";
-
+import publicaxiosconfig from "../Publicaxiosconfig"
 export const fetchDoctorImagesDisplay = async () => {
   const response = await axiosInstance.get(`/users/doctor_profile_images`);
   return response.data;
@@ -22,6 +22,7 @@ export const psychologistProfileImageRoute = async (
 };
 
 export const updateAvailabilityRoute = async (userId, isAvailable) => {
+  console.log(isAvailable)
   const response = await axiosInstance.patch(
     `/users/psychologists/${userId}/availability`,
     { is_available: !isAvailable }

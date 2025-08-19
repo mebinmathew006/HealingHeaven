@@ -1,6 +1,6 @@
 // components/chat/ChatHeader.js
 import React, { useState, useEffect } from "react";
-import { Menu, Video, Phone, Bell, X } from "lucide-react";
+import { Menu, Video, Bell, X } from "lucide-react";
 import { useNotifications } from "../../utils/NotificationContext";
 import { useNotificationSound } from "../../utils/useNotificationSound";
 import { useNavigate } from "react-router-dom";

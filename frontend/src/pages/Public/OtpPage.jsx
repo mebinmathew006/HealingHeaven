@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { passwordResetRoute } from "../../services/userService";
+import { emailVerificationRoute, passwordResetRoute } from "../../services/userService";
 
 function OtpPage() {
   const [timer, setTimer] = useState(60);

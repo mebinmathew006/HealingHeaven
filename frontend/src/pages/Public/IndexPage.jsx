@@ -14,7 +14,6 @@ function IndexPage() {
 
   const fetchDoctorImages = async () => {
     const result = await fetchDoctorImagesDisplay();
-    console.error(result)
     setDoctorImages(result)
   }
 

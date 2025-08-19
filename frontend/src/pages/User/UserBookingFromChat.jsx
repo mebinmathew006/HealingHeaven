@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import VideoCallPermissionModal from "../../components/VideoCallPermissionModal";
 import { toast } from "react-toastify";
 import { getPsycholgistDetailsRoute } from "../../services/userService";
@@ -8,7 +8,6 @@ const UserBookingFromChat = () => {
   const [doctor, setDoctor] = useState({});
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const navigate = useNavigate();
   const { doctorId } = location.state || {};
 
   useEffect(() => {
@@ -20,7 +19,8 @@ const UserBookingFromChat = () => {
   async function fetchDoctor() {
     try {
       const response = await getPsycholgistDetailsRoute(doctorId);
-      setDoctor(response.data);
+
+      setDoctor(response);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching doctor:", error);
@@ -64,6 +64,7 @@ const UserBookingFromChat = () => {
           }}
         />
       )}
+
     </div>
   );
 };

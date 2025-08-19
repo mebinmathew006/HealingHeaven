@@ -15,18 +15,23 @@ import {
 } from "lucide-react";
 import AdminSidebar from "../../components/AdminSidebar";
 import { toast } from "react-toastify";
-import { changePsychologistVerificationRoute, getPsycholgistDetailsRoute, revokePsychologistVerificationRoute } from "../../services/userService";
+import {
+  changePsychologistVerificationRoute,
+  getPsycholgistDetailsRoute,
+  revokePsychologistVerificationRoute,
+} from "../../services/userService";
+import Swal from "sweetalert2";
 
 // Move RevokeModal outside of main component to prevent re-renders
-const RevokeModal = ({ 
-  showRevokeModal, 
-  revokeReason, 
-  setRevokeReason, 
-  revokeReasonError, 
-  setRevokeReasonError, 
-  updating, 
-  handleCloseRevokeModal, 
-  handleRevokeVerification 
+const RevokeModal = ({
+  showRevokeModal,
+  revokeReason,
+  setRevokeReason,
+  revokeReasonError,
+  setRevokeReasonError,
+  updating,
+  handleCloseRevokeModal,
+  handleRevokeVerification,
 }) => {
   if (!showRevokeModal) return null;
 
@@ -45,7 +50,7 @@ const RevokeModal = ({
           {/* Warning Message */}
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-700">
-              This action will revoke the psychologist's verification status. 
+              This action will revoke the psychologist's verification status.
               Please provide a clear reason for this action.
             </p>
           </div>
@@ -63,7 +68,7 @@ const RevokeModal = ({
               }}
               placeholder="Please provide a detailed reason for revoking verification..."
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none ${
-                revokeReasonError ? 'border-red-300' : 'border-gray-300'
+                revokeReasonError ? "border-red-300" : "border-gray-300"
               }`}
               rows="4"
               maxLength="500"
@@ -122,7 +127,7 @@ const AdminPsychoPending = () => {
   const fetchPsychologistData = async () => {
     try {
       setLoading(true);
-      const response = await getPsycholgistDetailsRoute(userId)
+      const response = await getPsycholgistDetailsRoute(userId);
       setPsychologist(response);
     } catch (err) {
       setError(err.message);
@@ -133,13 +138,28 @@ const AdminPsychoPending = () => {
 
   const handleVerificationToggle = async (status) => {
     try {
-      const response = await changePsychologistVerificationRoute(userId,status);
+      const result = await Swal.fire({
+        title: "Verify?",
+        text: "Are you sure you want to verify this profile ?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Yes, Verify",
+        cancelButtonText: "No",
+      });
+
+      if (!result.isConfirmed) return;
+      const response = await changePsychologistVerificationRoute(
+        userId,
+        status
+      );
       setUpdating(true);
-      toast.success('Status Updated Successfully',{position:'bottom-center'})
+      toast.success("Status Updated Successfully", {
+        position: "bottom-center",
+      });
       fetchPsychologistData();
     } catch (err) {
       setError(err.message);
-      toast.error('Status Updation Failed',{position:'bottom-center'})
+      toast.error("Status Updation Failed", { position: "bottom-center" });
     } finally {
       setUpdating(false);
     }
@@ -159,15 +179,23 @@ const AdminPsychoPending = () => {
 
     try {
       setUpdating(true);
-      await revokePsychologistVerificationRoute (userId,revokeReason,"blocked");
-      toast.success('Verification Revoked Successfully', {position:'bottom-center'});
+      await revokePsychologistVerificationRoute(
+        userId,
+        revokeReason,
+        "blocked"
+      );
+      toast.success("Verification Revoked Successfully", {
+        position: "bottom-center",
+      });
       setShowRevokeModal(false);
       setRevokeReason("");
       setRevokeReasonError("");
       fetchPsychologistData();
     } catch (err) {
       setError(err.message);
-      toast.error('Failed to Revoke Verification', {position:'bottom-center'});
+      toast.error("Failed to Revoke Verification", {
+        position: "bottom-center",
+      });
     } finally {
       setUpdating(false);
     }
@@ -250,12 +278,8 @@ const AdminPsychoPending = () => {
   }
 
   if (!psychologist) {
-    return (
-      <NoDoctorFound/>
-    );
+    return <NoDoctorFound />;
   }
-
-   
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -288,12 +312,12 @@ const AdminPsychoPending = () => {
                           <div className=" ">
                             <div
                               className={`px-1 py-1 w-25 mb-3 rounded-full text-sm font-medium ${
-                                psychologist.is_verified=='verified'
+                                psychologist.is_verified == "verified"
                                   ? "bg-green-500 text-white"
                                   : "bg-red-500 text-white"
                               }`}
                             >
-                              {psychologist.is_verified=='verified'
+                              {psychologist.is_verified == "verified"
                                 ? "✓ Verified"
                                 : "✗ Not Verified"}
                             </div>
@@ -508,31 +532,36 @@ const AdminPsychoPending = () => {
                           Admin Action
                         </h3>
                         <div className="flex flex-wrap gap-4">
-
-                          {(psychologist.is_verified === 'verified' || psychologist.is_verified === 'pending') && 
-                          <button
-                            onClick={() => setShowRevokeModal(true)}
-                            disabled={updating}
-                            className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-red-500 text-white hover:bg-red-700 disabled:bg-red-300`}
-                          >
-                            <AlertTriangle className="w-4 h-4" />
-                            <span>
-                              {updating ? "Updating..." : "Revoke Verification"}
-                            </span>
-                          </button>}
-                            {(psychologist.is_verified=='blocked' || psychologist.is_verified=='pending') && 
-                          <button
-                            onClick={() => {
-                              handleVerificationToggle("verified");
-                            }}
-                            disabled={updating}
-                            className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-green-500 text-white hover:bg-green-600 disabled:bg-green-300`}
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>
-                              {updating ? "Updating..." : "Verify Profile"}
-                            </span>
-                          </button>}
+                          {(psychologist.is_verified === "verified" ||
+                            psychologist.is_verified === "pending") && (
+                            <button
+                              onClick={() => setShowRevokeModal(true)}
+                              disabled={updating}
+                              className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-red-500 text-white hover:bg-red-700 disabled:bg-red-300`}
+                            >
+                              <AlertTriangle className="w-4 h-4" />
+                              <span>
+                                {updating
+                                  ? "Updating..."
+                                  : "Revoke Verification"}
+                              </span>
+                            </button>
+                          )}
+                          {(psychologist.is_verified == "blocked" ||
+                            psychologist.is_verified == "pending") && (
+                            <button
+                              onClick={() => {
+                                handleVerificationToggle("verified");
+                              }}
+                              disabled={updating}
+                              className={`px-6 py-3 rounded-lg font-medium flex items-center space-x-2 transition-colors bg-green-500 text-white hover:bg-green-600 disabled:bg-green-300`}
+                            >
+                              <Check className="w-4 h-4" />
+                              <span>
+                                {updating ? "Updating..." : "Verify Profile"}
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -570,7 +599,6 @@ const AdminPsychoPending = () => {
 
 export default AdminPsychoPending;
 
-
 export const NoDoctorFound = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -579,9 +607,7 @@ export const NoDoctorFound = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
           Psychologist Not Found
         </h2>
-        <p className="text-gray-600">
-          No profile  
-        </p>
+        <p className="text-gray-600">No profile</p>
       </div>
     </div>
   );

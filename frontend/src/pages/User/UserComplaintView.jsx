@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import UserSidebar from "../../components/UserSidebar";
 import { useSelector } from "react-redux";
+import { getComplaintsRoute } from "../../services/consultationService";
 
 const UserComplaintView = () => {
   // Sample complaint data based on your schema

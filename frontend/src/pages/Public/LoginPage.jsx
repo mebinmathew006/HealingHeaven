@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setUserDetails } from "../../store/UserDetailsSlice";
 import { toast } from "react-toastify";
-import { loginRoute, passwordResetRoute } from "../../services/userService";
+import { googleLoginRoute, loginRoute, passwordResetRoute } from "../../services/userService";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);

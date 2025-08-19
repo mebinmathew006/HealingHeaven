@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { passwordResetRoute } from "../../services/userService";
+import { passwordResetRoute, verifyOtpRoute } from "../../services/userService";
 
 export default function PasswordOTPVerification() {
   const location = useLocation();
@@ -23,7 +23,7 @@ export default function PasswordOTPVerification() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({
     otp: "",
     password: "",
@@ -35,16 +35,15 @@ export default function PasswordOTPVerification() {
 
   // Focus on first input on mount
   useEffect(() => {
-  let timer;
-  if (resendTimer > 0) {
-    timer = setInterval(() => {
-      setResendTimer(prev => prev - 1);
-    }, 1000);
-  }
+    let timer;
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
 
-  return () => clearInterval(timer); // ✅ Cleanup
-}, [resendTimer]);
-
+    return () => clearInterval(timer); // ✅ Cleanup
+  }, [resendTimer]);
 
   const handleOtpChange = (index, value) => {
     // Only allow numbers
@@ -111,14 +110,39 @@ export default function PasswordOTPVerification() {
       isValid = false;
     }
 
-    // Password validation
     if (!password) {
       newErrors.password = "Password is required";
       isValid = false;
     } else if (password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
       isValid = false;
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one uppercase letter";
+      isValid = false;
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one lowercase letter";
+      isValid = false;
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password = "Password must contain at least one digit";
+      isValid = false;
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one special character";
+      isValid = false;
+    } else {
+      delete newErrors.password;
     }
+
+    // // Password validation
+    // if (!password) {
+    //   newErrors.password = "Password is required";
+    //   isValid = false;
+    // } else if (password.length < 8) {
+    //   newErrors.password = "Password must be at least 8 characters";
+    //   isValid = false;
+    // }
 
     // Confirm password validation
     if (!confirmPassword) {
@@ -147,13 +171,16 @@ export default function PasswordOTPVerification() {
       console.log(email, password, otpValue);
 
       await verifyOtpRoute(email, password, otpValue);
-      
 
       setIsSubmitting(false);
       setIsSuccess(true);
-      toast.success('Password Reset Successfully',{position:'bottom-center'})
+      toast.success("Password Reset Successfully", {
+        position: "bottom-center",
+      });
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Something went wrong",{position:'bottom-center'});
+      toast.error(error.response?.data?.detail || "Something went wrong", {
+        position: "bottom-center",
+      });
       setIsSubmitting(false);
     }
   };
@@ -186,14 +213,16 @@ export default function PasswordOTPVerification() {
     if (resendTimer > 0) return; // Prevent resending if timer not expired
 
     try {
-      const res = await passwordResetRoute(email)
-      
+      const res = await passwordResetRoute(email);
+
       if (res.status === 200) {
-        toast.info("New OTP has been sent to your email",{position:'bottom-center'});
+        toast.info("New OTP has been sent to your email", {
+          position: "bottom-center",
+        });
         setResendTimer(60); // ⬅ Reset the timer here
       }
     } catch (error) {
-      toast.error("Failed to resend OTP",{position:'bottom-center'});
+      toast.error("Failed to resend OTP", { position: "bottom-center" });
     }
   };
 
@@ -217,229 +246,229 @@ export default function PasswordOTPVerification() {
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex items-center justify-between">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Verify and reset password
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Enter the verification code sent to your email and create a new
-          password
-        </p>
-      </div>
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Verify and reset password
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Enter the verification code sent to your email and create a new
+            password
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {isSuccess ? (
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
-                Password reset successful!
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Your password has been reset successfully. You can now log in
-                with your new credentials.
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Redirect to login in a real application
-                    navigate('/login')
-                  }}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium  bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Go to login
-                </button>
-              </div>
-            </div>
-          ) : (
-            <form>
-              <div className="space-y-6">
-                {/* OTP Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Verification Code
-                  </label>
-                  <div className="mt-1">
-                    <div className="flex justify-between gap-2">
-                      {otp.map((digit, index) => (
-                        <input
-                          key={index}
-                          ref={(el) => (inputRefs.current[index] = el)}
-                          type="text"
-                          maxLength={1}
-                          autoComplete=""
-                          value={digit}
-                          onChange={(e) =>
-                            handleOtpChange(index, e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(index, e)}
-                          onPaste={index === 0 ? handlePaste : undefined}
-                          className={`w-12 h-12 text-center text-lg border ${
-                            errors.otp ? "border-red-300" : "border-gray-300"
-                          } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
-                        />
-                      ))}
-                    </div>
-                    {errors.otp && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        {errors.otp}
-                      </p>
-                    )}
-                    <p className="mt-2 text-xs text-gray-500 flex justify-end">
-                      <button
-                        onClick={resendOtp}
-                         className="font-medium text-green-900 hover:text-green-700 hover:cursor-pointer"
-                        disabled={resendTimer > 0}
-                      >
-                        {resendTimer > 0
-                          ? `Resend OTP in ${resendTimer}s`
-                          : "Resend OTP"}
-                      </button>
-                    </p>
-                  </div>
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            {isSuccess ? (
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
-
-                {/* Password Field */}
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    New Password
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="password"
-                      name="password"
-                      autoComplete="new-password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={handlePasswordChange}
-                      className={`block w-full pl-10 pr-10 py-2 border ${
-                        errors.password ? "border-red-300" : "border-gray-300"
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                      placeholder="••••••••••••"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  {errors.password && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.password}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Password must be at least 8 characters
-                  </p>
-                </div>
-
-                {/* Confirm Password Field */}
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Confirm Password
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="confirmPassword"
-                      autoComplete="new-password"
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={handleConfirmPasswordChange}
-                      className={`block w-full pl-10 pr-10 py-2 border ${
-                        errors.confirmPassword || errors.match
-                          ? "border-red-300"
-                          : "border-gray-300"
-                      } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                      placeholder="••••••••••••"
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                        className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                  {errors.match && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.match}
-                    </p>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <div>
+                <h3 className="mt-2 text-lg font-medium text-gray-900">
+                  Password reset successful!
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Your password has been reset successfully. You can now log in
+                  with your new credentials.
+                </p>
+                <div className="mt-6">
                   <button
                     type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    onClick={() => {
+                      // Redirect to login in a real application
+                      navigate("/login");
+                    }}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium  bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Reset Password"
-                    )}
+                    Go to login
                   </button>
                 </div>
-                <div className="pt-2">
-                <Link
-                  to={"/forgetpassword"}
-                  className="flex items-center text-sm font-bold text-[#2D777E] hover:text-gray-900"
-                >
-                  <ArrowLeft size={16} className="mr-1" />
-                  Back 
-                </Link>
               </div>
-              </div>
-            </form>
-          )}
+            ) : (
+              <form>
+                <div className="space-y-6">
+                  {/* OTP Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Verification Code
+                    </label>
+                    <div className="mt-1">
+                      <div className="flex justify-between gap-2">
+                        {otp.map((digit, index) => (
+                          <input
+                            key={index}
+                            ref={(el) => (inputRefs.current[index] = el)}
+                            type="text"
+                            maxLength={1}
+                            autoComplete=""
+                            value={digit}
+                            onChange={(e) =>
+                              handleOtpChange(index, e.target.value)
+                            }
+                            onKeyDown={(e) => handleKeyDown(index, e)}
+                            onPaste={index === 0 ? handlePaste : undefined}
+                            className={`w-12 h-12 text-center text-lg border ${
+                              errors.otp ? "border-red-300" : "border-gray-300"
+                            } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500`}
+                          />
+                        ))}
+                      </div>
+                      {errors.otp && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-1" />
+                          {errors.otp}
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500 flex justify-end">
+                        <button
+                          onClick={resendOtp}
+                          className="font-medium text-green-900 hover:text-green-700 hover:cursor-pointer"
+                          disabled={resendTimer > 0}
+                        >
+                          {resendTimer > 0
+                            ? `Resend OTP in ${resendTimer}s`
+                            : "Resend OTP"}
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Password Field */}
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      New Password
+                    </label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="password"
+                        name="password"
+                        autoComplete="new-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={handlePasswordChange}
+                        className={`block w-full pl-10 pr-10 py-2 border ${
+                          errors.password ? "border-red-300" : "border-gray-300"
+                        } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                        placeholder="••••••••••••"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.password}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Password must be at least 8 characters
+                    </p>
+                  </div>
+
+                  {/* Confirm Password Field */}
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Confirm Password
+                    </label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="confirmPassword"
+                        autoComplete="new-password"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={handleConfirmPasswordChange}
+                        className={`block w-full pl-10 pr-10 py-2 border ${
+                          errors.confirmPassword || errors.match
+                            ? "border-red-300"
+                            : "border-gray-300"
+                        } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                        placeholder="••••••••••••"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.confirmPassword}
+                      </p>
+                    )}
+                    {errors.match && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.match}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-[#2D777E] to-green-700 hover:from-[#2D777E] hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Reset Password"
+                      )}
+                    </button>
+                  </div>
+                  <div className="pt-2">
+                    <Link
+                      to={"/forgetpassword"}
+                      className="flex items-center text-sm font-bold text-[#2D777E] hover:text-gray-900"
+                    >
+                      <ArrowLeft size={16} className="mr-1" />
+                      Back
+                    </Link>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

@@ -9,7 +9,11 @@ import ProfessionalInfoSection from "../../components/DoctorProfile/Professional
 import StatusAvailabilitySection from "../../components/DoctorProfile/StatusAvailabilitySection";
 import DocumentsSection from "../../components/DoctorProfile/DocumentsSection";
 import { toast } from "react-toastify";
-import { getPsycholgistDetailsRoute, updatePsychologistDetailsRoute, updatePsychologistDocumentsRoute } from "../../services/userService";
+import {
+  getPsycholgistDetailsRoute,
+  updatePsychologistDetailsRoute,
+  updatePsychologistDocumentsRoute,
+} from "../../services/userService";
 
 const DoctorProfile = () => {
   const [activeSection] = useState("doctor_home_page");
@@ -23,7 +27,7 @@ const DoctorProfile = () => {
   }, []);
   const fetchDoctor = async () => {
     try {
-      const response = await getPsycholgistDetailsRoute(userId)
+      const response = await getPsycholgistDetailsRoute(userId);
       setIsAvailable(response.is_available);
       setFormData(response);
     } catch (error) {
@@ -49,7 +53,7 @@ const DoctorProfile = () => {
   };
   const handleSave = async () => {
     try {
-      await updatePsychologistDetailsRoute(userId,formData)
+      await updatePsychologistDetailsRoute(userId, formData);
       setIsEditing(false);
       fetchDoctor();
     } catch (error) {
@@ -74,7 +78,7 @@ const DoctorProfile = () => {
     formData.append(fileType, file);
 
     try {
-      await updatePsychologistDocumentsRoute(userId,formData);
+      await updatePsychologistDocumentsRoute(userId, formData);
       toast.success(`${fileType.replace(/_/g, " ")} updated successfully!`, {
         position: "bottom-center",
       });

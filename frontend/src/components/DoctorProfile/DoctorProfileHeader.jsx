@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import ProfileImageUploadModal from "../../components/ProfileImageUploadModal";
 import { useSelector } from "react-redux";
-import { updateAvailabilityRoute } from "../../services/userService";
+import { psychologistProfileImageRoute, updateAvailabilityRoute } from "../../services/userService";
 
 const DoctorProfileHeader = ({
   formData,
@@ -54,7 +54,8 @@ const DoctorProfileHeader = ({
       if (!result.isConfirmed) return;
 
       const response = await updateAvailabilityRoute(userId,isAvailable);
-      setIsAvailable(response.data.status);
+      setIsAvailable(!isAvailable);
+      console.log(response.data.status);
       if (response.data.status) {
         await Swal.fire({
           title: "You're now available!",

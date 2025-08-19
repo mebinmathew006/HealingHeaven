@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Bell, Send, AlertCircle, CheckCircle, X } from "lucide-react";
 import AdminSidebar from "../../components/AdminSidebar";
-import { getAllNotificationsRoute } from "../../services/consultationService";
+import {
+  createNewNotificationRoute,
+  getAllNotificationsRoute,
+} from "../../services/consultationService";
+import { toast } from "react-toastify";
 
 const AdminNotification = () => {
-  const [activeSection, setActiveSection] = useState("notifications");
+  const [activeSection] = useState("notifications");
   const [formData, setFormData] = useState({
     title: "",
     message: "",
@@ -19,8 +23,13 @@ const AdminNotification = () => {
   }, []);
 
   const fetchNotifications = async () => {
-    const response = await getAllNotificationsRoute();
-    setNotifications(response);
+    try {
+      const response = await getAllNotificationsRoute();
+      setNotifications(response);
+      
+    } catch (error) {
+      toast.error("Unable to load Notification", { position: "bottom-center" });
+    }
   };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -30,14 +39,11 @@ const AdminNotification = () => {
     }));
   };
 
-  const showAlert = (type, message) => {
-    setAlert({ show: true, type, message });
-    setTimeout(() => setAlert({ show: false, type: "", message: "" }), 3000);
-  };
+
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.message.trim()) {
-      showAlert("error", "Please fill in all fields");
+      toast.error( "Please fill in all fields",{position:'bottom-center'});
       return;
     }
 
@@ -55,10 +61,13 @@ const AdminNotification = () => {
       setNotifications((prev) => [newNotification, ...prev]);
       setFormData({ title: "", message: "" });
       setShowForm(false);
-      showAlert("success", "Notification created successfully!");
+       toast.success("Notification Added Successfully", {
+        position: "bottom-center",
+      });
     } catch (error) {
-      console.log(error);
-      showAlert("error", "Failed to create notification. Please try again.");
+      toast.success("Unable to Add Notification", {
+        position: "bottom-center",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -66,7 +75,6 @@ const AdminNotification = () => {
 
   const deleteNotification = (id) => {
     setNotifications((prev) => prev.filter((notif) => notif.id !== id));
-    showAlert("success", "Notification deleted successfully!");
   };
 
   const formatDate = (dateString) => {
@@ -84,7 +92,7 @@ const AdminNotification = () => {
               <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-slate-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-blue-500 rounded-xl">
+                    <div className="p-3 bg-green-500 rounded-xl">
                       <Bell className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -98,7 +106,7 @@ const AdminNotification = () => {
                   </div>
                   <button
                     onClick={() => setShowForm(!showForm)}
-                    className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                    className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Add Notification</span>
@@ -127,7 +135,7 @@ const AdminNotification = () => {
               {/* Add Notification Form */}
               {showForm && (
                 <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-6">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+                  <div className="bg-gradient-to-r from-green-500 to-blue-200 p-6">
                     <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
                       <Plus className="h-5 w-5" />
                       <span>Create New Notification</span>
@@ -149,7 +157,7 @@ const AdminNotification = () => {
                         value={formData.title}
                         onChange={handleInputChange}
                         placeholder="Enter notification title..."
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white"
+                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white"
                         required
                       />
                     </div>
@@ -168,7 +176,7 @@ const AdminNotification = () => {
                         onChange={handleInputChange}
                         placeholder="Enter detailed message..."
                         rows="4"
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white resize-none"
+                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white resize-none"
                         required
                       />
                     </div>
@@ -184,7 +192,7 @@ const AdminNotification = () => {
                       <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        className="flex items-center space-x-2 bg-gradient-to-r from-green-500 to-blue-200 hover:from-green-600 hover:to-blue-300 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                       >
                         {isSubmitting ? (
                           <>
@@ -237,8 +245,8 @@ const AdminNotification = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3 mb-2">
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                <Bell className="h-4 w-4 text-blue-600" />
+                              <div className="p-2 bg-green-100 rounded-lg">
+                                <Bell className="h-4 w-4 text-green-600" />
                               </div>
                               <h3 className="text-lg font-semibold text-slate-800">
                                 {notification.title}

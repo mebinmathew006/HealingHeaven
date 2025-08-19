@@ -94,7 +94,7 @@ const VideoCallPermissionModal = ({ isOpen, onClose, onStartCall, doctor }) => {
         });
       }, 4000);
     } catch (error) {
-      toast.error("Unable to Start Now", { position: "bottom-center" });
+      toast.error(`Unable to Start Now :${error.response.data.detail}`, { position: "bottom-center" });
       setIsProcessing(false);
     }
   };
