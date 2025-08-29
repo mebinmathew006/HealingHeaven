@@ -64,7 +64,7 @@ from crud.crud import (
         get_doctor_consultations ,get_chat_messages_using_cons_id,get_all_mapping_for_chat_user, 
         update_analysis_consultation,save_recording_database, create_feedback,get_all_mapping_for_chat,
         count_notifications,get_notifications_crud,count_compliants,get_compliants_crud,update_complaints_curd,
-        delete_partial_consultation, verify_user_consultation,count_all_consultation,validate_doctor,
+        delete_partial_consultation, verify_user_consultation,count_all_consultation,
         validate_both_owns_consultation,validate_user_for_consultaion_mapping,
         validate_user_owns_consultation,validate_doctor_owns_consultation
         )

@@ -193,6 +193,7 @@ class CompliantSchema(BaseModel):
     subject: str
     description: str
     status: Optional[str]
+    created_at : datetime
     
     
     model_config = {

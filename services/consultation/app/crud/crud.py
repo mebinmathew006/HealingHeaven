@@ -493,29 +493,32 @@ async def validate_both_owns_consultation(
         logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
         return False
     
-async def validate_doctor(
-    session: AsyncSession,
-    psychologist_id: int,
-    user_id: int
-) -> bool:
-    try:
-        result = await session.execute(
-            select(Psy).where(
-                (Consultation.id == consultation_id) &
-                (
-                    (Consultation.user_id == user_id) |
-                    (Consultation.psychologist_id == user_id)
-                )
-            )
-        )
-        return bool(result.scalar())
-    except Exception as e:
-        logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
-        return False
+# async def validate_doctor(
+#     session: AsyncSession,
+#     psychologist_id: int,
+#     user_id: int
+# ) -> bool:
+#     try:
+#         result = await session.execute(
+#             select(Psy).where(
+#                 (Consultation.id == consultation_id) &
+#                 (
+#                     (Consultation.user_id == user_id) |
+#                     (Consultation.psychologist_id == user_id)
+#                 )
+#             )
+#         )
+#         return bool(result.scalar())
+#     except Exception as e:
+#         logger.error(f"Error validating consultation mapping for user {user_id}: {e}")
+#         return False
 
         
 async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id: int):
     try:
+        count_query = select(func.count(Chat.id)).where(Chat.consultation_map_id == consultation_id)
+        count_result = await session.execute(count_query)
+        total_count = count_result.scalar()
         consultation_exists = await session.execute(
             select(ConsultationMapping).where(ConsultationMapping.id == consultation_id))
         if not consultation_exists.scalar():
@@ -526,19 +529,15 @@ async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id
             .options(selectinload(Chat.attachments))
             .where(Chat.consultation_map_id == consultation_id)
             .order_by(Chat.created_at.asc())
+            
         )
-        
         messages = result.scalars().all()
-        
-       
         formatted_messages = []
         for msg in messages:
-           
             attachments = []
             for att in msg.attachments:
                 if not att.file_url:  
                     continue
-                    
                 attachments.append({
                     "id": att.id,
                     "filename": att.filename,  
@@ -560,6 +559,7 @@ async def get_chat_messages_using_cons_id(session: AsyncSession, consultation_id
             })
 
         return formatted_messages
+       
 
     except SQLAlchemyError as e:
         print(f"Database error in get_chat_messages: {str(e)}", exc_info=True)

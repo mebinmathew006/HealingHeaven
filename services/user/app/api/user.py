@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status,Form, File,UploadFile,BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import run_in_threadpool
-from typing import List,Optional
-from sqlalchemy import select,update
+from typing import Optional
 from dependencies.database import get_session
 import crud.crud as crud
 import schemas.users as users
@@ -24,10 +23,11 @@ import os
 from fastapi import Query
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from config.config import Settings 
+
+settings = Settings()
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["users"])
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-
 
 
 @router.post("/users", response_model=users.UserOut)
@@ -83,7 +83,7 @@ async def google_login(
         id_info = id_token.verify_oauth2_token(
             credential,
             google_requests.Request(),
-            GOOGLE_CLIENT_ID
+            settings.google_client_id
         )
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Google token")
@@ -116,7 +116,7 @@ async def google_login(
         value=refresh_token,
         httponly=True,
         secure=True, 
-        samesite="strict", 
+        samesite="strict",
         max_age=60 * 60 * 24 * 7 
     )
     return response
@@ -429,9 +429,53 @@ async def doctor_verification(
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
+   
+    if not experience.isdigit():
+        raise HTTPException(status_code=400, detail="Experience must be an integer")
+    experience_int = int(experience)
+    if experience_int < 0 or experience_int > 70:
+        raise HTTPException(status_code=400, detail="Experience must be between 0 and 70 years")
+    if fees <= 0:
+        raise HTTPException(status_code=400, detail="Fees must be a positive integer")
+
+    if date_of_birth >= date.today():
+        raise HTTPException(status_code=400, detail="Date of birth must be in the past")
+    age = (date.today() - date_of_birth).days // 365
+    if age < 22 or age >100:
+        raise HTTPException(status_code=400, detail="Doctor must be at least 22 years old and less than 100")
+
+    genders = {"male", "female", "other"}
+    if gender not in genders:
+        raise HTTPException(status_code=400, detail="Gender must be one of Male, Female, Other")
+
+    allowed_exts = {".jpg", ".jpeg", ".png"}
+    MAX_FILE_SIZE_MB = settings.MAX_FILE_SIZE_MB
+    for file, name in [
+        (id, "ID proof"),
+        (educationalCertificate, "Educational certificate"),
+        (experienceCertificate, "Experience certificate"),
+    ]:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in allowed_exts:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{name} must be one of {', '.join(allowed_exts)}"
+            )
+
+        file.file.seek(0, os.SEEK_END)
+        size = file.file.tell()
+        file.file.seek(0)
+        if size > MAX_FILE_SIZE_MB * 1024 * 1024:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{name} file is too large (max {MAX_FILE_SIZE_MB}MB)"
+            )
     try:
         try:
-            id_url = await run_in_threadpool(upload_to_cloudinary, id, "doctor_verification/id")
+            id_url = await run_in_threadpool(
+                upload_to_cloudinary, 
+                id, 
+                "doctor_verification/id")
             edu_url = await run_in_threadpool(
                 upload_to_cloudinary, 
                 educationalCertificate, 

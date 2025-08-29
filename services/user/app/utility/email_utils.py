@@ -1,19 +1,18 @@
 # app/utility/email_utils.py
-import os
 from email.message import EmailMessage
 from aiosmtplib import send
-from dotenv import load_dotenv
 from infra.celery_worker import celery_app
-load_dotenv()
 import smtplib
 from email.message import EmailMessage
+from config.config import Settings 
 
-MAIL_FROM = os.getenv("MAIL_FROM")
-MAIL_SERVER = os.getenv("MAIL_SERVER")
-MAIL_PORT = int(os.getenv("MAIL_PORT"))
-MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+settings = Settings()
 
+MAIL_FROM = settings.mail_from
+MAIL_SERVER = settings.mail_server
+MAIL_PORT = int(settings.mail_port)
+MAIL_USERNAME = settings.mail_username
+MAIL_PASSWORD = settings.mail_password
 
 
 async def send_welcome_email(to_email: str, user_name: str):

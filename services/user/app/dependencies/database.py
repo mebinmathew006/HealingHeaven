@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from config.config import Settings 
 
-DATABASE_URL = "postgresql+asyncpg://postgres:root@user-db:5432/healing_user"
+settings = Settings()
+
+DATABASE_URL = settings.user_database_url
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 

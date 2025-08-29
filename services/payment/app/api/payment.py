@@ -169,6 +169,8 @@ async def fetch_money_from_wallet(
             status_code=status.HTTP_201_CREATED,
             content={"status": "success"},
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(    
             status_code=500, detail=f"Internal server error: {str(e)}"

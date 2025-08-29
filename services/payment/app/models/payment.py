@@ -9,7 +9,7 @@ class Wallet(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, unique=True, index=True)
     balance = Column(Integer, default=0)
-    created_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True),default=func.now(),server_default=func.now(),nullable=False)
     # One-to-many relationship: one Wallet -> many WalletTransactions
     wallet_transactions = relationship("WalletTransaction", back_populates="wallet", cascade="all, delete-orphan")
 
@@ -19,7 +19,7 @@ class WalletTransaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
     transaction_amount = Column(Integer)
-    created_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True),default=func.now(),server_default=func.now(),nullable=False)
     wallet = relationship("Wallet", back_populates="wallet_transactions")
 
 

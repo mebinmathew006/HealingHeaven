@@ -1,14 +1,16 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-
 from fastapi import HTTPException, status
 from jose import jwt, JWTError
-import os
+from config.config import Settings 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change_this_in_prod")
+settings = Settings()
+
+SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
-ACCESS_EXPIRE_MINUTES = int(os.getenv("ACCESS_EXPIRE_MINUTES", 60))
-REFRESH_EXPIRE_DAYS = int(os.getenv("REFRESH_EXPIRE_DAYS", 7))
+ACCESS_EXPIRE_MINUTES = int(settings.access_expire_minutes)
+REFRESH_EXPIRE_DAYS = int(settings.refresh_expire_days)
+
 
 def create_access_token(user_id: str, role: Optional[str] = None, extra_claims: Optional[Dict[str, Any]] = None) -> str:
     to_encode = {"sub": user_id}
