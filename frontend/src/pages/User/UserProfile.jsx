@@ -92,9 +92,12 @@ const UserProfile = () => {
   };
   const handleSave = async () => {
     try {
-      await updateUserProfileRoute(userId,formData)
+      const response=await updateUserProfileRoute(userId,formData)
       setIsEditing(false);
-    } catch (error) {}
+    } catch (error) {
+      // console.log(error.response.data.detail[0].msg)
+      toast.error(error.response.data.detail[0].msg,{position:'bottom-center'})
+    }
   };
   return (
     <div className="flex h-screen bg-gray-100">

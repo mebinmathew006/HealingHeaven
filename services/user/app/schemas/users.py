@@ -217,6 +217,22 @@ class UserWithOptionalProfileOut(BaseModel):
         "from_attributes": True
     }
     
+    @validator("name")
+    def validate_name(cls, v):
+        if not re.fullmatch(r"[A-Za-z ]+", v):
+            raise ValueError("Name must contain only alphabets and spaces")
+        return v
+
+    @validator("mobile_number")
+    def validate_mobile_number(cls, v):
+        if not v.isdigit():
+            raise ValueError("Mobile number must contain only digits")
+        if len(v) != 10:
+            raise ValueError("Mobile number must be exactly 10 digits")
+        if v[0] not in {"9", "8", "7", "6"}:
+            raise ValueError("Mobile number must start with 9, 8, 7, or 6")
+        return v
+    
 class UserProfileImage(BaseModel):
     profile_image: Optional[str]
     
